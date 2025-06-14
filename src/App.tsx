@@ -11,6 +11,11 @@ import MainLayout from "@/components/Layout/MainLayout";
 // Pages
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
+import NewOperation from "@/pages/NewOperation";
+import OperationHistory from "@/pages/OperationHistory";
+import AgentManagement from "@/pages/AgentManagement";
+import TransactionValidation from "@/pages/TransactionValidation";
+import OperationTypes from "@/pages/OperationTypes";
 import NotFound from "@/pages/NotFound";
 
 console.log('📱 App.tsx: App component loading...');
@@ -40,28 +45,73 @@ const AppRoutes = () => {
         } 
       />
 
-      {/* Autres routes protégées à implémenter */}
+      {/* Routes pour les opérations */}
       <Route 
-        path="/operations/*" 
+        path="/operations/new" 
         element={
-          <ProtectedRoute>
+          <ProtectedRoute requiredRole={['agent', 'chef_agence']}>
             <MainLayout>
-              <div className="text-center py-12">
-                <h2 className="text-2xl font-bold mb-4">Gestion des Opérations</h2>
-                <p className="text-gray-600">Cette section sera implémentée prochainement.</p>
-              </div>
+              <NewOperation />
             </MainLayout>
           </ProtectedRoute>
         } 
       />
 
+      <Route 
+        path="/operations/history" 
+        element={
+          <ProtectedRoute requiredRole={['agent', 'chef_agence']}>
+            <MainLayout>
+              <OperationHistory />
+            </MainLayout>
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Route pour la gestion des agents (chef d'agence) */}
       <Route 
         path="/agents" 
         element={
           <ProtectedRoute requiredRole={['chef_agence']}>
             <MainLayout>
+              <AgentManagement />
+            </MainLayout>
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Route pour la validation des transactions (admins) */}
+      <Route 
+        path="/validation" 
+        element={
+          <ProtectedRoute requiredRole={['admin_general', 'sous_admin']}>
+            <MainLayout>
+              <TransactionValidation />
+            </MainLayout>
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Route pour la gestion des types d'opérations (développeur) */}
+      <Route 
+        path="/operation-types" 
+        element={
+          <ProtectedRoute requiredRole={['developer']}>
+            <MainLayout>
+              <OperationTypes />
+            </MainLayout>
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Autres routes à implémenter */}
+      <Route 
+        path="/commissions" 
+        element={
+          <ProtectedRoute>
+            <MainLayout>
               <div className="text-center py-12">
-                <h2 className="text-2xl font-bold mb-4">Gestion des Agents</h2>
+                <h2 className="text-2xl font-bold mb-4">Mes Commissions</h2>
                 <p className="text-gray-600">Cette section sera implémentée prochainement.</p>
               </div>
             </MainLayout>
@@ -70,12 +120,54 @@ const AppRoutes = () => {
       />
 
       <Route 
-        path="/validation" 
+        path="/recharge" 
+        element={
+          <ProtectedRoute requiredRole={['agent', 'chef_agence']}>
+            <MainLayout>
+              <div className="text-center py-12">
+                <h2 className="text-2xl font-bold mb-4">Demander une Recharge</h2>
+                <p className="text-gray-600">Cette section sera implémentée prochainement.</p>
+              </div>
+            </MainLayout>
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/agent-recharges" 
+        element={
+          <ProtectedRoute requiredRole={['chef_agence']}>
+            <MainLayout>
+              <div className="text-center py-12">
+                <h2 className="text-2xl font-bold mb-4">Recharges des Agents</h2>
+                <p className="text-gray-600">Cette section sera implémentée prochainement.</p>
+              </div>
+            </MainLayout>
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/agencies" 
+        element={
+          <ProtectedRoute requiredRole={['admin_general']}>
+            <MainLayout>
+              <div className="text-center py-12">
+                <h2 className="text-2xl font-bold mb-4">Gestion des Agences</h2>
+                <p className="text-gray-600">Cette section sera implémentée prochainement.</p>
+              </div>
+            </MainLayout>
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/support" 
         element={
           <ProtectedRoute requiredRole={['admin_general', 'sous_admin']}>
             <MainLayout>
               <div className="text-center py-12">
-                <h2 className="text-2xl font-bold mb-4">Validation des Transactions</h2>
+                <h2 className="text-2xl font-bold mb-4">Requêtes Support</h2>
                 <p className="text-gray-600">Cette section sera implémentée prochainement.</p>
               </div>
             </MainLayout>
