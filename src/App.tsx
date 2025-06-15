@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -173,6 +172,32 @@ const AppRoutes = () => {
             </MainLayout>
           </ProtectedRoute>
         } 
+      />
+      {/* Route pour la gestion des Chefs d'Agence (admin_general) */}
+      <Route
+        path="/chefs-agence"
+        element={
+          <ProtectedRoute requiredRole={['admin_general']}>
+            <MainLayout>
+              <React.Suspense fallback={<div>Chargement...</div>}>
+                {React.createElement(require("@/pages/AdminGestionChefsAgence").default)}
+              </React.Suspense>
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      {/* Route pour la gestion des Sous-Administrateurs */}
+      <Route
+        path="/sub-admins"
+        element={
+          <ProtectedRoute requiredRole={['admin_general']}>
+            <MainLayout>
+              <React.Suspense fallback={<div>Chargement...</div>}>
+                {React.createElement(require("@/pages/AdminGestionSousAdmins").default)}
+              </React.Suspense>
+            </MainLayout>
+          </ProtectedRoute>
+        }
       />
 
       <Route path="*" element={<NotFound />} />

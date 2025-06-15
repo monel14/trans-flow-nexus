@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -54,6 +53,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           ...baseItems,
           { icon: CheckCircle, label: 'Validation Transactions', path: '/validation' },
           { icon: Users, label: 'Gestion Agences', path: '/agencies' },
+          { icon: Users, label: 'Chefs d\'Agence', path: '/chefs-agence' },
           { icon: Users, label: 'Sous-Administrateurs', path: '/sub-admins' },
           { icon: FileText, label: 'Requêtes Support', path: '/support' },
           { icon: Settings, label: 'Configuration', path: '/config' },
