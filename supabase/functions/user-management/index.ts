@@ -12,6 +12,7 @@ async function handler(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const resource = url.searchParams.get("resource");
   const role = url.searchParams.get("role");
+  const agency_filter = url.searchParams.get("agency_id");
 
   // Authentification rudimentaire par header (à renforcer!)
   const auth = req.headers.get("authorization");
@@ -25,7 +26,8 @@ async function handler(req: Request): Promise<Response> {
       .select(`
         id, user_id, role_id, is_active, agency_id, 
         roles:role_id(name,label),
-        agencies:agency_id(name)
+        agencies:agency_id(name),
+        profiles:user_id(name, email)
       `);
 
     if (role) {
@@ -38,9 +40,23 @@ async function handler(req: Request): Promise<Response> {
       if (errRole || !roles) return new Response(JSON.stringify({ error: "Rôle introuvable" }), { status: 404 });
       query = query.eq("role_id", roles.id);
     }
+
+    // Filtrage par agence pour respecter la hiérarchie
+    if (agency_filter) {
+      query = query.eq("agency_id", parseInt(agency_filter));
+    }
+
     const { data, error } = await query;
     if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500 });
-    return new Response(JSON.stringify(data), { headers: { "Content-Type": "application/json" } });
+    
+    // Formatter les données pour inclure les informations utilisateur
+    const formattedData = data?.map(item => ({
+      ...item,
+      name: item.profiles?.name || 'N/A',
+      email: item.profiles?.email || 'N/A'
+    })) || [];
+    
+    return new Response(JSON.stringify(formattedData), { headers: { "Content-Type": "application/json" } });
   }
 
   if (method === "POST" && resource === "users") {
@@ -60,6 +76,18 @@ async function handler(req: Request): Promise<Response> {
     if (authError || !newUser || !newUser.user) {
       return new Response(JSON.stringify({ error: authError?.message || "Erreur création utilisateur" }), { status: 400 });
     }
+
+    // Créer le profil utilisateur
+    const { error: profileError } = await supabase.from("profiles").insert([{
+      id: newUser.user.id,
+      name,
+      email,
+    }]);
+    if (profileError) {
+      console.error("Erreur création profil:", profileError);
+      // Continue même si le profil n'est pas créé
+    }
+
     // Trouver role_id
     const { data: role, error: errRole } = await supabase
       .from("roles")
