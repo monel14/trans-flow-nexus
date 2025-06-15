@@ -5,42 +5,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { UserPlus, UserX, Edit } from "lucide-react";
-
-const mockChefs = [
-  {
-    id: "CHEFAG1",
-    name: "Jean Kouanda",
-    email: "jean@transflow.com",
-    phone: "+226 70 XX XX XX",
-    agency: "Agence Centre-Ville",
-    city: "Ouagadougou",
-    status: "Actif",
-    createdAt: "2024-02-01",
-  },
-  {
-    id: "CHEFAG2",
-    name: "Awa Sawadogo",
-    email: "awa@transflow.com",
-    phone: "+226 75 XX XX XX",
-    agency: "Agence Zogona",
-    city: "Ouagadougou",
-    status: "Suspendu",
-    createdAt: "2024-01-10",
-  },
-];
+import { useChefsAgence, useCreateChefAgence, useToggleChefAgence } from "@/hooks/useChefsAgence";
+import { toast } from "@/components/ui/use-toast";
 
 const AdminGestionChefsAgence = () => {
-  const [chefs, setChefs] = useState(mockChefs);
+  const { data: chefs = [], isLoading, error } = useChefsAgence();
+  const createChef = useCreateChefAgence();
+  const toggleChef = useToggleChefAgence();
   const [modalOpen, setModalOpen] = useState(false);
   const [editChef, setEditChef] = useState<any>(null);
-  const [form, setForm] = useState({ name: "", email: "", phone: "", agency: "", city: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", agency: "", city: "", password: "" });
 
   const handleOpenCreate = () => {
     setEditChef(null);
-    setForm({ name: "", email: "", phone: "", agency: "", city: "" });
+    setForm({ name: "", email: "", phone: "", agency: "", city: "", password: "" });
     setModalOpen(true);
   };
 
@@ -49,44 +30,40 @@ const AdminGestionChefsAgence = () => {
     setForm({
       name: chef.name,
       email: chef.email,
-      phone: chef.phone,
-      agency: chef.agency,
-      city: chef.city,
+      phone: chef.phone || "",
+      agency: chef.agency || "",
+      city: chef.city || "",
+      password: "",
     });
     setModalOpen(true);
   };
 
-  const handleSave = () => {
-    if (editChef) {
-      setChefs((prev) =>
-        prev.map((c) => (c.id === editChef.id ? { ...c, ...form } : c))
-      );
-    } else {
-      setChefs((prev) => [
-        ...prev,
-        {
-          id: `CHEFAG${prev.length + 1}`,
-          name: form.name,
-          email: form.email,
-          phone: form.phone,
-          agency: form.agency,
-          city: form.city,
-          status: "Actif",
-          createdAt: new Date().toISOString().split("T")[0],
-        },
-      ]);
+  const handleSave = async () => {
+    if (!form.name || !form.email || !form.password) {
+      toast({ title: "Erreur", description: "Nom, email et mot de passe requis", variant: "destructive" });
+      return;
     }
-    setModalOpen(false);
+    try {
+      await createChef.mutateAsync({
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        agency_id: null, // Remplacer par l'ID réel de l'agence si besoin
+      });
+      toast({ title: "Succès", description: `Chef d'agence créé.` });
+      setModalOpen(false);
+    } catch (e: any) {
+      toast({ title: "Erreur", description: e.message, variant: "destructive" });
+    }
   };
 
-  const handleToggleStatus = (id: string, current: string) => {
-    setChefs((prev) =>
-      prev.map((c) =>
-        c.id === id
-          ? { ...c, status: current === "Actif" ? "Suspendu" : "Actif" }
-          : c
-      )
-    );
+  const handleToggleStatus = async (user_id: string, is_active: boolean) => {
+    try {
+      await toggleChef.mutateAsync({ user_id, is_active: !is_active });
+      toast({ title: "Statut modifié", description: `Le chef a été ${!is_active ? "activé" : "suspendu"}.` });
+    } catch (e: any) {
+      toast({ title: "Erreur", description: e.message, variant: "destructive" });
+    }
   };
 
   return (
@@ -106,52 +83,54 @@ const AdminGestionChefsAgence = () => {
           <CardTitle>Liste des Chefs d'Agence</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nom</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Téléphone</TableHead>
-                  <TableHead>Agence</TableHead>
-                  <TableHead>Ville</TableHead>
-                  <TableHead>Date Création</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {chefs.map((chef) => (
-                  <TableRow key={chef.id}>
-                    <TableCell>{chef.name}</TableCell>
-                    <TableCell>{chef.email}</TableCell>
-                    <TableCell>{chef.phone}</TableCell>
-                    <TableCell>{chef.agency}</TableCell>
-                    <TableCell>{chef.city}</TableCell>
-                    <TableCell>{chef.createdAt}</TableCell>
-                    <TableCell>
-                      <Badge className={chef.status === "Actif" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
-                        {chef.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="sm" title="Modifier" onClick={() => handleOpenEdit(chef)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        title={chef.status === "Actif" ? "Suspendre" : "Réactiver"}
-                        onClick={() => handleToggleStatus(chef.id, chef.status)}
-                      >
-                        <UserX className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
+          {isLoading ? (
+            <div className="py-16 text-center text-gray-600">Chargement…</div>
+          ) : error ? (
+            <div className="py-8 text-center text-red-600 text-sm">{error.message}</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nom</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Rôle</TableHead>
+                    <TableHead>Agence</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {chefs.map((chef: any) => (
+                    <TableRow key={chef.id}>
+                      <TableCell>{chef.roles?.label || chef.roles?.name}</TableCell>
+                      <TableCell>{chef.email}</TableCell>
+                      <TableCell>{chef.roles?.label || chef.roles?.name}</TableCell>
+                      <TableCell>{chef.agencies?.name || "-"}</TableCell>
+                      <TableCell>
+                        <Badge className={chef.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+                          {chef.is_active ? "Actif" : "Suspendu"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="sm" title="Modifier" onClick={() => handleOpenEdit(chef)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          title={chef.is_active ? "Suspendre" : "Réactiver"}
+                          onClick={() => handleToggleStatus(chef.user_id, chef.is_active)}
+                        >
+                          <UserX className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
@@ -168,19 +147,14 @@ const AdminGestionChefsAgence = () => {
               <Label>Email *</Label>
               <Input value={form.email} type="email" onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
             </div>
-            <div>
-              <Label>Téléphone *</Label>
-              <Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
-            </div>
-            <div>
-              <Label>Agence *</Label>
-              <Input value={form.agency} onChange={e => setForm(f => ({ ...f, agency: e.target.value }))} />
-            </div>
-            <div>
-              <Label>Ville *</Label>
-              <Input value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} />
-            </div>
-            <Button onClick={handleSave} className="w-full">{editChef ? "Enregistrer les modifications" : "Créer le Chef d'Agence"}</Button>
+            {/* Pour l'exemple, password obligatoire côté API, à cacher si edit */}
+            {!editChef && (
+              <div>
+                <Label>Mot de passe *</Label>
+                <Input value={form.password} type="password" onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
+              </div>
+            )}
+            <Button onClick={handleSave} className="w-full" disabled={createChef.isPending}>{editChef ? "Enregistrer les modifications" : "Créer le Chef d'Agence"}</Button>
           </div>
         </DialogContent>
       </Dialog>
