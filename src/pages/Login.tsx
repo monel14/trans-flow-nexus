@@ -103,6 +103,7 @@ const Login = () => {
               <p><strong>Agent :</strong> agent@demo.com / demo123</p>
               <p><strong>Chef d'Agence :</strong> chef@demo.com / demo123</p>
               <p><strong>Admin Général :</strong> admin@demo.com / demo123</p>
+              <p><strong>Développeur :</strong> dev@demo.com / demo123</p>
             </div>
           </div>
         </form>

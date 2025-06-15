@@ -69,6 +69,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         name: 'Admin Général',
         role: 'admin_general',
         isActive: true,
+      },
+      {
+        id: '4',
+        email: 'dev@demo.com',
+        name: 'Développeur Système',
+        role: 'developer',
+        isActive: true,
       }
     ];
 
