@@ -30,6 +30,154 @@ export type Database = {
         }
         Relationships: []
       }
+      commission_rules: {
+        Row: {
+          commission_type: string
+          created_at: string
+          fixed_amount: number | null
+          id: string
+          is_active: boolean
+          max_amount: number | null
+          min_amount: number | null
+          operation_type_id: string
+          percentage_rate: number | null
+          tiered_rules: Json | null
+          updated_at: string
+        }
+        Insert: {
+          commission_type: string
+          created_at?: string
+          fixed_amount?: number | null
+          id?: string
+          is_active?: boolean
+          max_amount?: number | null
+          min_amount?: number | null
+          operation_type_id: string
+          percentage_rate?: number | null
+          tiered_rules?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          commission_type?: string
+          created_at?: string
+          fixed_amount?: number | null
+          id?: string
+          is_active?: boolean
+          max_amount?: number | null
+          min_amount?: number | null
+          operation_type_id?: string
+          percentage_rate?: number | null
+          tiered_rules?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_rules_operation_type_id_fkey"
+            columns: ["operation_type_id"]
+            isOneToOne: false
+            referencedRelation: "operation_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operation_type_fields: {
+        Row: {
+          created_at: string
+          display_order: number
+          field_type: string
+          help_text: string | null
+          id: string
+          is_obsolete: boolean
+          is_required: boolean
+          label: string
+          name: string
+          operation_type_id: string
+          options: Json | null
+          placeholder: string | null
+          updated_at: string
+          validation_rules: Json | null
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          field_type: string
+          help_text?: string | null
+          id?: string
+          is_obsolete?: boolean
+          is_required?: boolean
+          label: string
+          name: string
+          operation_type_id: string
+          options?: Json | null
+          placeholder?: string | null
+          updated_at?: string
+          validation_rules?: Json | null
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          field_type?: string
+          help_text?: string | null
+          id?: string
+          is_obsolete?: boolean
+          is_required?: boolean
+          label?: string
+          name?: string
+          operation_type_id?: string
+          options?: Json | null
+          placeholder?: string | null
+          updated_at?: string
+          validation_rules?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operation_type_fields_operation_type_id_fkey"
+            columns: ["operation_type_id"]
+            isOneToOne: false
+            referencedRelation: "operation_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operation_types: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string
+          id: string
+          impacts_balance: boolean
+          is_active: boolean
+          name: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description: string
+          id?: string
+          impacts_balance?: boolean
+          is_active?: boolean
+          name: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          impacts_balance?: boolean
+          is_active?: boolean
+          name?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       permissions: {
         Row: {
           code: string
