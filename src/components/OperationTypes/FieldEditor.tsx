@@ -37,7 +37,7 @@ const FieldEditor: React.FC<FieldEditorProps> = ({ operationTypeId, fields }) =>
   const [form, setForm] = useState({
     name: "",
     label: "",
-    field_type: "text" as const,
+    field_type: "text" as "text" | "number" | "email" | "tel" | "select" | "textarea" | "file" | "date" | "checkbox" | "radio",
     is_required: false,
     placeholder: "",
     help_text: "",
@@ -218,7 +218,7 @@ const FieldEditor: React.FC<FieldEditorProps> = ({ operationTypeId, fields }) =>
             </div>
             <div>
               <Label>Type de champ</Label>
-              <Select value={form.field_type} onValueChange={(value: any) => setForm(f => ({ ...f, field_type: value }))}>
+              <Select value={form.field_type} onValueChange={(value: "text" | "number" | "email" | "tel" | "select" | "textarea" | "file" | "date" | "checkbox" | "radio") => setForm(f => ({ ...f, field_type: value }))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

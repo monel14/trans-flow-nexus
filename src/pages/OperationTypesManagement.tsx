@@ -38,7 +38,7 @@ const OperationTypesManagement = () => {
     description: "",
     impacts_balance: true,
     is_active: true,
-    status: "active" as const,
+    status: "active" as "active" | "inactive" | "archived",
   });
 
   // Données pour la configuration
@@ -223,7 +223,7 @@ const OperationTypesManagement = () => {
             </div>
             <div>
               <Label>Statut</Label>
-              <Select value={form.status} onValueChange={(value: any) => setForm(f => ({ ...f, status: value }))}>
+              <Select value={form.status} onValueChange={(value: "active" | "inactive" | "archived") => setForm(f => ({ ...f, status: value }))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

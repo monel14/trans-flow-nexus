@@ -19,7 +19,7 @@ const CommissionEditor: React.FC<CommissionEditorProps> = ({ operationTypeId, ru
   const [modalOpen, setModalOpen] = useState(false);
   const [editRule, setEditRule] = useState<CommissionRule | null>(null);
   const [form, setForm] = useState({
-    commission_type: "fixed" as const,
+    commission_type: "fixed" as "fixed" | "percentage" | "tiered",
     fixed_amount: "",
     percentage_rate: "",
     min_amount: "",
@@ -154,7 +154,7 @@ const CommissionEditor: React.FC<CommissionEditorProps> = ({ operationTypeId, ru
           <div className="space-y-4">
             <div>
               <Label>Type de commission</Label>
-              <Select value={form.commission_type} onValueChange={(value: any) => setForm(f => ({ ...f, commission_type: value }))}>
+              <Select value={form.commission_type} onValueChange={(value: "fixed" | "percentage" | "tiered") => setForm(f => ({ ...f, commission_type: value }))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
