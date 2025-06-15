@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,13 +8,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { UserPlus, UserX, Edit } from "lucide-react";
 import PermissionEditor from "@/components/Permissions/PermissionEditor";
-import { useSousAdmins, useCreateSousAdmin, useToggleSousAdmin } from "@/hooks/useSousAdmins";
+import { useSousAdmins, useCreateSousAdmin, useToggleSousAdminStatus } from "@/hooks/useSousAdmins";
 import { toast } from "@/components/ui/use-toast";
 
 const AdminGestionSousAdmins = () => {
   const { data: sousAdmins = [], isLoading, error } = useSousAdmins();
   const createSousAdmin = useCreateSousAdmin();
-  const toggleSousAdmin = useToggleSousAdmin();
+  const toggleSousAdmin = useToggleSousAdminStatus();
   const [modalOpen, setModalOpen] = useState(false);
   const [editSousAdmin, setEditSousAdmin] = useState<any>(null);
   const [permissionsModal, setPermissionsModal] = useState(false);

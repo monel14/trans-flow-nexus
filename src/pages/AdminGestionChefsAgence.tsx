@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,13 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { UserPlus, UserX, Edit } from "lucide-react";
-import { useChefsAgence, useCreateChefAgence, useToggleChefAgence } from "@/hooks/useChefsAgence";
+import { useChefsAgence, useCreateChefAgence, useToggleChefAgenceStatus } from "@/hooks/useChefsAgence";
 import { toast } from "@/components/ui/use-toast";
 
 const AdminGestionChefsAgence = () => {
   const { data: chefs = [], isLoading, error } = useChefsAgence();
   const createChef = useCreateChefAgence();
-  const toggleChef = useToggleChefAgence();
+  const toggleChef = useToggleChefAgenceStatus();
   const [modalOpen, setModalOpen] = useState(false);
   const [editChef, setEditChef] = useState<any>(null);
   const [form, setForm] = useState({ name: "", email: "", phone: "", agency: "", city: "", password: "" });
@@ -59,7 +58,7 @@ const AdminGestionChefsAgence = () => {
 
   const handleToggleStatus = async (user_id: string, is_active: boolean) => {
     try {
-      await toggleChef.mutateAsync({ user_id, is_active: !is_active });
+      await toggleChef.mutateAsync({ userId: user_id, isActive: !is_active });
       toast({ title: "Statut modifié", description: `Le chef a été ${!is_active ? "activé" : "suspendu"}.` });
     } catch (e: any) {
       toast({ title: "Erreur", description: e.message, variant: "destructive" });
