@@ -5,82 +5,71 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { UserPlus, UserX, Edit } from "lucide-react";
 import PermissionEditor from "@/components/Permissions/PermissionEditor";
-
-const mockSousAdmins = [
-  {
-    id: "SUBADMIN1",
-    name: "Ali Savadogo",
-    email: "ali@transflow.com",
-    status: "Actif",
-    createdAt: "2024-03-20",
-    permissions: ["Valider Transactions", "Voir Rapports"],
-  },
-];
+import { useSousAdmins, useCreateSousAdmin, useToggleSousAdmin } from "@/hooks/useSousAdmins";
+import { toast } from "@/components/ui/use-toast";
 
 const AdminGestionSousAdmins = () => {
-  const [sousAdmins, setSousAdmins] = useState(mockSousAdmins);
+  const { data: sousAdmins = [], isLoading, error } = useSousAdmins();
+  const createSousAdmin = useCreateSousAdmin();
+  const toggleSousAdmin = useToggleSousAdmin();
   const [modalOpen, setModalOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "" });
   const [editSousAdmin, setEditSousAdmin] = useState<any>(null);
   const [permissionsModal, setPermissionsModal] = useState(false);
   const [selectedSousAdmin, setSelectedSousAdmin] = useState<any>(null);
+  const [form, setForm] = useState({ name: "", email: "", password: "" });
 
   const handleOpenCreate = () => {
     setEditSousAdmin(null);
-    setForm({ name: "", email: "" });
+    setForm({ name: "", email: "", password: "" });
     setModalOpen(true);
   };
 
   const handleOpenEdit = (admin: any) => {
     setEditSousAdmin(admin);
-    setForm({ name: admin.name, email: admin.email });
+    setForm({ name: admin.name, email: admin.email, password: "" });
     setModalOpen(true);
   };
 
-  const handleSave = () => {
-    if (editSousAdmin) {
-      setSousAdmins(prev =>
-        prev.map(a => (a.id === editSousAdmin.id ? { ...a, ...form } : a))
-      );
-    } else {
-      setSousAdmins(prev => [
-        ...prev,
-        {
-          id: `SUBADMIN${prev.length + 1}`,
-          name: form.name,
-          email: form.email,
-          status: "Actif",
-          createdAt: new Date().toISOString().split("T")[0],
-          permissions: [],
-        },
-      ]);
+  const handleSave = async () => {
+    if (!form.name || !form.email || (!editSousAdmin && !form.password)) {
+      toast({ title: "Erreur", description: "Nom, email et mot de passe requis", variant: "destructive" });
+      return;
     }
-    setModalOpen(false);
+    try {
+      await createSousAdmin.mutateAsync({
+        name: form.name,
+        email: form.email,
+        password: form.password,
+      });
+      toast({ title: "Succès", description: `Sous-Administrateur créé.` });
+      setModalOpen(false);
+    } catch (e: any) {
+      toast({ title: "Erreur", description: e.message, variant: "destructive" });
+    }
   };
 
-  const handleToggleStatus = (id: string, current: string) => {
-    setSousAdmins(prev =>
-      prev.map(a =>
-        a.id === id ? { ...a, status: current === "Actif" ? "Suspendu" : "Actif" } : a
-      )
-    );
+  const handleToggleStatus = async (user_id: string, is_active: boolean) => {
+    try {
+      await toggleSousAdmin.mutateAsync({ user_id, is_active: !is_active });
+      toast({ title: "Statut modifié", description: `Le sous-admin a été ${!is_active ? "activé" : "suspendu"}.` });
+    } catch (e: any) {
+      toast({ title: "Erreur", description: e.message, variant: "destructive" });
+    }
   };
 
+  // Permissions : pour la V1, laisser le mock PermissionEditor, ajouter vérif côté backend plus tard
   const handlePermissions = (admin: any) => {
     setSelectedSousAdmin(admin);
     setPermissionsModal(true);
   };
 
-  const handleSavePermissions = (perms: string[]) => {
-    setSousAdmins(prev =>
-      prev.map(a =>
-        a.id === selectedSousAdmin.id ? { ...a, permissions: perms } : a
-      )
-    );
+  const handleSavePermissions = (_perms: string[]) => {
+    // Stocker permissions en base dans une future évolution
+    toast({ title: "Permissions", description: "Modification des permissions non disponible dans cette version." });
     setPermissionsModal(false);
   };
 
@@ -101,58 +90,58 @@ const AdminGestionSousAdmins = () => {
           <CardTitle>Liste des Sous-Administrateurs</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nom</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Date Création</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead>Permissions</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sousAdmins.map((admin) => (
-                  <TableRow key={admin.id}>
-                    <TableCell>{admin.name}</TableCell>
-                    <TableCell>{admin.email}</TableCell>
-                    <TableCell>{admin.createdAt}</TableCell>
-                    <TableCell>
-                      <Badge className={admin.status === "Actif" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
-                        {admin.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-xs">{admin.permissions.join(", ") || "-"}</span>
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="sm" title="Modifier" onClick={() => handleOpenEdit(admin)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        title={admin.status === "Actif" ? "Suspendre" : "Réactiver"}
-                        onClick={() => handleToggleStatus(admin.id, admin.status)}
-                      >
-                        <UserX className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        title="Permissions"
-                        onClick={() => handlePermissions(admin)}
-                      >
-                        <span className="underline text-xs">Permissions</span>
-                      </Button>
-                    </TableCell>
+          {isLoading ? (
+            <div className="py-16 text-center text-gray-600">Chargement…</div>
+          ) : error ? (
+            <div className="py-8 text-center text-red-600 text-sm">{error.message}</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nom</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {sousAdmins.map((admin: any) => (
+                    <TableRow key={admin.id}>
+                      <TableCell>{admin.name}</TableCell>
+                      <TableCell>{admin.email}</TableCell>
+                      <TableCell>
+                        <Badge className={admin.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+                          {admin.is_active ? "Actif" : "Suspendu"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="sm" title="Modifier" onClick={() => handleOpenEdit(admin)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          title={admin.is_active ? "Suspendre" : "Réactiver"}
+                          onClick={() => handleToggleStatus(admin.user_id, admin.is_active)}
+                        >
+                          <UserX className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          title="Permissions"
+                          onClick={() => handlePermissions(admin)}
+                        >
+                          <span className="underline text-xs">Permissions</span>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
@@ -169,6 +158,12 @@ const AdminGestionSousAdmins = () => {
               <Label>Email *</Label>
               <Input value={form.email} type="email" onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
             </div>
+            {!editSousAdmin && (
+              <div>
+                <Label>Mot de passe *</Label>
+                <Input value={form.password} type="password" onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
+              </div>
+            )}
             <Button onClick={handleSave} className="w-full">{editSousAdmin ? "Enregistrer les modifications" : "Créer le Sous-Admin"}</Button>
           </div>
         </DialogContent>
