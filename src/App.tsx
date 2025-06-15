@@ -18,6 +18,10 @@ import TransactionValidation from "@/pages/TransactionValidation";
 import OperationTypes from "@/pages/OperationTypes";
 import NotFound from "@/pages/NotFound";
 
+// Lazy-load special pages
+const AdminGestionChefsAgence = React.lazy(() => import("@/pages/AdminGestionChefsAgence"));
+const AdminGestionSousAdmins = React.lazy(() => import("@/pages/AdminGestionSousAdmins"));
+
 console.log('📱 App.tsx: App component loading...');
 
 const queryClient = new QueryClient();
@@ -181,7 +185,7 @@ const AppRoutes = () => {
           <ProtectedRoute requiredRole={['admin_general']}>
             <MainLayout>
               <React.Suspense fallback={<div>Chargement...</div>}>
-                {React.createElement(require("@/pages/AdminGestionChefsAgence").default)}
+                <AdminGestionChefsAgence />
               </React.Suspense>
             </MainLayout>
           </ProtectedRoute>
@@ -194,7 +198,7 @@ const AppRoutes = () => {
           <ProtectedRoute requiredRole={['admin_general']}>
             <MainLayout>
               <React.Suspense fallback={<div>Chargement...</div>}>
-                {React.createElement(require("@/pages/AdminGestionSousAdmins").default)}
+                <AdminGestionSousAdmins />
               </React.Suspense>
             </MainLayout>
           </ProtectedRoute>
