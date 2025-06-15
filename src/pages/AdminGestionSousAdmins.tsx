@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -53,7 +54,7 @@ const AdminGestionSousAdmins = () => {
 
   const handleToggleStatus = async (user_id: string, is_active: boolean) => {
     try {
-      await toggleSousAdmin.mutateAsync({ user_id, is_active: !is_active });
+      await toggleSousAdmin.mutateAsync({ userId: user_id, isActive: !is_active });
       toast({ title: "Statut modifié", description: `Le sous-admin a été ${!is_active ? "activé" : "suspendu"}.` });
     } catch (e: any) {
       toast({ title: "Erreur", description: e.message, variant: "destructive" });
