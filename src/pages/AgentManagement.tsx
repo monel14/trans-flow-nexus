@@ -40,7 +40,6 @@ const AgentManagement = () => {
         email: newAgent.email,
         password: newAgent.password,
         phone: newAgent.phone,
-        agency_id: 1, // TODO: récupérer l'agence du chef connecté
       });
 
       toast({

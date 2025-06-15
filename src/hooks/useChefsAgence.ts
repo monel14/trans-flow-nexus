@@ -2,11 +2,10 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const BASE_URL = "https://khgbnikgsptoflokvtzu.supabase.co/functions/v1/user-management";
+
 const getAuthHeader = () => {
-  // Token stocké côté frontend (voir AuthContext ou localStorage si mock)
   const user = localStorage.getItem("user");
   if (!user) return {};
-  // L'edge function attend "Bearer something", ici une dummy key pour l'instant (à sécuriser - voir note)
   return { Authorization: "Bearer DUMMY_ADMIN_TOKEN" };
 };
 

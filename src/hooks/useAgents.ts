@@ -10,11 +10,18 @@ const getAuthHeader = () => {
   return { Authorization: "Bearer DUMMY_CHEF_TOKEN" };
 };
 
+// Récupérer l'ID de l'agence du chef connecté (mock pour l'instant)
+const getCurrentUserAgencyId = () => {
+  // TODO: récupérer depuis le contexte auth réel
+  return 1; // Mock agency ID
+};
+
 export function useAgents() {
   return useQuery({
     queryKey: ["agents"],
     queryFn: async () => {
-      const res = await fetch(`${BASE_URL}?resource=users&role=agent`, {
+      const agencyId = getCurrentUserAgencyId();
+      const res = await fetch(`${BASE_URL}?resource=users&role=agent&agency_id=${agencyId}`, {
         headers: {
           ...getAuthHeader(),
         },
@@ -33,8 +40,8 @@ export function useCreateAgent() {
       email: string;
       password: string;
       phone?: string;
-      agency_id?: number;
     }) => {
+      const agencyId = getCurrentUserAgencyId();
       const res = await fetch(`${BASE_URL}?resource=users`, {
         method: "POST",
         headers: {
@@ -46,7 +53,7 @@ export function useCreateAgent() {
           email: data.email,
           password: data.password,
           role_name: "agent",
-          agency_id: data.agency_id,
+          agency_id: agencyId, // Utilise l'agence du chef connecté
         }),
       });
       const resData = await res.json();
