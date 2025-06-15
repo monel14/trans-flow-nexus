@@ -9,7 +9,131 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      agencies: {
+        Row: {
+          city: string | null
+          created_at: string | null
+          id: number
+          name: string
+        }
+        Insert: {
+          city?: string | null
+          created_at?: string | null
+          id?: number
+          name: string
+        }
+        Update: {
+          city?: string | null
+          created_at?: string | null
+          id?: number
+          name?: string
+        }
+        Relationships: []
+      }
+      permissions: {
+        Row: {
+          code: string
+          id: number
+          label: string | null
+        }
+        Insert: {
+          code: string
+          id?: number
+          label?: string | null
+        }
+        Update: {
+          code?: string
+          id?: number
+          label?: string | null
+        }
+        Relationships: []
+      }
+      role_permissions: {
+        Row: {
+          permission_id: number
+          role_id: number
+        }
+        Insert: {
+          permission_id: number
+          role_id: number
+        }
+        Update: {
+          permission_id?: number
+          role_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_permissions_permission_id_fkey"
+            columns: ["permission_id"]
+            isOneToOne: false
+            referencedRelation: "permissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "role_permissions_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roles: {
+        Row: {
+          id: number
+          label: string | null
+          name: string
+        }
+        Insert: {
+          id?: number
+          label?: string | null
+          name: string
+        }
+        Update: {
+          id?: number
+          label?: string | null
+          name?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          agency_id: number | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          role_id: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          agency_id?: number | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          role_id?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          agency_id?: number | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          role_id?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -18,7 +142,12 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      app_role:
+        | "agent"
+        | "chef_agence"
+        | "admin_general"
+        | "sous_admin"
+        | "developer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -133,6 +262,14 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: [
+        "agent",
+        "chef_agence",
+        "admin_general",
+        "sous_admin",
+        "developer",
+      ],
+    },
   },
 } as const
