@@ -223,6 +223,9 @@ const AppRoutes = () => {
   );
 };
 
+import DeveloperDashboardPage from "@/pages/DeveloperDashboardPage";
+import OperationTypesListPage from "@/pages/OperationTypesListPage";
+
 const App = () => {
   console.log('📱 App.tsx: App component rendering...');
   

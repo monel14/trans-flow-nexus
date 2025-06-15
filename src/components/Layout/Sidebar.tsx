@@ -69,7 +69,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       case 'developer':
         return [
           ...baseItems,
-          { icon: Settings, label: 'Types d\'Opérations', path: '/operation-types' },
+          { icon: Settings, label: 'Tableau de Bord Dév.', path: '/developer/dashboard' },
+          { icon: Settings, label: 'Types d\'Opérations', path: '/developer/operation-types' },
           { icon: Settings, label: 'Configuration Système', path: '/system-config' },
           { icon: FileText, label: 'Journaux d\'Erreurs', path: '/error-logs' },
         ];
