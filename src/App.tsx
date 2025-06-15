@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -18,6 +17,7 @@ import AgentManagement from "@/pages/AgentManagement";
 import TransactionValidation from "@/pages/TransactionValidation";
 import OperationTypes from "@/pages/OperationTypes";
 import NotFound from "@/pages/NotFound";
+import SystemConfig from "@/pages/SystemConfig";
 
 // Lazy-load special pages
 const AdminGestionChefsAgence = React.lazy(() => import("@/pages/AdminGestionChefsAgence"));
@@ -107,6 +107,18 @@ const AppRoutes = () => {
             </MainLayout>
           </ProtectedRoute>
         } 
+      />
+
+      {/* Nouvelle route : Configuration Système (développeur) */}
+      <Route
+        path="/system-config"
+        element={
+          <ProtectedRoute requiredRole={['developer']}>
+            <MainLayout>
+              <SystemConfig />
+            </MainLayout>
+          </ProtectedRoute>
+        }
       />
 
       {/* Autres routes à implémenter */}
