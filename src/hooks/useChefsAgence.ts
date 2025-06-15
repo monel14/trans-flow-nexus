@@ -1,89 +1,118 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 const BASE_URL = "https://khgbnikgsptoflokvtzu.supabase.co/functions/v1/user-management";
 
-const getAuthHeader = () => {
-  const user = localStorage.getItem("user");
-  if (!user) return {};
-  return { Authorization: "Bearer DUMMY_ADMIN_TOKEN" };
-};
-
-// Récupérer la liste des chefs d'agence
 export function useChefsAgence() {
+  const { user } = useAuth();
+  
   return useQuery({
-    queryKey: ["chefsAgence"],
+    queryKey: ["chefs-agence"],
     queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error("Non authentifié");
+      }
+
       const res = await fetch(`${BASE_URL}?resource=users&role=chef_agence`, {
         headers: {
-          ...getAuthHeader(),
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
         },
       });
-      if (!res.ok) throw new Error("Erreur chargement chefs d'agence.");
-      return await res.json();
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Erreur lors du chargement des chefs d'agence");
+      }
+
+      const data = await res.json();
+      return data.users || [];
     },
+    enabled: user?.role === 'admin_general',
+    refetchInterval: 30000,
+    staleTime: 10000,
   });
 }
 
-// Créer un chef d'agence
 export function useCreateChefAgence() {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async (data: {
       name: string;
       email: string;
       password: string;
-      agency_id: number|null;
+      phone?: string;
+      agency_id: number;
     }) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error("Non authentifié");
+      }
+
       const res = await fetch(`${BASE_URL}?resource=users`, {
         method: "POST",
         headers: {
+          Authorization: `Bearer ${session.access_token}`,
           "Content-Type": "application/json",
-          ...getAuthHeader(),
         },
         body: JSON.stringify({
           name: data.name,
           email: data.email,
           password: data.password,
+          phone: data.phone,
           role_name: "chef_agence",
-          agency_id: data.agency_id ?? null,
+          agency_id: data.agency_id,
         }),
       });
-      const resData = await res.json();
-      if (!res.ok) throw new Error(resData?.error || "Erreur création utilisateur.");
-      return resData;
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Erreur lors de la création du chef d'agence");
+      }
+
+      return await res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["chefsAgence"] });
+      queryClient.invalidateQueries({ queryKey: ["chefs-agence"] });
     },
   });
 }
 
-// Activer / suspendre chef d'agence
-export function useToggleChefAgence() {
+export function useToggleChefAgenceStatus() {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: async ({
-      user_id,
-      is_active,
-    }: {
-      user_id: string;
-      is_active: boolean;
-    }) => {
-      const res = await fetch(`${BASE_URL}?resource=users`, {
-        method: "PATCH",
+    mutationFn: async ({ userId, isActive }: { userId: string; isActive: boolean }) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error("Non authentifié");
+      }
+
+      const res = await fetch(`${BASE_URL}?resource=toggle-status`, {
+        method: "POST",
         headers: {
+          Authorization: `Bearer ${session.access_token}`,
           "Content-Type": "application/json",
-          ...getAuthHeader(),
         },
-        body: JSON.stringify({ user_id, is_active }),
+        body: JSON.stringify({
+          user_id: userId,
+          is_active: isActive,
+        }),
       });
-      const resData = await res.json();
-      if (!res.ok) throw new Error(resData?.error || "Erreur statut.");
-      return resData;
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Erreur lors de la modification du statut");
+      }
+
+      return await res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["chefsAgence"] });
+      queryClient.invalidateQueries({ queryKey: ["chefs-agence"] });
     },
   });
 }

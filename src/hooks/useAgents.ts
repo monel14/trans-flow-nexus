@@ -1,39 +1,50 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
-const BASE_URL =
-  "https://khgbnikgsptoflokvtzu.supabase.co/functions/v1/user-management";
-
-const getAuthHeader = () => {
-  const user = localStorage.getItem("user");
-  if (!user) return {};
-  return { Authorization: "Bearer DUMMY_CHEF_TOKEN" };
-};
-
-// Récupérer l'ID de l'agence du chef connecté (mock pour l'instant)
-const getCurrentUserAgencyId = () => {
-  // TODO: récupérer depuis le contexte auth réel
-  return 1; // Mock agency ID
-};
+const BASE_URL = "https://khgbnikgsptoflokvtzu.supabase.co/functions/v1/user-management";
 
 export function useAgents() {
+  const { user } = useAuth();
+  
   return useQuery({
-    queryKey: ["agents"],
+    queryKey: ["agents", user?.agenceId],
     queryFn: async () => {
-      const agencyId = getCurrentUserAgencyId();
-      const res = await fetch(`${BASE_URL}?resource=users&role=agent&agency_id=${agencyId}`, {
+      if (!user?.agenceId) {
+        throw new Error("Agence non trouvée");
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error("Non authentifié");
+      }
+
+      const res = await fetch(`${BASE_URL}?resource=users&role=agent&agency_id=${user.agenceId}`, {
         headers: {
-          ...getAuthHeader(),
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
         },
       });
-      if (!res.ok) throw new Error("Erreur chargement agents.");
-      return await res.json();
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Erreur lors du chargement des agents");
+      }
+
+      const data = await res.json();
+      return data.users || [];
     },
+    enabled: !!user?.agenceId,
+    refetchInterval: 30000, // Rafraîchit toutes les 30 secondes
+    staleTime: 10000, // Considère les données comme fraîches pendant 10 secondes
   });
 }
 
 export function useCreateAgent() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+
   return useMutation({
     mutationFn: async (data: {
       name: string;
@@ -41,57 +52,76 @@ export function useCreateAgent() {
       password: string;
       phone?: string;
     }) => {
-      const agencyId = getCurrentUserAgencyId();
+      if (!user?.agenceId) {
+        throw new Error("Agence non trouvée");
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error("Non authentifié");
+      }
+
       const res = await fetch(`${BASE_URL}?resource=users`, {
         method: "POST",
         headers: {
+          Authorization: `Bearer ${session.access_token}`,
           "Content-Type": "application/json",
-          ...getAuthHeader(),
         },
         body: JSON.stringify({
           name: data.name,
           email: data.email,
           password: data.password,
+          phone: data.phone,
           role_name: "agent",
-          agency_id: agencyId, // Utilise l'agence du chef connecté
+          agency_id: user.agenceId,
         }),
       });
-      const resData = await res.json();
-      if (!res.ok)
-        throw new Error(resData?.error || "Erreur création agent.");
-      return resData;
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Erreur lors de la création de l'agent");
+      }
+
+      return await res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["agents"] });
+      queryClient.invalidateQueries({ queryKey: ["agents", user?.agenceId] });
     },
   });
 }
 
-export function useToggleAgent() {
+export function useToggleAgentStatus() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+
   return useMutation({
-    mutationFn: async ({
-      user_id,
-      is_active,
-    }: {
-      user_id: string;
-      is_active: boolean;
-    }) => {
-      const res = await fetch(`${BASE_URL}?resource=users`, {
-        method: "PATCH",
+    mutationFn: async ({ userId, isActive }: { userId: string; isActive: boolean }) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error("Non authentifié");
+      }
+
+      const res = await fetch(`${BASE_URL}?resource=toggle-status`, {
+        method: "POST",
         headers: {
+          Authorization: `Bearer ${session.access_token}`,
           "Content-Type": "application/json",
-          ...getAuthHeader(),
         },
-        body: JSON.stringify({ user_id, is_active }),
+        body: JSON.stringify({
+          user_id: userId,
+          is_active: isActive,
+        }),
       });
-      const resData = await res.json();
-      if (!res.ok)
-        throw new Error(resData?.error || "Erreur changement statut agent.");
-      return resData;
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Erreur lors de la modification du statut");
+      }
+
+      return await res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["agents"] });
+      queryClient.invalidateQueries({ queryKey: ["agents", user?.agenceId] });
     },
   });
 }

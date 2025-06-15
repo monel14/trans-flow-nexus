@@ -1,261 +1,298 @@
 
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
-import { Plus, Edit, UserCheck, UserX, History, RotateCcw } from 'lucide-react';
-import { useAgents, useCreateAgent, useToggleAgent } from '@/hooks/useAgents';
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/hooks/use-toast";
+import { useAgents, useCreateAgent, useToggleAgentStatus } from "@/hooks/useAgents";
+import { useAuth } from "@/contexts/AuthContext";
+import { Loader2, UserPlus, Users, UserCheck, UserX } from "lucide-react";
 
 const AgentManagement = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const { data: agents = [], isLoading, error } = useAgents();
-  const createAgent = useCreateAgent();
-  const toggleAgent = useToggleAgent();
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const createAgentMutation = useCreateAgent();
+  const toggleStatusMutation = useToggleAgentStatus();
+
   const [newAgent, setNewAgent] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    password: 'agent123'
+    name: "",
+    email: "",
+    password: "",
+    phone: "",
   });
 
-  const handleCreateAgent = async () => {
-    if (!newAgent.name || !newAgent.email) {
+  const [showForm, setShowForm] = useState(false);
+
+  const handleCreateAgent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!newAgent.name || !newAgent.email || !newAgent.password) {
       toast({
         title: "Erreur",
-        description: "Veuillez remplir tous les champs obligatoires.",
-        variant: "destructive"
+        description: "Veuillez remplir tous les champs obligatoires",
+        variant: "destructive",
       });
       return;
     }
 
     try {
-      await createAgent.mutateAsync({
+      await createAgentMutation.mutateAsync({
         name: newAgent.name,
         email: newAgent.email,
         password: newAgent.password,
-        phone: newAgent.phone,
+        phone: newAgent.phone || undefined,
       });
 
       toast({
-        title: "Agent créé",
-        description: `Le compte agent pour ${newAgent.name} a été créé avec succès.`,
+        title: "Succès",
+        description: "Agent créé avec succès",
       });
 
-      setNewAgent({ name: '', email: '', phone: '', password: 'agent123' });
-      setIsCreateModalOpen(false);
-    } catch (e: any) {
+      setNewAgent({ name: "", email: "", password: "", phone: "" });
+      setShowForm(false);
+    } catch (error) {
       toast({
         title: "Erreur",
-        description: e.message,
-        variant: "destructive"
+        description: error instanceof Error ? error.message : "Erreur lors de la création",
+        variant: "destructive",
       });
     }
-  };
-
-  const getStatusBadge = (isActive: boolean) => {
-    return isActive 
-      ? <Badge className="bg-green-100 text-green-800">Actif</Badge>
-      : <Badge className="bg-red-100 text-red-800">Suspendu</Badge>;
   };
 
   const handleToggleStatus = async (userId: string, currentStatus: boolean) => {
     try {
-      await toggleAgent.mutateAsync({ user_id: userId, is_active: !currentStatus });
-      const newStatus = !currentStatus ? 'activé' : 'suspendu';
-      toast({
-        title: "Statut modifié",
-        description: `L'agent a été ${newStatus}.`,
+      await toggleStatusMutation.mutateAsync({
+        userId,
+        isActive: !currentStatus,
       });
-    } catch (e: any) {
+
+      toast({
+        title: "Succès",
+        description: `Agent ${!currentStatus ? "activé" : "désactivé"} avec succès`,
+      });
+    } catch (error) {
       toast({
         title: "Erreur",
-        description: e.message,
-        variant: "destructive"
+        description: error instanceof Error ? error.message : "Erreur lors de la modification",
+        variant: "destructive",
       });
     }
   };
 
-  // Calculer les statistiques à partir des données réelles
-  const totalAgents = agents.length;
-  const activeAgents = agents.filter((agent: any) => agent.is_active).length;
-  const suspendedAgents = totalAgents - activeAgents;
-  const totalBalance = agents.reduce((sum: number, agent: any) => sum + (agent.balance || 0), 0);
+  const activeAgents = agents.filter((agent: any) => agent.is_active);
+  const inactiveAgents = agents.filter((agent: any) => !agent.is_active);
+
+  if (error) {
+    return (
+      <div className="container mx-auto p-6">
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-6">
+            <p className="text-red-600 text-center">
+              Erreur: {error instanceof Error ? error.message : "Erreur inconnue"}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Gestion des Agents</h1>
-          <p className="text-gray-600">Gérez les agents de votre agence</p>
+          <h1 className="text-3xl font-bold">Gestion des Agents</h1>
+          <p className="text-gray-600 mt-1">
+            Agence: {user?.agenceName || "Non définie"}
+          </p>
         </div>
-        <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Créer un Agent
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Créer un Nouveau Compte Agent</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
+        <Button 
+          onClick={() => setShowForm(!showForm)}
+          className="bg-blue-600 hover:bg-blue-700"
+        >
+          <UserPlus className="w-4 h-4 mr-2" />
+          Nouvel Agent
+        </Button>
+      </div>
+
+      {/* Statistiques */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center space-x-2">
+              <Users className="w-5 h-5 text-blue-600" />
               <div>
-                <Label htmlFor="name">Nom Complet *</Label>
-                <Input
-                  id="name"
-                  value={newAgent.name}
-                  onChange={(e) => setNewAgent(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Nom et prénom"
-                />
+                <p className="text-2xl font-bold">{agents.length}</p>
+                <p className="text-sm text-gray-600">Total Agents</p>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center space-x-2">
+              <UserCheck className="w-5 h-5 text-green-600" />
               <div>
-                <Label htmlFor="email">Email *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={newAgent.email}
-                  onChange={(e) => setNewAgent(prev => ({ ...prev, email: e.target.value }))}
-                  placeholder="email@exemple.com"
-                />
+                <p className="text-2xl font-bold text-green-600">{activeAgents.length}</p>
+                <p className="text-sm text-gray-600">Actifs</p>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center space-x-2">
+              <UserX className="w-5 h-5 text-red-600" />
               <div>
-                <Label htmlFor="phone">Téléphone</Label>
-                <Input
-                  id="phone"
-                  value={newAgent.phone}
-                  onChange={(e) => setNewAgent(prev => ({ ...prev, phone: e.target.value }))}
-                  placeholder="+226 XX XX XX XX"
-                />
+                <p className="text-2xl font-bold text-red-600">{inactiveAgents.length}</p>
+                <p className="text-sm text-gray-600">Inactifs</p>
               </div>
-              <div>
-                <Label htmlFor="password">Mot de passe initial</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={newAgent.password}
-                  onChange={(e) => setNewAgent(prev => ({ ...prev, password: e.target.value }))}
-                  placeholder="Mot de passe par défaut"
-                />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Formulaire de création */}
+      {showForm && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Créer un Nouvel Agent</CardTitle>
+            <CardDescription>
+              Ajoutez un nouveau membre à votre équipe d'agents
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleCreateAgent} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="name">Nom complet *</Label>
+                  <Input
+                    id="name"
+                    value={newAgent.name}
+                    onChange={(e) => setNewAgent({ ...newAgent, name: e.target.value })}
+                    placeholder="Jean Dupont"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="email">Email *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={newAgent.email}
+                    onChange={(e) => setNewAgent({ ...newAgent, email: e.target.value })}
+                    placeholder="jean.dupont@example.com"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="password">Mot de passe *</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={newAgent.password}
+                    onChange={(e) => setNewAgent({ ...newAgent, password: e.target.value })}
+                    placeholder="••••••••"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="phone">Téléphone</Label>
+                  <Input
+                    id="phone"
+                    value={newAgent.phone}
+                    onChange={(e) => setNewAgent({ ...newAgent, phone: e.target.value })}
+                    placeholder="+33 6 12 34 56 78"
+                  />
+                </div>
               </div>
-              <div className="flex space-x-2">
+              <div className="flex gap-2">
                 <Button 
-                  onClick={handleCreateAgent} 
-                  className="flex-1"
-                  disabled={createAgent.isPending}
+                  type="submit" 
+                  disabled={createAgentMutation.isPending}
+                  className="bg-green-600 hover:bg-green-700"
                 >
-                  {createAgent.isPending ? 'Création...' : 'Créer le Compte'}
+                  {createAgentMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Création...
+                    </>
+                  ) : (
+                    "Créer l'Agent"
+                  )}
                 </Button>
-                <Button variant="outline" onClick={() => setIsCreateModalOpen(false)} className="flex-1">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setShowForm(false)}
+                >
                   Annuler
                 </Button>
               </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
-      {/* Statistiques dynamiques */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{totalAgents}</div>
-              <div className="text-sm text-gray-600">Total Agents</div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{activeAgents}</div>
-              <div className="text-sm text-gray-600">Agents Actifs</div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">{totalBalance.toLocaleString()}</div>
-              <div className="text-sm text-gray-600">Solde Total FCFA</div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">{suspendedAgents}</div>
-              <div className="text-sm text-gray-600">Suspendus</div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Tableau des agents */}
+      {/* Liste des agents */}
       <Card>
         <CardHeader>
           <CardTitle>Liste des Agents</CardTitle>
+          <CardDescription>
+            Gérez les agents de votre agence
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="py-16 text-center text-gray-600">Chargement des agents...</div>
-          ) : error ? (
-            <div className="py-8 text-center text-red-600 text-sm">{error.message}</div>
+            <div className="flex justify-center items-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin mr-2" />
+              <span>Chargement des agents...</span>
+            </div>
+          ) : agents.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>Aucun agent trouvé</p>
+              <p className="text-sm">Créez votre premier agent pour commencer</p>
+            </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Identifiant</TableHead>
-                    <TableHead>Nom</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Agence</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Date Création</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {agents.map((agent: any) => (
-                    <TableRow key={agent.id}>
-                      <TableCell className="font-medium">{agent.user_id?.slice(0, 8) || 'N/A'}</TableCell>
-                      <TableCell>{agent.name || 'N/A'}</TableCell>
-                      <TableCell>{agent.email || 'N/A'}</TableCell>
-                      <TableCell>{agent.agencies?.name || 'Aucune'}</TableCell>
-                      <TableCell>{getStatusBadge(agent.is_active)}</TableCell>
-                      <TableCell>{new Date(agent.created_at).toLocaleDateString()}</TableCell>
-                      <TableCell>
-                        <div className="flex space-x-1">
-                          <Button variant="ghost" size="sm" title="Modifier">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            title={agent.is_active ? 'Suspendre' : 'Réactiver'}
-                            onClick={() => handleToggleStatus(agent.user_id, agent.is_active)}
-                            disabled={toggleAgent.isPending}
-                          >
-                            {agent.is_active ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
-                          </Button>
-                          <Button variant="ghost" size="sm" title="Historique">
-                            <History className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" title="Réinitialiser MDP">
-                            <RotateCcw className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+            <div className="space-y-4">
+              {agents.map((agent: any) => (
+                <div
+                  key={agent.id}
+                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-3">
+                      <div>
+                        <h3 className="font-medium">{agent.name}</h3>
+                        <p className="text-sm text-gray-600">{agent.email}</p>
+                        {agent.phone && (
+                          <p className="text-sm text-gray-500">{agent.phone}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <Badge variant={agent.is_active ? "default" : "secondary"}>
+                      {agent.is_active ? "Actif" : "Inactif"}
+                    </Badge>
+                    <div className="flex items-center space-x-2">
+                      <Label htmlFor={`toggle-${agent.id}`} className="text-sm">
+                        {agent.is_active ? "Désactiver" : "Activer"}
+                      </Label>
+                      <Switch
+                        id={`toggle-${agent.id}`}
+                        checked={agent.is_active}
+                        onCheckedChange={() => handleToggleStatus(agent.id, agent.is_active)}
+                        disabled={toggleStatusMutation.isPending}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>
