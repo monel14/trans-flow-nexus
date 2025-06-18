@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -14,9 +13,10 @@ import {
   useCreateOperationType, 
   useUpdateOperationType,
   useOperationTypeFields,
-  OperationTypeField
+  useCommissionRules
 } from "@/hooks/useOperationTypes";
 import FieldEditor from "./FieldEditor";
+import CommissionEditor from "./CommissionEditor";
 
 type Props = {
   isOpen: boolean;
@@ -44,6 +44,7 @@ const OperationTypeModalForm: React.FC<Props> = ({ isOpen, onClose, operationTyp
   const createOperationType = useCreateOperationType();
   const updateOperationType = useUpdateOperationType();
   const { data: fields = [] } = useOperationTypeFields(operationType?.id);
+  const { data: commissionRules = [] } = useCommissionRules(operationType?.id);
 
   useEffect(() => {
     if (operationType) {
@@ -157,7 +158,7 @@ const OperationTypeModalForm: React.FC<Props> = ({ isOpen, onClose, operationTyp
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {operationType ? `Modifier "${operationType.name}"` : "Nouveau Type d'Opération"}
@@ -286,13 +287,20 @@ const OperationTypeModalForm: React.FC<Props> = ({ isOpen, onClose, operationTyp
           </TabsContent>
           
           <TabsContent value="commissions" className="space-y-4">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-medium mb-2">Configuration des commissions</h3>
-              <p className="text-gray-600 text-sm">
-                Cette fonctionnalité sera disponible après la création du type d'opération. 
-                Vous pourrez configurer les règles de commission (fixe, pourcentage, paliers).
-              </p>
-            </div>
+            {operationType ? (
+              <CommissionEditor 
+                operationTypeId={operationType.id} 
+                rules={commissionRules}
+              />
+            ) : (
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="font-medium mb-2">Configuration des commissions</h3>
+                <p className="text-gray-600 text-sm">
+                  Cette fonctionnalité sera disponible après la création du type d'opération. 
+                  Vous pourrez configurer les règles de commission (fixe, pourcentage, paliers).
+                </p>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
         

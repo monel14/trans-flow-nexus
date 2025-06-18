@@ -6,13 +6,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Edit, Trash } from "lucide-react";
-import { toast } from "@/components/ui/use-toast";
+import { Plus, Edit, Trash, AlertCircle } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 import { CommissionRule, useCreateCommissionRule, useUpdateCommissionRule } from "@/hooks/useOperationTypes";
 
 interface CommissionEditorProps {
   operationTypeId: string;
   rules: CommissionRule[];
+}
+
+interface TieredRule {
+  minAmount: number;
+  maxAmount: number | null;
+  fixedAmount?: number;
+  percentageRate?: number;
 }
 
 const CommissionEditor: React.FC<CommissionEditorProps> = ({ operationTypeId, rules }) => {
@@ -25,6 +32,9 @@ const CommissionEditor: React.FC<CommissionEditorProps> = ({ operationTypeId, ru
     min_amount: "",
     max_amount: "",
   });
+  const [tieredRules, setTieredRules] = useState<TieredRule[]>([
+    { minAmount: 0, maxAmount: 1000, fixedAmount: 50 }
+  ]);
 
   const createRule = useCreateCommissionRule();
   const updateRule = useUpdateCommissionRule();
@@ -38,6 +48,7 @@ const CommissionEditor: React.FC<CommissionEditorProps> = ({ operationTypeId, ru
       min_amount: "",
       max_amount: "",
     });
+    setTieredRules([{ minAmount: 0, maxAmount: 1000, fixedAmount: 50 }]);
     setModalOpen(true);
   };
 
@@ -50,18 +61,44 @@ const CommissionEditor: React.FC<CommissionEditorProps> = ({ operationTypeId, ru
       min_amount: rule.min_amount?.toString() || "",
       max_amount: rule.max_amount?.toString() || "",
     });
+    
+    if (rule.commission_type === 'tiered' && rule.tiered_rules && Array.isArray(rule.tiered_rules)) {
+      setTieredRules(rule.tiered_rules as TieredRule[]);
+    }
+    
     setModalOpen(true);
   };
 
-  const handleSave = async () => {
+  const validateForm = (): boolean => {
     if (form.commission_type === 'fixed' && !form.fixed_amount) {
       toast({ title: "Erreur", description: "Montant fixe requis", variant: "destructive" });
-      return;
+      return false;
     }
     if (form.commission_type === 'percentage' && !form.percentage_rate) {
       toast({ title: "Erreur", description: "Taux de pourcentage requis", variant: "destructive" });
-      return;
+      return false;
     }
+    if (form.commission_type === 'tiered') {
+      if (tieredRules.length === 0) {
+        toast({ title: "Erreur", description: "Au moins un palier requis", variant: "destructive" });
+        return false;
+      }
+      
+      // Valider que les paliers ne se chevauchent pas
+      for (let i = 0; i < tieredRules.length - 1; i++) {
+        const current = tieredRules[i];
+        const next = tieredRules[i + 1];
+        if (current.maxAmount && next.minAmount <= current.maxAmount) {
+          toast({ title: "Erreur", description: "Les paliers ne doivent pas se chevaucher", variant: "destructive" });
+          return false;
+        }
+      }
+    }
+    return true;
+  };
+
+  const handleSave = async () => {
+    if (!validateForm()) return;
 
     try {
       const ruleData = {
@@ -71,7 +108,7 @@ const CommissionEditor: React.FC<CommissionEditorProps> = ({ operationTypeId, ru
         percentage_rate: form.percentage_rate ? parseFloat(form.percentage_rate) / 100 : null,
         min_amount: parseFloat(form.min_amount) || 0,
         max_amount: form.max_amount ? parseFloat(form.max_amount) : null,
-        tiered_rules: [],
+        tiered_rules: form.commission_type === 'tiered' ? tieredRules : [],
         is_active: true,
       };
 
@@ -92,13 +129,42 @@ const CommissionEditor: React.FC<CommissionEditorProps> = ({ operationTypeId, ru
     }
   };
 
+  const addTieredRule = () => {
+    const lastRule = tieredRules[tieredRules.length - 1];
+    const newMinAmount = lastRule?.maxAmount ? lastRule.maxAmount + 1 : 0;
+    setTieredRules([...tieredRules, {
+      minAmount: newMinAmount,
+      maxAmount: newMinAmount + 1000,
+      fixedAmount: 100
+    }]);
+  };
+
+  const updateTieredRule = (index: number, field: keyof TieredRule, value: any) => {
+    const newRules = [...tieredRules];
+    if (field === 'maxAmount' && value === '') {
+      newRules[index][field] = null;
+    } else {
+      newRules[index][field] = value === '' ? 0 : parseFloat(value) || 0;
+    }
+    setTieredRules(newRules);
+  };
+
+  const removeTieredRule = (index: number) => {
+    if (tieredRules.length > 1) {
+      setTieredRules(tieredRules.filter((_, i) => i !== index));
+    }
+  };
+
   const formatCommissionDisplay = (rule: CommissionRule) => {
     if (rule.commission_type === 'fixed') {
       return `${rule.fixed_amount} FCFA`;
     } else if (rule.commission_type === 'percentage') {
       return `${(rule.percentage_rate! * 100).toFixed(2)}%`;
+    } else if (rule.commission_type === 'tiered') {
+      const tieredRulesArray = rule.tiered_rules as TieredRule[];
+      return `${tieredRulesArray?.length || 0} palier(s)`;
     }
-    return 'Paliers';
+    return 'Non défini';
   };
 
   return (
@@ -147,11 +213,11 @@ const CommissionEditor: React.FC<CommissionEditorProps> = ({ operationTypeId, ru
       </CardContent>
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editRule ? "Modifier la Règle" : "Nouvelle Règle de Commission"}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div>
               <Label>Type de commission</Label>
               <Select value={form.commission_type} onValueChange={(value: "fixed" | "percentage" | "tiered") => setForm(f => ({ ...f, commission_type: value }))}>
@@ -191,26 +257,108 @@ const CommissionEditor: React.FC<CommissionEditorProps> = ({ operationTypeId, ru
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Montant minimum (FCFA)</Label>
-                <Input 
-                  type="number"
-                  value={form.min_amount} 
-                  onChange={e => setForm(f => ({ ...f, min_amount: e.target.value }))}
-                  placeholder="0"
-                />
+            {form.commission_type === 'tiered' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label>Configuration des Paliers</Label>
+                  <Button type="button" variant="outline" onClick={addTieredRule}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Ajouter un palier
+                  </Button>
+                </div>
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <div className="flex items-start space-x-2">
+                    <AlertCircle className="h-5 w-5 text-blue-500 mt-0.5" />
+                    <div className="text-sm text-blue-700">
+                      <p className="font-medium">Configuration des paliers :</p>
+                      <p>Définissez des tranches de montants avec des commissions différentes. Les paliers doivent être ordonnés et ne pas se chevaucher.</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  {tieredRules.map((tier, index) => (
+                    <div key={index} className="border rounded-lg p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium">Palier {index + 1}</h4>
+                        {tieredRules.length > 1 && (
+                          <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => removeTieredRule(index)}
+                          >
+                            <Trash className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>Montant minimum (FCFA)</Label>
+                          <Input 
+                            type="number"
+                            value={tier.minAmount}
+                            onChange={e => updateTieredRule(index, 'minAmount', e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label>Montant maximum (FCFA)</Label>
+                          <Input 
+                            type="number"
+                            value={tier.maxAmount || ''}
+                            onChange={e => updateTieredRule(index, 'maxAmount', e.target.value)}
+                            placeholder="Laisser vide pour illimité"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>Commission fixe (FCFA)</Label>
+                          <Input 
+                            type="number"
+                            value={tier.fixedAmount || ''}
+                            onChange={e => updateTieredRule(index, 'fixedAmount', e.target.value)}
+                            placeholder="0"
+                          />
+                        </div>
+                        <div>
+                          <Label>Commission % (optionnel)</Label>
+                          <Input 
+                            type="number"
+                            step="0.01"
+                            value={tier.percentageRate ? tier.percentageRate * 100 : ''}
+                            onChange={e => updateTieredRule(index, 'percentageRate', e.target.value ? parseFloat(e.target.value) / 100 : undefined)}
+                            placeholder="0"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div>
-                <Label>Montant maximum (FCFA)</Label>
-                <Input 
-                  type="number"
-                  value={form.max_amount} 
-                  onChange={e => setForm(f => ({ ...f, max_amount: e.target.value }))}
-                  placeholder="Optionnel"
-                />
+            )}
+
+            {form.commission_type !== 'tiered' && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Montant minimum (FCFA)</Label>
+                  <Input 
+                    type="number"
+                    value={form.min_amount} 
+                    onChange={e => setForm(f => ({ ...f, min_amount: e.target.value }))}
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <Label>Montant maximum (FCFA)</Label>
+                  <Input 
+                    type="number"
+                    value={form.max_amount} 
+                    onChange={e => setForm(f => ({ ...f, max_amount: e.target.value }))}
+                    placeholder="Optionnel"
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="flex justify-end space-x-2">
               <Button variant="outline" onClick={() => setModalOpen(false)}>
