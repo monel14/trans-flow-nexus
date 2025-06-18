@@ -12,8 +12,11 @@ import { toast } from "@/hooks/use-toast";
 import { 
   OperationType, 
   useCreateOperationType, 
-  useUpdateOperationType 
+  useUpdateOperationType,
+  useOperationTypeFields,
+  OperationTypeField
 } from "@/hooks/useOperationTypes";
+import FieldEditor from "./FieldEditor";
 
 type Props = {
   isOpen: boolean;
@@ -40,6 +43,7 @@ const OperationTypeModalForm: React.FC<Props> = ({ isOpen, onClose, operationTyp
 
   const createOperationType = useCreateOperationType();
   const updateOperationType = useUpdateOperationType();
+  const { data: fields = [] } = useOperationTypeFields(operationType?.id);
 
   useEffect(() => {
     if (operationType) {
@@ -153,7 +157,7 @@ const OperationTypeModalForm: React.FC<Props> = ({ isOpen, onClose, operationTyp
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {operationType ? `Modifier "${operationType.name}"` : "Nouveau Type d'Opération"}
@@ -265,13 +269,20 @@ const OperationTypeModalForm: React.FC<Props> = ({ isOpen, onClose, operationTyp
           </TabsContent>
           
           <TabsContent value="fields" className="space-y-4">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-medium mb-2">Configuration des champs du formulaire</h3>
-              <p className="text-gray-600 text-sm">
-                Cette fonctionnalité sera disponible après la création du type d'opération. 
-                Vous pourrez configurer les champs personnalisés que les utilisateurs devront remplir.
-              </p>
-            </div>
+            {operationType ? (
+              <FieldEditor 
+                operationTypeId={operationType.id} 
+                fields={fields}
+              />
+            ) : (
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="font-medium mb-2">Configuration des champs du formulaire</h3>
+                <p className="text-gray-600 text-sm">
+                  Cette fonctionnalité sera disponible après la création du type d'opération. 
+                  Vous pourrez configurer les champs personnalisés que les utilisateurs devront remplir.
+                </p>
+              </div>
+            )}
           </TabsContent>
           
           <TabsContent value="commissions" className="space-y-4">
