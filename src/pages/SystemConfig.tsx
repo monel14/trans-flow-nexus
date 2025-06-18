@@ -1,36 +1,20 @@
 
-import React, { useState } from "react";
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Save, Settings, Database, Shield } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useSystemConfig } from "@/hooks/useSystemConfig";
 
 const SystemConfig = () => {
-  const [config, setConfig] = useState({
-    // Configuration générale
-    systemName: "TransFlow",
-    maintenanceMode: false,
-    maxFileSize: "10",
-    sessionTimeout: "30",
-    
-    // Configuration de sécurité
-    passwordMinLength: "8",
-    enableTwoFactor: false,
-    maxLoginAttempts: "5",
-    
-    // Configuration de base de données
-    backupFrequency: "daily",
-    retentionDays: "90",
-    enableReplication: true,
-  });
+  const { config, updateConfig, isUpdating } = useSystemConfig();
 
   const handleSave = () => {
-    // TODO: Implémenter la sauvegarde des paramètres
+    updateConfig(config);
     toast({
       title: "Configuration sauvegardée",
       description: "Les paramètres système ont été mis à jour avec succès.",
@@ -38,7 +22,7 @@ const SystemConfig = () => {
   };
 
   const handleInputChange = (field: string, value: any) => {
-    setConfig(prev => ({ ...prev, [field]: value }));
+    updateConfig({ [field]: value });
   };
 
   return (
@@ -50,9 +34,13 @@ const SystemConfig = () => {
             Gérez les paramètres globaux et avancés du système TransFlow.
           </p>
         </div>
-        <Button onClick={handleSave} className="flex items-center gap-2">
+        <Button 
+          onClick={handleSave} 
+          className="flex items-center gap-2"
+          disabled={isUpdating}
+        >
           <Save className="h-4 w-4" />
-          Sauvegarder
+          {isUpdating ? 'Sauvegarde...' : 'Sauvegarder'}
         </Button>
       </div>
 

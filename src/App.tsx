@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -18,6 +19,8 @@ import TransactionValidation from "@/pages/TransactionValidation";
 import OperationTypes from "@/pages/OperationTypes";
 import NotFound from "@/pages/NotFound";
 import SystemConfig from "@/pages/SystemConfig";
+import ErrorLogs from "@/pages/ErrorLogs";
+import DeveloperDashboardPage from "@/pages/DeveloperDashboardPage";
 
 // Lazy-load special pages
 const AdminGestionChefsAgence = React.lazy(() => import("@/pages/AdminGestionChefsAgence"));
@@ -97,7 +100,18 @@ const AppRoutes = () => {
         } 
       />
 
-      {/* Route pour la gestion des types d'opérations (développeur) */}
+      {/* Routes développeur */}
+      <Route 
+        path="/developer/dashboard" 
+        element={
+          <ProtectedRoute requiredRole={['developer']}>
+            <MainLayout>
+              <DeveloperDashboardPage />
+            </MainLayout>
+          </ProtectedRoute>
+        } 
+      />
+
       <Route 
         path="/operation-types" 
         element={
@@ -109,13 +123,23 @@ const AppRoutes = () => {
         } 
       />
 
-      {/* Nouvelle route : Configuration Système (développeur) */}
       <Route
         path="/system-config"
         element={
           <ProtectedRoute requiredRole={['developer']}>
             <MainLayout>
               <SystemConfig />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/error-logs"
+        element={
+          <ProtectedRoute requiredRole={['developer']}>
+            <MainLayout>
+              <ErrorLogs />
             </MainLayout>
           </ProtectedRoute>
         }
@@ -223,7 +247,6 @@ const AppRoutes = () => {
   );
 };
 
-import DeveloperDashboardPage from "@/pages/DeveloperDashboardPage";
 import OperationTypesListPage from "@/pages/OperationTypesListPage";
 
 const App = () => {

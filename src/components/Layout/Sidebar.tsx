@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -70,7 +71,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         return [
           ...baseItems,
           { icon: Settings, label: 'Tableau de Bord Dév.', path: '/developer/dashboard' },
-          { icon: Settings, label: 'Types d\'Opérations', path: '/developer/operation-types' },
+          { icon: Settings, label: 'Types d\'Opérations', path: '/operation-types' },
           { icon: Settings, label: 'Configuration Système', path: '/system-config' },
           { icon: FileText, label: 'Journaux d\'Erreurs', path: '/error-logs' },
         ];

@@ -1,22 +1,23 @@
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, Filter, Download, AlertTriangle, XCircle, Info } from "lucide-react";
+import { Search, Filter, Download, AlertTriangle, XCircle, Info, RefreshCw } from "lucide-react";
 
 const ErrorLogs = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterLevel, setFilterLevel] = useState("all");
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  // Données simulées pour les journaux d'erreurs
-  const mockLogs = [
+  // Données simulées plus réalistes pour les journaux d'erreurs
+  const mockLogs = useMemo(() => [
     {
       id: 1,
-      timestamp: "2024-01-15 14:30:25",
+      timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString(), // il y a 5 minutes
       level: "error",
       message: "Échec de connexion à la base de données",
       source: "database.connection",
@@ -25,7 +26,7 @@ const ErrorLogs = () => {
     },
     {
       id: 2,
-      timestamp: "2024-01-15 14:25:10",
+      timestamp: new Date(Date.now() - 1000 * 60 * 15).toISOString(), // il y a 15 minutes
       level: "warning",
       message: "Tentative de connexion échouée",
       source: "auth.login",
@@ -34,7 +35,7 @@ const ErrorLogs = () => {
     },
     {
       id: 3,
-      timestamp: "2024-01-15 14:20:45",
+      timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // il y a 30 minutes
       level: "info",
       message: "Nouvelle session utilisateur créée",
       source: "auth.session",
@@ -43,14 +44,23 @@ const ErrorLogs = () => {
     },
     {
       id: 4,
-      timestamp: "2024-01-15 14:15:30",
+      timestamp: new Date(Date.now() - 1000 * 60 * 45).toISOString(), // il y a 45 minutes
       level: "error",
       message: "Erreur de validation des données",
       source: "api.validation",
       user: "agent@transflow.com",
       details: "Required field 'amount' is missing"
     },
-  ];
+    {
+      id: 5,
+      timestamp: new Date(Date.now() - 1000 * 60 * 60).toISOString(), // il y a 1 heure
+      level: "warning",
+      message: "Limite de taux atteinte",
+      source: "api.rateLimit",
+      user: "system",
+      details: "Rate limit exceeded for IP 192.168.1.100"
+    },
+  ], [refreshKey]);
 
   const getLevelIcon = (level: string) => {
     switch (level) {
@@ -74,16 +84,62 @@ const ErrorLogs = () => {
     return <Badge variant={variants[level] || "default"}>{level.toUpperCase()}</Badge>;
   };
 
-  const filteredLogs = mockLogs.filter(log => {
-    const matchesSearch = log.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         log.source.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesLevel = filterLevel === "all" || log.level === filterLevel;
-    return matchesSearch && matchesLevel;
-  });
+  const filteredLogs = useMemo(() => {
+    return mockLogs.filter(log => {
+      const matchesSearch = log.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           log.source.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           log.user.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesLevel = filterLevel === "all" || log.level === filterLevel;
+      return matchesSearch && matchesLevel;
+    });
+  }, [mockLogs, searchTerm, filterLevel]);
+
+  const stats = useMemo(() => {
+    const last24h = Date.now() - 24 * 60 * 60 * 1000;
+    const recentLogs = mockLogs.filter(log => new Date(log.timestamp).getTime() > last24h);
+    
+    return {
+      errors: recentLogs.filter(log => log.level === 'error').length,
+      warnings: recentLogs.filter(log => log.level === 'warning').length,
+      errorRate: ((recentLogs.filter(log => log.level === 'error').length / Math.max(recentLogs.length, 1)) * 100).toFixed(1)
+    };
+  }, [mockLogs]);
 
   const handleExport = () => {
-    // TODO: Implémenter l'export des logs
-    console.log("Export des logs...");
+    const csv = [
+      ['Timestamp', 'Level', 'Message', 'Source', 'User', 'Details'],
+      ...filteredLogs.map(log => [
+        log.timestamp,
+        log.level,
+        log.message,
+        log.source,
+        log.user,
+        log.details
+      ])
+    ].map(row => row.join(',')).join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `error-logs-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleRefresh = () => {
+    setRefreshKey(prev => prev + 1);
+  };
+
+  const formatTimestamp = (timestamp: string) => {
+    return new Date(timestamp).toLocaleString('fr-FR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
   };
 
   return (
@@ -95,10 +151,16 @@ const ErrorLogs = () => {
             Surveillance et analyse des erreurs système en temps réel.
           </p>
         </div>
-        <Button onClick={handleExport} variant="outline" className="flex items-center gap-2">
-          <Download className="h-4 w-4" />
-          Exporter
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={handleRefresh} variant="outline" className="flex items-center gap-2">
+            <RefreshCw className="h-4 w-4" />
+            Actualiser
+          </Button>
+          <Button onClick={handleExport} variant="outline" className="flex items-center gap-2">
+            <Download className="h-4 w-4" />
+            Exporter
+          </Button>
+        </div>
       </div>
 
       {/* Filtres et recherche */}
@@ -146,7 +208,7 @@ const ErrorLogs = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Erreurs (24h)</p>
-                <p className="text-2xl font-bold text-red-600">12</p>
+                <p className="text-2xl font-bold text-red-600">{stats.errors}</p>
               </div>
               <XCircle className="h-8 w-8 text-red-500" />
             </div>
@@ -157,7 +219,7 @@ const ErrorLogs = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Avertissements (24h)</p>
-                <p className="text-2xl font-bold text-yellow-600">28</p>
+                <p className="text-2xl font-bold text-yellow-600">{stats.warnings}</p>
               </div>
               <AlertTriangle className="h-8 w-8 text-yellow-500" />
             </div>
@@ -168,7 +230,7 @@ const ErrorLogs = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Taux d'erreur (%)</p>
-                <p className="text-2xl font-bold text-green-600">0.2%</p>
+                <p className="text-2xl font-bold text-green-600">{stats.errorRate}%</p>
               </div>
               <Info className="h-8 w-8 text-green-500" />
             </div>
@@ -179,7 +241,7 @@ const ErrorLogs = () => {
       {/* Table des logs */}
       <Card>
         <CardHeader>
-          <CardTitle>Logs Récents</CardTitle>
+          <CardTitle>Logs Récents ({filteredLogs.length})</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
@@ -195,7 +257,7 @@ const ErrorLogs = () => {
             <TableBody>
               {filteredLogs.map((log) => (
                 <TableRow key={log.id} className="cursor-pointer hover:bg-gray-50">
-                  <TableCell className="font-mono text-sm">{log.timestamp}</TableCell>
+                  <TableCell className="font-mono text-sm">{formatTimestamp(log.timestamp)}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       {getLevelIcon(log.level)}
