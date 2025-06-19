@@ -1,8 +1,9 @@
 
 import React from 'react';
-import { Bell, LogOut, Menu } from 'lucide-react';
+import { LogOut, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+import NotificationDropdown from './NotificationDropdown';
 
 interface HeaderProps {
   onMenuToggle: () => void;
@@ -23,7 +24,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle }) => {
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 px-4 py-3">
+    <header className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-20">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <Button
@@ -54,12 +55,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle }) => {
             )}
           </div>
 
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-              3
-            </span>
-          </Button>
+          <NotificationDropdown />
 
           <Button variant="ghost" size="icon" onClick={logout}>
             <LogOut className="h-5 w-5" />
