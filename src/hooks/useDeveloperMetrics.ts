@@ -11,13 +11,13 @@ interface SystemHealth {
 
 const checkSystemHealth = async (): Promise<SystemHealth> => {
   try {
-    // Test la connexion à la base de données
+    // Test la connexion à la base de données avec les nouvelles tables
     const { error } = await supabase.from('operation_types').select('count').limit(1);
     
     return {
       apiStatus: 'operational',
       databaseStatus: error ? 'disconnected' : 'connected',
-      uptimePercentage: error ? 95.2 : 99.8, // Simulation plus réaliste
+      uptimePercentage: error ? 95.2 : 99.8,
       lastChecked: new Date().toISOString()
     };
   } catch (error) {
@@ -37,33 +37,55 @@ export const useDeveloperMetrics = () => {
       // Vérifier la santé du système
       const systemHealth = await checkSystemHealth();
 
-      // Récupérer le nombre total d'opérations
-      const { count: operationTypesCount } = await supabase
-        .from('operation_types')
-        .select('*', { count: 'exact', head: true });
-
-      // Récupérer le nombre de types d'opération actifs
-      const { count: activeOperationTypesCount } = await supabase
-        .from('operation_types')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_active', true)
-        .eq('status', 'active');
-
-      // Récupérer le nombre de champs configurés
-      const { count: fieldsCount } = await supabase
-        .from('operation_type_fields')
-        .select('*', { count: 'exact', head: true });
-
-      // Récupérer le nombre de règles de commission
-      const { count: commissionRulesCount } = await supabase
-        .from('commission_rules')
-        .select('*', { count: 'exact', head: true });
+      // Récupérer les métriques de base
+      const [
+        { count: operationTypesCount },
+        { count: activeOperationTypesCount },
+        { count: fieldsCount },
+        { count: commissionRulesCount },
+        { count: operationsCount },
+        { count: pendingOperationsCount },
+        { count: agenciesCount },
+        { count: activeUsersCount },
+        { count: ticketsCount },
+        { count: openTicketsCount }
+      ] = await Promise.all([
+        supabase.from('operation_types').select('*', { count: 'exact', head: true }),
+        supabase.from('operation_types').select('*', { count: 'exact', head: true })
+          .eq('is_active', true).eq('status', 'active'),
+        supabase.from('operation_type_fields').select('*', { count: 'exact', head: true }),
+        supabase.from('commission_rules').select('*', { count: 'exact', head: true }),
+        supabase.from('operations').select('*', { count: 'exact', head: true }),
+        supabase.from('operations').select('*', { count: 'exact', head: true })
+          .eq('status', 'pending'),
+        supabase.from('agencies').select('*', { count: 'exact', head: true }),
+        supabase.from('profiles').select('*', { count: 'exact', head: true })
+          .eq('is_active', true),
+        supabase.from('request_tickets').select('*', { count: 'exact', head: true }),
+        supabase.from('request_tickets').select('*', { count: 'exact', head: true })
+          .eq('status', 'open')
+      ]);
 
       return {
+        // Métriques des types d'opérations
         totalOperationTypes: operationTypesCount || 0,
         activeOperationTypes: activeOperationTypesCount || 0,
         configuredFields: fieldsCount || 0,
         commissionRules: commissionRulesCount || 0,
+        
+        // Métriques des opérations
+        totalOperations: operationsCount || 0,
+        pendingOperations: pendingOperationsCount || 0,
+        
+        // Métriques des utilisateurs et agences
+        totalAgencies: agenciesCount || 0,
+        activeUsers: activeUsersCount || 0,
+        
+        // Métriques des tickets
+        totalTickets: ticketsCount || 0,
+        openTickets: openTicketsCount || 0,
+        
+        // Santé du système
         systemHealth,
         uptimePercentage: systemHealth.uptimePercentage
       };

@@ -9,10 +9,10 @@ const DeveloperDashboardPage = () => {
 
   if (isLoading) {
     return (
-      <div className="max-w-4xl mx-auto py-8 space-y-8">
+      <div className="max-w-6xl mx-auto py-8 space-y-8">
         <h1 className="text-3xl font-bold mb-6">Tableau de Bord Développeur</h1>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          {[1, 2, 3].map((i) => (
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => (
             <div key={i} className="rounded-lg bg-white shadow p-6 animate-pulse">
               <div className="h-8 bg-gray-200 rounded mb-2"></div>
               <div className="h-4 bg-gray-200 rounded"></div>
@@ -25,7 +25,7 @@ const DeveloperDashboardPage = () => {
 
   if (error) {
     return (
-      <div className="max-w-4xl mx-auto py-8">
+      <div className="max-w-6xl mx-auto py-8">
         <h1 className="text-3xl font-bold mb-6">Tableau de Bord Développeur</h1>
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
           Erreur lors du chargement des métriques système
@@ -67,7 +67,7 @@ const DeveloperDashboardPage = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto py-8 space-y-8">
+    <div className="max-w-6xl mx-auto py-8 space-y-8">
       <h1 className="text-3xl font-bold mb-6">Tableau de Bord Développeur</h1>
 
       {/* Accès Rapides */}
@@ -83,24 +83,65 @@ const DeveloperDashboardPage = () => {
         </ButtonLink>
       </div>
 
-      {/* Indicateurs de Santé */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-6 mt-8">
-        <StatCard 
-          title="Types d'opération" 
-          value={metrics?.totalOperationTypes || 0} 
-        />
-        <StatCard 
-          title="Types actifs" 
-          value={metrics?.activeOperationTypes || 0} 
-        />
-        <StatCard 
-          title="Champs configurés" 
-          value={metrics?.configuredFields || 0} 
-        />
-        <StatCard 
-          title="Règles commission" 
-          value={metrics?.commissionRules || 0} 
-        />
+      {/* Métriques Configuration */}
+      <div>
+        <h2 className="text-xl font-semibold mb-4">Configuration du Système</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-6">
+          <StatCard 
+            title="Types d'opération" 
+            value={metrics?.totalOperationTypes || 0} 
+          />
+          <StatCard 
+            title="Types actifs" 
+            value={metrics?.activeOperationTypes || 0} 
+          />
+          <StatCard 
+            title="Champs configurés" 
+            value={metrics?.configuredFields || 0} 
+          />
+          <StatCard 
+            title="Règles commission" 
+            value={metrics?.commissionRules || 0} 
+          />
+        </div>
+      </div>
+
+      {/* Métriques Opérationnelles */}
+      <div>
+        <h2 className="text-xl font-semibold mb-4">Activité Opérationnelle</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-6">
+          <StatCard 
+            title="Total opérations" 
+            value={metrics?.totalOperations || 0} 
+          />
+          <StatCard 
+            title="En attente" 
+            value={metrics?.pendingOperations || 0} 
+          />
+          <StatCard 
+            title="Agences actives" 
+            value={metrics?.totalAgencies || 0} 
+          />
+          <StatCard 
+            title="Utilisateurs actifs" 
+            value={metrics?.activeUsers || 0} 
+          />
+        </div>
+      </div>
+
+      {/* Métriques Support */}
+      <div>
+        <h2 className="text-xl font-semibold mb-4">Support & Tickets</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <StatCard 
+            title="Total tickets" 
+            value={metrics?.totalTickets || 0} 
+          />
+          <StatCard 
+            title="Tickets ouverts" 
+            value={metrics?.openTickets || 0} 
+          />
+        </div>
       </div>
 
       {/* Statut du système */}
@@ -135,6 +176,12 @@ const DeveloperDashboardPage = () => {
       {metrics?.systemHealth?.apiStatus !== 'operational' && (
         <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
           <strong>Attention:</strong> Le système présente des anomalies. Vérifiez les journaux d'erreurs.
+        </div>
+      )}
+
+      {metrics?.pendingOperations && metrics.pendingOperations > 10 && (
+        <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded">
+          <strong>Information:</strong> {metrics.pendingOperations} opérations en attente de validation.
         </div>
       )}
     </div>

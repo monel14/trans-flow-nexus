@@ -11,24 +11,180 @@ export type Database = {
     Tables: {
       agencies: {
         Row: {
+          chef_agence_id: string | null
           city: string | null
           created_at: string | null
           id: number
           name: string
+          updated_at: string | null
         }
         Insert: {
+          chef_agence_id?: string | null
           city?: string | null
           created_at?: string | null
           id?: number
           name: string
+          updated_at?: string | null
         }
         Update: {
+          chef_agence_id?: string | null
           city?: string | null
           created_at?: string | null
           id?: number
           name?: string
+          updated_at?: string | null
         }
         Relationships: []
+      }
+      agency_operation_types: {
+        Row: {
+          agency_id: number
+          created_at: string
+          daily_limit: number | null
+          id: string
+          is_enabled: boolean
+          monthly_limit: number | null
+          operation_type_id: string
+          updated_at: string
+        }
+        Insert: {
+          agency_id: number
+          created_at?: string
+          daily_limit?: number | null
+          id?: string
+          is_enabled?: boolean
+          monthly_limit?: number | null
+          operation_type_id: string
+          updated_at?: string
+        }
+        Update: {
+          agency_id?: number
+          created_at?: string
+          daily_limit?: number | null
+          id?: string
+          is_enabled?: boolean
+          monthly_limit?: number | null
+          operation_type_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agency_operation_types_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agency_operation_types_operation_type_id_fkey"
+            columns: ["operation_type_id"]
+            isOneToOne: false
+            referencedRelation: "operation_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      app_audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          ip_address: unknown | null
+          new_values: Json | null
+          old_values: Json | null
+          resource_id: string | null
+          resource_type: string
+          session_id: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          ip_address?: unknown | null
+          new_values?: Json | null
+          old_values?: Json | null
+          resource_id?: string | null
+          resource_type: string
+          session_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          ip_address?: unknown | null
+          new_values?: Json | null
+          old_values?: Json | null
+          resource_id?: string | null
+          resource_type?: string
+          session_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      commission_records: {
+        Row: {
+          agent_commission: number
+          agent_id: string
+          chef_agence_id: string | null
+          chef_commission: number
+          commission_rule_id: string
+          created_at: string
+          id: string
+          operation_id: string
+          paid_at: string | null
+          status: string
+          total_commission: number
+          updated_at: string
+        }
+        Insert: {
+          agent_commission?: number
+          agent_id: string
+          chef_agence_id?: string | null
+          chef_commission?: number
+          commission_rule_id: string
+          created_at?: string
+          id?: string
+          operation_id: string
+          paid_at?: string | null
+          status?: string
+          total_commission: number
+          updated_at?: string
+        }
+        Update: {
+          agent_commission?: number
+          agent_id?: string
+          chef_agence_id?: string | null
+          chef_commission?: number
+          commission_rule_id?: string
+          created_at?: string
+          id?: string
+          operation_id?: string
+          paid_at?: string | null
+          status?: string
+          total_commission?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_records_commission_rule_id_fkey"
+            columns: ["commission_rule_id"]
+            isOneToOne: false
+            referencedRelation: "commission_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commission_records_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: false
+            referencedRelation: "operations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       commission_rules: {
         Row: {
@@ -79,6 +235,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          data: Json | null
+          expires_at: string | null
+          id: string
+          is_read: boolean
+          message: string
+          notification_type: string
+          priority: string
+          read_at: string | null
+          recipient_id: string
+          sender_id: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          expires_at?: string | null
+          id?: string
+          is_read?: boolean
+          message: string
+          notification_type: string
+          priority?: string
+          read_at?: string | null
+          recipient_id: string
+          sender_id?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          expires_at?: string | null
+          id?: string
+          is_read?: boolean
+          message?: string
+          notification_type?: string
+          priority?: string
+          read_at?: string | null
+          recipient_id?: string
+          sender_id?: string | null
+          title?: string
+        }
+        Relationships: []
       }
       operation_type_fields: {
         Row: {
@@ -178,6 +379,81 @@ export type Database = {
         }
         Relationships: []
       }
+      operations: {
+        Row: {
+          agency_id: number
+          amount: number
+          commission_amount: number | null
+          completed_at: string | null
+          created_at: string
+          currency: string
+          error_message: string | null
+          fee_amount: number | null
+          id: string
+          initiator_id: string
+          operation_data: Json
+          operation_type_id: string
+          reference_number: string
+          status: string
+          updated_at: string
+          validated_at: string | null
+          validator_id: string | null
+        }
+        Insert: {
+          agency_id: number
+          amount: number
+          commission_amount?: number | null
+          completed_at?: string | null
+          created_at?: string
+          currency?: string
+          error_message?: string | null
+          fee_amount?: number | null
+          id?: string
+          initiator_id: string
+          operation_data?: Json
+          operation_type_id: string
+          reference_number: string
+          status?: string
+          updated_at?: string
+          validated_at?: string | null
+          validator_id?: string | null
+        }
+        Update: {
+          agency_id?: number
+          amount?: number
+          commission_amount?: number | null
+          completed_at?: string | null
+          created_at?: string
+          currency?: string
+          error_message?: string | null
+          fee_amount?: number | null
+          id?: string
+          initiator_id?: string
+          operation_data?: Json
+          operation_type_id?: string
+          reference_number?: string
+          status?: string
+          updated_at?: string
+          validated_at?: string | null
+          validator_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operations_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operations_operation_type_id_fkey"
+            columns: ["operation_type_id"]
+            isOneToOne: false
+            referencedRelation: "operation_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       permissions: {
         Row: {
           code: string
@@ -198,28 +474,194 @@ export type Database = {
       }
       profiles: {
         Row: {
+          agency_id: number | null
+          balance: number | null
           created_at: string | null
           email: string
+          first_name: string | null
           id: string
+          is_active: boolean | null
+          last_name: string | null
           name: string
           phone: string | null
+          role_id: number | null
           updated_at: string | null
         }
         Insert: {
+          agency_id?: number | null
+          balance?: number | null
           created_at?: string | null
           email: string
+          first_name?: string | null
           id: string
+          is_active?: boolean | null
+          last_name?: string | null
           name: string
           phone?: string | null
+          role_id?: number | null
           updated_at?: string | null
         }
         Update: {
+          agency_id?: number | null
+          balance?: number | null
           created_at?: string | null
           email?: string
+          first_name?: string | null
           id?: string
+          is_active?: boolean | null
+          last_name?: string | null
           name?: string
           phone?: string | null
+          role_id?: number | null
           updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      request_ticket_attachments: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id: string
+          ticket_id: string
+          uploaded_by_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id?: string
+          ticket_id: string
+          uploaded_by_id: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          ticket_id?: string
+          uploaded_by_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "request_ticket_attachments_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "request_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      request_ticket_comments: {
+        Row: {
+          author_id: string
+          comment_text: string
+          created_at: string
+          id: string
+          is_internal: boolean
+          ticket_id: string
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          comment_text: string
+          created_at?: string
+          id?: string
+          is_internal?: boolean
+          ticket_id: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          comment_text?: string
+          created_at?: string
+          id?: string
+          is_internal?: boolean
+          ticket_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "request_ticket_comments_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "request_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      request_tickets: {
+        Row: {
+          assigned_to_id: string | null
+          created_at: string
+          description: string
+          id: string
+          priority: string
+          requested_amount: number | null
+          requester_id: string
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by_id: string | null
+          status: string
+          ticket_number: string
+          ticket_type: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to_id?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          priority?: string
+          requested_amount?: number | null
+          requester_id: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by_id?: string | null
+          status?: string
+          ticket_number: string
+          ticket_type: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to_id?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          priority?: string
+          requested_amount?: number | null
+          requester_id?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by_id?: string | null
+          status?: string
+          ticket_number?: string
+          ticket_type?: string
+          title?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -271,6 +713,53 @@ export type Database = {
         }
         Relationships: []
       }
+      transaction_ledger: {
+        Row: {
+          amount: number
+          balance_after: number
+          balance_before: number
+          created_at: string
+          description: string
+          id: string
+          metadata: Json | null
+          operation_id: string | null
+          transaction_type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          balance_after: number
+          balance_before: number
+          created_at?: string
+          description: string
+          id?: string
+          metadata?: Json | null
+          operation_id?: string | null
+          transaction_type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          balance_before?: number
+          created_at?: string
+          description?: string
+          id?: string
+          metadata?: Json | null
+          operation_id?: string | null
+          transaction_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transaction_ledger_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: false
+            referencedRelation: "operations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           agency_id: number | null
@@ -300,6 +789,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "user_roles_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "user_roles_role_id_fkey"
             columns: ["role_id"]
