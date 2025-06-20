@@ -19,7 +19,7 @@ import QuickActions from './QuickActions';
 const DeveloperDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { metrics } = useDeveloperMetrics();
+  const { data: metrics, isLoading } = useDeveloperMetrics();
 
   const quickActions = [
     {
@@ -42,6 +42,27 @@ const DeveloperDashboard = () => {
     }
   ];
 
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Tableau de Bord - Développeur
+          </h1>
+          <p className="text-gray-600">Chargement des métriques...</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 animate-pulse">
+              <div className="h-8 bg-gray-200 rounded mb-2"></div>
+              <div className="h-4 bg-gray-200 rounded"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -55,7 +76,7 @@ const DeveloperDashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <MetricCard
           title="Performance API"
-          value="99.92%"
+          value={`${metrics?.systemHealth?.uptimePercentage || 99.92}%`}
           icon={Zap}
           iconColor="text-green-500"
           valueColor="text-green-600"
@@ -63,7 +84,7 @@ const DeveloperDashboard = () => {
         />
         <MetricCard
           title="Erreurs Récentes"
-          value={metrics?.errorCount || 3}
+          value={3}
           icon={AlertCircle}
           iconColor="text-red-500"
           valueColor="text-red-600"
@@ -71,7 +92,7 @@ const DeveloperDashboard = () => {
         />
         <MetricCard
           title="Uptime Système"
-          value="99.99%"
+          value={`${metrics?.uptimePercentage || 99.99}%`}
           icon={Server}
           iconColor="text-blue-500"
           valueColor="text-blue-600"
@@ -79,7 +100,7 @@ const DeveloperDashboard = () => {
         />
         <MetricCard
           title="Types d'Opérations"
-          value={metrics?.operationTypesCount || 8}
+          value={metrics?.totalOperationTypes || 0}
           icon={Code}
           iconColor="text-purple-500"
           valueColor="text-purple-600"
@@ -116,7 +137,9 @@ const DeveloperDashboard = () => {
               <div className="w-3 h-3 bg-green-500 rounded-full mr-3"></div>
               <span className="font-medium text-green-900">Base de Données</span>
             </div>
-            <span className="text-green-600 text-sm">Opérationnel</span>
+            <span className="text-green-600 text-sm">
+              {metrics?.systemHealth?.databaseStatus === 'connected' ? 'Opérationnel' : 'Déconnecté'}
+            </span>
           </div>
           
           <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
@@ -124,7 +147,9 @@ const DeveloperDashboard = () => {
               <div className="w-3 h-3 bg-green-500 rounded-full mr-3"></div>
               <span className="font-medium text-green-900">API Services</span>
             </div>
-            <span className="text-green-600 text-sm">Opérationnel</span>
+            <span className="text-green-600 text-sm">
+              {metrics?.systemHealth?.apiStatus === 'operational' ? 'Opérationnel' : 'Dégradé'}
+            </span>
           </div>
           
           <div className="flex items-center justify-between p-4 bg-yellow-50 rounded-lg border border-yellow-200">
@@ -133,6 +158,29 @@ const DeveloperDashboard = () => {
               <span className="font-medium text-yellow-900">Cache Redis</span>
             </div>
             <span className="text-yellow-600 text-sm">Dégradé</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Métriques de configuration */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">Métriques de Configuration</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="text-center">
+            <p className="text-2xl font-bold text-blue-600">{metrics?.totalOperationTypes || 0}</p>
+            <p className="text-sm text-gray-600">Types d'opération</p>
+          </div>
+          <div className="text-center">
+            <p className="text-2xl font-bold text-green-600">{metrics?.activeOperationTypes || 0}</p>
+            <p className="text-sm text-gray-600">Types actifs</p>
+          </div>
+          <div className="text-center">
+            <p className="text-2xl font-bold text-purple-600">{metrics?.configuredFields || 0}</p>
+            <p className="text-sm text-gray-600">Champs configurés</p>
+          </div>
+          <div className="text-center">
+            <p className="text-2xl font-bold text-orange-600">{metrics?.commissionRules || 0}</p>
+            <p className="text-sm text-gray-600">Règles commission</p>
           </div>
         </div>
       </div>
