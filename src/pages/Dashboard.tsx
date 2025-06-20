@@ -4,6 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import AgentDashboard from '@/components/Dashboard/AgentDashboard';
 import ChefAgenceDashboard from '@/components/Dashboard/ChefAgenceDashboard';
 import AdminGeneralDashboard from '@/components/Dashboard/AdminGeneralDashboard';
+import SousAdminDashboard from '@/components/Dashboard/SousAdminDashboard';
+import DeveloperDashboard from '@/components/Dashboard/DeveloperDashboard';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -15,8 +17,11 @@ const Dashboard = () => {
       case 'chef_agence':
         return <ChefAgenceDashboard />;
       case 'admin_general':
-      case 'sous_admin':
         return <AdminGeneralDashboard />;
+      case 'sous_admin':
+        return <SousAdminDashboard />;
+      case 'developer':
+        return <DeveloperDashboard />;
       default:
         return (
           <div className="text-center py-12">

@@ -3,12 +3,50 @@ import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Users, FileText, AlertTriangle } from 'lucide-react';
+import { 
+  TrendingUp, 
+  Users, 
+  Building, 
+  AlertTriangle, 
+  CheckCircle, 
+  FileText,
+  DollarSign,
+  Activity
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import MetricCard from './MetricCard';
+import QuickActions from './QuickActions';
 
 const AdminGeneralDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  const formatAmount = (amount: number) => {
+    return new Intl.NumberFormat('fr-FR', {
+      maximumFractionDigits: 0
+    }).format(amount) + ' XOF';
+  };
+
+  const quickActions = [
+    {
+      label: 'Validation Transactions',
+      icon: CheckCircle,
+      onClick: () => navigate('/validation'),
+      variant: 'default' as const
+    },
+    {
+      label: 'Gestion Agences',
+      icon: Building,
+      onClick: () => navigate('/agencies'),
+      variant: 'secondary' as const
+    },
+    {
+      label: 'Requêtes Support',
+      icon: FileText,
+      onClick: () => navigate('/support'),
+      variant: 'outline' as const
+    }
+  ];
 
   return (
     <div className="space-y-6">
@@ -19,49 +57,43 @@ const AdminGeneralDashboard = () => {
       </div>
 
       {/* Indicateurs globaux */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Volume Total (Aujourd'hui)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              8,750,000 FCFA
-            </div>
-            <div className="text-sm text-gray-500">+12% vs hier</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Opérations (Aujourd'hui)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              347
-            </div>
-            <div className="text-sm text-gray-500">156 validées, 12 en attente</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Agences Actives
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600">
-              15
-            </div>
-            <div className="text-sm text-gray-500">89 agents total</div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <MetricCard
+          title="Volume Total (Aujourd'hui)"
+          value={formatAmount(8750000)}
+          icon={TrendingUp}
+          iconColor="text-green-500"
+          valueColor="text-green-600"
+          subtitle="+12% vs hier"
+        />
+        <MetricCard
+          title="Opérations (Aujourd'hui)"
+          value="347"
+          icon={Activity}
+          iconColor="text-blue-500"
+          valueColor="text-blue-600"
+          subtitle="156 validées, 12 en attente"
+        />
+        <MetricCard
+          title="Agences Actives"
+          value="15"
+          icon={Building}
+          iconColor="text-purple-500"
+          valueColor="text-purple-600"
+          subtitle="89 agents total"
+        />
+        <MetricCard
+          title="Revenus Commissions"
+          value={formatAmount(450000)}
+          icon={DollarSign}
+          iconColor="text-orange-500"
+          valueColor="text-orange-600"
+          subtitle="Ce mois"
+        />
       </div>
+
+      {/* Actions rapides */}
+      <QuickActions actions={quickActions} title="Actions Rapides" />
 
       {/* Files d'attente critiques */}
       <Card>
@@ -134,6 +166,23 @@ const AdminGeneralDashboard = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Graphiques de performance */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Performance des Agences</h3>
+          <div className="h-64 bg-gray-50 rounded-lg flex items-center justify-center">
+            <p className="text-gray-500">Graphique de performance des agences</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Évolution du Volume</h3>
+          <div className="h-64 bg-gray-50 rounded-lg flex items-center justify-center">
+            <p className="text-gray-500">Graphique d'évolution du volume</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
