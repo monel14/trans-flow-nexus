@@ -30,7 +30,7 @@ const CommissionConfigForm: React.FC<CommissionConfigFormProps> = ({
   operationTypeId
 }) => {
   const [formData, setFormData] = useState({
-    commission_type: rule?.commission_type || "fixed",
+    commission_type: rule?.commission_type || "fixed" as "fixed" | "percentage" | "tiered",
     fixed_amount: rule?.fixed_amount?.toString() || "",
     percentage_rate: rule?.percentage_rate ? (rule.percentage_rate * 100).toString() : "",
     min_amount: rule?.min_amount?.toString() || "0",
@@ -105,7 +105,7 @@ const CommissionConfigForm: React.FC<CommissionConfigFormProps> = ({
 
     const ruleData = {
       operation_type_id: operationTypeId,
-      commission_type: formData.commission_type as "fixed" | "percentage" | "tiered",
+      commission_type: formData.commission_type,
       fixed_amount: formData.fixed_amount ? parseFloat(formData.fixed_amount) : null,
       percentage_rate: formData.percentage_rate ? parseFloat(formData.percentage_rate) / 100 : null,
       min_amount: parseFloat(formData.min_amount) || 0,
@@ -130,7 +130,9 @@ const CommissionConfigForm: React.FC<CommissionConfigFormProps> = ({
             <Label>Type de Commission *</Label>
             <Select 
               value={formData.commission_type} 
-              onValueChange={(value) => setFormData({...formData, commission_type: value})}
+              onValueChange={(value: "fixed" | "percentage" | "tiered") => 
+                setFormData({...formData, commission_type: value})
+              }
             >
               <SelectTrigger>
                 <SelectValue />
