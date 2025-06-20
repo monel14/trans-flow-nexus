@@ -1,9 +1,9 @@
 
 import React from "react";
-import OperationTypesManagement from "./OperationTypesManagement";
+import OperationTypesList from "@/components/OperationTypes/OperationTypesList";
 
 const OperationTypes = () => {
-  return <OperationTypesManagement />;
+  return <OperationTypesList />;
 };
 
 export default OperationTypes;
