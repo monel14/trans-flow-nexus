@@ -150,6 +150,65 @@ const AppRoutes = () => {
         }
       />
 
+      {/* Routes pour les commissions */}
+      <Route 
+        path="/commissions" 
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <Commissions />
+            </MainLayout>
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Routes pour les recharges */}
+      <Route 
+        path="/recharge" 
+        element={
+          <ProtectedRoute requiredRole={['agent', 'chef_agence']}>
+            <MainLayout>
+              <RechargeRequest />
+            </MainLayout>
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/agent-recharges" 
+        element={
+          <ProtectedRoute requiredRole={['chef_agence']}>
+            <MainLayout>
+              <AgentRecharges />
+            </MainLayout>
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Routes pour la gestion des agences */}
+      <Route 
+        path="/agencies" 
+        element={
+          <ProtectedRoute requiredRole={['admin_general']}>
+            <MainLayout>
+              <AgencyManagement />
+            </MainLayout>
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Routes pour le support */}
+      <Route 
+        path="/support" 
+        element={
+          <ProtectedRoute requiredRole={['admin_general', 'sous_admin']}>
+            <MainLayout>
+              <SupportRequests />
+            </MainLayout>
+          </ProtectedRoute>
+        } 
+      />
+
       {/* Autres routes à implémenter */}
       <Route 
         path="/commissions" 
