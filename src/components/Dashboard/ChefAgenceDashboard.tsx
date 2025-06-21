@@ -7,9 +7,11 @@ import { Wallet, DollarSign, Users, TrendingUp, Plus, AlertTriangle, FileText } 
 import MetricCard from './MetricCard';
 import QuickActions from './QuickActions';
 import TransactionTable from '../Tables/TransactionTable';
+import { useNavigate } from 'react-router-dom';
 
 const ChefAgenceDashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { operations } = useOperations({ initiator_id: user?.id });
   const { ledgerEntries } = useTransactionLedger(user?.id);
 
@@ -26,25 +28,25 @@ const ChefAgenceDashboard = () => {
     {
       label: 'Nouvelle Opération',
       icon: Plus,
-      onClick: () => console.log('Nouvelle opération'),
+      onClick: () => navigate('/operations/new'),
       variant: 'default' as const
     },
     {
       label: 'Gérer mes Agents',
       icon: Users,
-      onClick: () => console.log('Gérer agents'),
+      onClick: () => navigate('/agents'),
       variant: 'secondary' as const
     },
     {
       label: 'Recharges Agents',
       icon: Wallet,
-      onClick: () => console.log('Recharges agents'),
+      onClick: () => navigate('/agent-recharges'),
       variant: 'outline' as const
     },
     {
-      label: 'Demander Recharge Admin',
-      icon: AlertTriangle,
-      onClick: () => console.log('Demander recharge admin'),
+      label: 'Mes Commissions',
+      icon: DollarSign,
+      onClick: () => navigate('/commissions'),
       variant: 'outline' as const
     }
   ];
@@ -103,7 +105,10 @@ const ChefAgenceDashboard = () => {
             <span className="text-sm font-medium text-orange-900">Demandes de Recharge en Attente</span>
             <span className="bg-orange-600 text-white text-xs px-2 py-1 rounded-full">3</span>
           </div>
-          <button className="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-700 transition-colors">
+          <button 
+            onClick={() => navigate('/agent-recharges')}
+            className="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-700 transition-colors"
+          >
             Traiter maintenant
           </button>
         </div>
