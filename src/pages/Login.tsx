@@ -6,33 +6,38 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import CreateDeveloperAccount from '@/components/CreateDeveloperAccount';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const success = await login(email, password);
-      if (success) {
+      const { error } = await signIn(email, password);
+      if (error) {
+        toast({
+          title: "Erreur de connexion",
+          description: error.message === 'Invalid login credentials' 
+            ? "Email ou mot de passe incorrect." 
+            : error.message,
+          variant: "destructive",
+        });
+      } else {
         toast({
           title: "Connexion réussie",
           description: "Bienvenue dans TransFlow Nexus!",
         });
         navigate('/dashboard');
-      } else {
-        toast({
-          title: "Erreur de connexion",
-          description: "Email ou mot de passe incorrect.",
-          variant: "destructive",
-        });
       }
     } catch (error) {
       toast({
@@ -45,9 +50,38 @@ const Login = () => {
     }
   };
 
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      const { error } = await signUp(email, password, { name });
+      if (error) {
+        toast({
+          title: "Erreur d'inscription",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Inscription réussie",
+          description: "Vérifiez votre email pour confirmer votre compte.",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors de l'inscription.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+      <div className="max-w-4xl w-full space-y-8">
         <div className="text-center">
           <div className="mx-auto w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center mb-4">
             <span className="text-white font-bold text-2xl">TF</span>
@@ -60,53 +94,122 @@ const Login = () => {
           </p>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="votre@email.com"
-                required
-                className="mt-1"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="password">Mot de passe</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                className="mt-1"
-              />
-            </div>
+        <div className="grid md:grid-cols-2 gap-8">
+          <div>
+            <Tabs defaultValue="signin" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="signin">Connexion</TabsTrigger>
+                <TabsTrigger value="signup">Inscription</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="signin">
+                <form className="mt-8 space-y-6" onSubmit={handleSignIn}>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="signin-email">Email</Label>
+                      <Input
+                        id="signin-email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="votre@email.com"
+                        required
+                        className="mt-1"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="signin-password">Mot de passe</Label>
+                      <Input
+                        id="signin-password"
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        required
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? 'Connexion...' : 'Se connecter'}
+                  </Button>
+                </form>
+              </TabsContent>
+
+              <TabsContent value="signup">
+                <form className="mt-8 space-y-6" onSubmit={handleSignUp}>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="signup-name">Nom complet</Label>
+                      <Input
+                        id="signup-name"
+                        type="text"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Votre nom complet"
+                        required
+                        className="mt-1"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="signup-email">Email</Label>
+                      <Input
+                        id="signup-email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="votre@email.com"
+                        required
+                        className="mt-1"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="signup-password">Mot de passe</Label>
+                      <Input
+                        id="signup-password"
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        required
+                        className="mt-1"
+                        minLength={6}
+                      />
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? 'Inscription...' : 'S\'inscrire'}
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
           </div>
 
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={isLoading}
-          >
-            {isLoading ? 'Connexion...' : 'Se connecter'}
-          </Button>
-
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <h3 className="text-sm font-medium text-blue-900 mb-2">Comptes de démonstration :</h3>
-            <div className="text-xs text-blue-700 space-y-1">
-              <p><strong>Agent :</strong> agent@demo.com / demo123</p>
-              <p><strong>Chef d'Agence :</strong> chef@demo.com / demo123</p>
-              <p><strong>Admin Général :</strong> admin@demo.com / demo123</p>
-              <p><strong>Développeur :</strong> dev@demo.com / demo123</p>
-            </div>
+          <div className="flex items-center justify-center">
+            <CreateDeveloperAccount />
           </div>
-        </form>
+        </div>
+
+        <div className="mt-6 p-4 bg-blue-50 rounded-lg text-center">
+          <h3 className="text-sm font-medium text-blue-900 mb-2">Instructions pour les tests :</h3>
+          <div className="text-xs text-blue-700 space-y-1">
+            <p><strong>Option 1 :</strong> Utilisez le bouton "Créer le Compte Développeur" pour créer rapidement un compte avec toutes les permissions</p>
+            <p><strong>Option 2 :</strong> Inscrivez-vous normalement et demandez à un administrateur d'assigner votre rôle</p>
+          </div>
+        </div>
       </div>
     </div>
   );

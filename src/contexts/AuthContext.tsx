@@ -1,10 +1,33 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, AuthState } from '@/types/auth';
+import { User, Session } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
+
+interface UserProfile {
+  id: string;
+  email: string;
+  name: string;
+  role: 'agent' | 'chef_agence' | 'admin_general' | 'sous_admin' | 'developer';
+  agenceId?: string;
+  agenceName?: string;
+  isActive: boolean;
+  balance?: number;
+  commissions?: number;
+}
+
+interface AuthState {
+  user: UserProfile | null;
+  session: Session | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+}
 
 interface AuthContextType extends AuthState {
-  login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  signUp: (email: string, password: string, userData?: { name?: string; role?: string }) => Promise<{ error: any }>;
+  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signOut: () => Promise<void>;
+  login: (email: string, password: string) => Promise<boolean>; // Backward compatibility
+  logout: () => void; // Backward compatibility
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -20,89 +43,166 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
+    session: null,
     isAuthenticated: false,
     isLoading: true,
   });
 
-  useEffect(() => {
-    // Simuler la récupération de l'utilisateur depuis le localStorage
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setAuthState({
-        user: JSON.parse(storedUser),
-        isAuthenticated: true,
-        isLoading: false,
-      });
-    } else {
-      setAuthState(prev => ({ ...prev, isLoading: false }));
+  const fetchUserProfile = async (userId: string): Promise<UserProfile | null> => {
+    try {
+      // Récupérer le profil de base
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
+        return null;
+      }
+
+      // Récupérer le rôle de l'utilisateur
+      const { data: userRole, error: roleError } = await supabase
+        .from('user_roles')
+        .select(`
+          role_id,
+          agency_id,
+          roles (name, label),
+          agencies (name)
+        `)
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .single();
+
+      if (roleError) {
+        console.error('Error fetching user role:', roleError);
+      }
+
+      const userProfile: UserProfile = {
+        id: profile.id,
+        email: profile.email,
+        name: profile.name,
+        role: userRole?.roles?.name as UserProfile['role'] || 'agent',
+        agenceId: userRole?.agency_id?.toString(),
+        agenceName: userRole?.agencies?.name,
+        isActive: profile.is_active ?? true,
+        balance: profile.balance || 0,
+        commissions: 0, // À calculer si nécessaire
+      };
+
+      return userProfile;
+    } catch (error) {
+      console.error('Error in fetchUserProfile:', error);
+      return null;
     }
+  };
+
+  useEffect(() => {
+    // Écouter les changements d'état d'authentification
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.email);
+        
+        if (session?.user) {
+          // Délayer la récupération du profil pour éviter la récursion
+          setTimeout(async () => {
+            const userProfile = await fetchUserProfile(session.user.id);
+            setAuthState({
+              user: userProfile,
+              session,
+              isAuthenticated: !!userProfile,
+              isLoading: false,
+            });
+          }, 0);
+        } else {
+          setAuthState({
+            user: null,
+            session: null,
+            isAuthenticated: false,
+            isLoading: false,
+          });
+        }
+      }
+    );
+
+    // Vérifier s'il y a une session existante
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setTimeout(async () => {
+          const userProfile = await fetchUserProfile(session.user.id);
+          setAuthState({
+            user: userProfile,
+            session,
+            isAuthenticated: !!userProfile,
+            isLoading: false,
+          });
+        }, 0);
+      } else {
+        setAuthState(prev => ({ ...prev, isLoading: false }));
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    // Simulation de l'authentification - remplacer par l'API réelle
-    const mockUsers: User[] = [
-      {
-        id: '1',
-        email: 'agent@demo.com',
-        name: 'Agent Demo',
-        role: 'agent',
-        agenceId: 'agence1',
-        agenceName: 'Agence Centre-Ville',
-        isActive: true,
-        balance: 150000,
-        commissions: 25000,
-      },
-      {
-        id: '2',
-        email: 'chef@demo.com',
-        name: 'Chef Agence Demo',
-        role: 'chef_agence',
-        agenceId: 'agence1',
-        agenceName: 'Agence Centre-Ville',
-        isActive: true,
-        balance: 500000,
-        commissions: 75000,
-      },
-      {
-        id: '3',
-        email: 'admin@demo.com',
-        name: 'Admin Général',
-        role: 'admin_general',
-        isActive: true,
-      },
-      {
-        id: '4',
-        email: 'dev@demo.com',
-        name: 'Développeur Système',
-        role: 'developer',
-        isActive: true,
-      }
-    ];
-
-    const user = mockUsers.find(u => u.email === email);
-    if (user && password === 'demo123') {
-      localStorage.setItem('user', JSON.stringify(user));
-      setAuthState({
-        user,
-        isAuthenticated: true,
-        isLoading: false,
+  const signUp = async (email: string, password: string, userData?: { name?: string; role?: string }) => {
+    try {
+      const redirectUrl = `${window.location.origin}/`;
+      
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: {
+            name: userData?.name || email.split('@')[0],
+          }
+        }
       });
-      return true;
+
+      return { error };
+    } catch (error) {
+      return { error };
     }
-    return false;
+  };
+
+  const signIn = async (email: string, password: string) => {
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      return { error };
+    } catch (error) {
+      return { error };
+    }
+  };
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+  };
+
+  // Backward compatibility methods
+  const login = async (email: string, password: string): Promise<boolean> => {
+    const { error } = await signIn(email, password);
+    return !error;
   };
 
   const logout = () => {
-    localStorage.removeItem('user');
-    setAuthState({
-      user: null,
-      isAuthenticated: false,
-      isLoading: false,
-    });
+    signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ ...authState, login, logout }}>
+    <AuthContext.Provider value={{ 
+      ...authState, 
+      signUp, 
+      signIn, 
+      signOut,
+      login, 
+      logout 
+    }}>
       {children}
     </AuthContext.Provider>
   );
