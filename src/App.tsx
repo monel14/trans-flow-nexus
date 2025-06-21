@@ -21,6 +21,11 @@ import NotFound from "@/pages/NotFound";
 import SystemConfig from "@/pages/SystemConfig";
 import ErrorLogs from "@/pages/ErrorLogs";
 import DeveloperDashboardPage from "@/pages/DeveloperDashboardPage";
+import Commissions from "@/pages/Commissions";
+import RechargeRequest from "@/pages/RechargeRequest";
+import AgentRecharges from "@/pages/AgentRecharges";
+import AgencyManagement from "@/pages/AgencyManagement";
+import SupportRequests from "@/pages/SupportRequests";
 
 // Lazy-load special pages
 const AdminGestionChefsAgence = React.lazy(() => import("@/pages/AdminGestionChefsAgence"));
