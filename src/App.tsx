@@ -215,10 +215,7 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <MainLayout>
-              <div className="text-center py-12">
-                <h2 className="text-2xl font-bold mb-4">Mes Commissions</h2>
-                <p className="text-gray-600">Cette section sera implémentée prochainement.</p>
-              </div>
+              <Commissions />
             </MainLayout>
           </ProtectedRoute>
         } 
@@ -229,10 +226,7 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute requiredRole={['agent', 'chef_agence']}>
             <MainLayout>
-              <div className="text-center py-12">
-                <h2 className="text-2xl font-bold mb-4">Demander une Recharge</h2>
-                <p className="text-gray-600">Cette section sera implémentée prochainement.</p>
-              </div>
+              <RechargeRequest />
             </MainLayout>
           </ProtectedRoute>
         } 
@@ -243,10 +237,7 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute requiredRole={['chef_agence']}>
             <MainLayout>
-              <div className="text-center py-12">
-                <h2 className="text-2xl font-bold mb-4">Recharges des Agents</h2>
-                <p className="text-gray-600">Cette section sera implémentée prochainement.</p>
-              </div>
+              <AgentRecharges />
             </MainLayout>
           </ProtectedRoute>
         } 
@@ -257,10 +248,7 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute requiredRole={['admin_general']}>
             <MainLayout>
-              <div className="text-center py-12">
-                <h2 className="text-2xl font-bold mb-4">Gestion des Agences</h2>
-                <p className="text-gray-600">Cette section sera implémentée prochainement.</p>
-              </div>
+              <AgencyManagement />
             </MainLayout>
           </ProtectedRoute>
         } 
@@ -271,10 +259,7 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute requiredRole={['admin_general', 'sous_admin']}>
             <MainLayout>
-              <div className="text-center py-12">
-                <h2 className="text-2xl font-bold mb-4">Requêtes Support</h2>
-                <p className="text-gray-600">Cette section sera implémentée prochainement.</p>
-              </div>
+              <SupportRequests />
             </MainLayout>
           </ProtectedRoute>
         } 
