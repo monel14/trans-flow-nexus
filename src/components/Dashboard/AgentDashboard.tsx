@@ -7,9 +7,11 @@ import { Wallet, DollarSign, Coins, Plus, AlertTriangle } from 'lucide-react';
 import MetricCard from './MetricCard';
 import QuickActions from './QuickActions';
 import TransactionTable from '../Tables/TransactionTable';
+import { useNavigate } from 'react-router-dom';
 
 const AgentDashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { operations } = useOperations({ initiator_id: user?.id });
   const { ledgerEntries } = useTransactionLedger(user?.id);
 
@@ -33,19 +35,25 @@ const AgentDashboard = () => {
     {
       label: 'Nouvelle Opération',
       icon: Plus,
-      onClick: () => console.log('Nouvelle opération'),
+      onClick: () => navigate('/operations/new'),
       variant: 'default' as const
+    },
+    {
+      label: 'Mes Commissions',
+      icon: DollarSign,
+      onClick: () => navigate('/commissions'),
+      variant: 'secondary' as const
     },
     {
       label: 'Demander Recharge',
       icon: Wallet,
-      onClick: () => console.log('Demander recharge'),
-      variant: 'secondary' as const
+      onClick: () => navigate('/recharge'),
+      variant: 'outline' as const
     },
     {
-      label: 'Signaler Problème',
+      label: 'Support',
       icon: AlertTriangle,
-      onClick: () => console.log('Signaler problème'),
+      onClick: () => navigate('/support'),
       variant: 'outline' as const
     }
   ];
