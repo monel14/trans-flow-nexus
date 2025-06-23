@@ -284,22 +284,131 @@ async function handler(req: Request): Promise<Response> {
   }
 
   if (method === "PATCH" && resource === "users") {
-    // Suspendre/Activer user
-    const body = await req.json();
-    // { user_id, is_active }
-    const { user_id, is_active } = body;
-    if (!user_id || typeof is_active !== "boolean") {
-      return new Response(JSON.stringify({ error: "Paramètres invalides" }), { status: 400 });
+    try {
+      const body = await req.json();
+      const { 
+        user_id, 
+        is_active, 
+        role_id, 
+        agency_id, 
+        balance_adjustment,
+        adjustment_reason 
+      } = body;
+
+      if (!user_id) {
+        return new Response(JSON.stringify({ error: "user_id is required" }), { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Verify user exists and current user has permission to modify
+      const { data: targetUser, error: userError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user_id)
+        .single();
+
+      if (userError || !targetUser) {
+        return new Response(JSON.stringify({ error: "User not found" }), { 
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Check permissions
+      if (currentUserRole === 'chef_agence') {
+        if (targetUser.agency_id !== currentUserProfile.agency_id) {
+          return new Response(JSON.stringify({ 
+            error: "Cannot modify users outside your agency" 
+          }), { 
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+      }
+
+      // Prepare update object
+      const updates: any = {};
+      
+      if (typeof is_active === "boolean") {
+        updates.is_active = is_active;
+      }
+      
+      if (role_id && currentUserRole === 'admin_general') {
+        updates.role_id = role_id;
+      }
+      
+      if (agency_id && currentUserRole === 'admin_general') {
+        updates.agency_id = agency_id;
+      }
+
+      // Handle balance adjustment (admin only)
+      if (balance_adjustment && currentUserRole === 'admin_general') {
+        const newBalance = Number(targetUser.balance) + Number(balance_adjustment);
+        updates.balance = newBalance;
+
+        // Create transaction ledger entry for balance adjustment
+        await supabase
+          .from("transaction_ledger")
+          .insert({
+            user_id: user_id,
+            transaction_type: balance_adjustment > 0 ? 'admin_credit' : 'admin_debit',
+            amount: Number(balance_adjustment),
+            balance_before: targetUser.balance,
+            balance_after: newBalance,
+            description: adjustment_reason || 'Admin balance adjustment',
+            metadata: {
+              adjusted_by: user.id,
+              adjustment_reason: adjustment_reason
+            }
+          });
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return new Response(JSON.stringify({ error: "No valid updates provided" }), { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Update user profile
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update(updates)
+        .eq("id", user_id);
+
+      if (updateError) {
+        return new Response(JSON.stringify({ 
+          error: `Failed to update user: ${updateError.message}` 
+        }), { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: "User updated successfully" 
+      }), { 
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+
+    } catch (error) {
+      return new Response(JSON.stringify({ 
+        error: `Unexpected error: ${error.message}` 
+      }), { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
-    const { error: suspendError } = await supabase
-      .from("user_roles")
-      .update({ is_active })
-      .eq("user_id", user_id);
-    if (suspendError) return new Response(JSON.stringify({ error: suspendError.message }), { status: 500 });
-    return new Response(JSON.stringify({ success: true }), { status: 200 });
   }
 
-  return new Response(JSON.stringify({ error: "Not found" }), { status: 404 });
+  return new Response(JSON.stringify({ error: "Endpoint not found" }), { 
+    status: 404,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  });
 }
 
 serve(handler);
