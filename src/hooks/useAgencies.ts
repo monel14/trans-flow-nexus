@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -40,8 +41,11 @@ export const useAgencies = () => {
         chef_agence: (agency.chef_agence && 
           typeof agency.chef_agence === 'object' && 
           'name' in agency.chef_agence &&
-          (agency.chef_agence as any).name !== null) 
-          ? agency.chef_agence as { name: string; email: string }
+          agency.chef_agence.name !== null) 
+          ? {
+              name: agency.chef_agence.name as string,
+              email: agency.chef_agence.email as string
+            }
           : null
       }));
 

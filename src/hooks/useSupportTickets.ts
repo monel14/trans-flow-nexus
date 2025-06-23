@@ -10,8 +10,10 @@ export interface SupportTicket {
   ticket_type: string;
   status: string;
   priority: string;
+  requested_amount: number | null;
   requester_id: string;
   assigned_to_id: string | null;
+  resolved_by_id: string | null;
   created_at: string;
   updated_at: string;
   resolved_at: string | null;
@@ -40,12 +42,7 @@ export interface TicketComment {
   } | null;
 }
 
-export const useSupportTickets = (filter?: { 
-  status?: string; 
-  requester_id?: string; 
-  assigned_to_id?: string;
-  ticket_type?: string;
-}) => {
+export const useSupportTickets = (filter?: { status?: string; requester_id?: string; ticket_type?: string }) => {
   const { data: tickets = [], isLoading, error, refetch } = useQuery({
     queryKey: ['support-tickets', filter],
     queryFn: async (): Promise<SupportTicket[]> => {
@@ -72,10 +69,6 @@ export const useSupportTickets = (filter?: {
         query = query.eq('requester_id', filter.requester_id);
       }
 
-      if (filter?.assigned_to_id) {
-        query = query.eq('assigned_to_id', filter.assigned_to_id);
-      }
-
       if (filter?.ticket_type) {
         query = query.eq('ticket_type', filter.ticket_type);
       }
@@ -93,14 +86,20 @@ export const useSupportTickets = (filter?: {
         profiles: (ticket.profiles && 
           typeof ticket.profiles === 'object' && 
           'name' in ticket.profiles &&
-          (ticket.profiles as any).name !== null)
-          ? ticket.profiles as { name: string; email: string }
+          ticket.profiles.name !== null)
+          ? {
+              name: ticket.profiles.name as string,
+              email: ticket.profiles.email as string
+            }
           : null,
         assigned_to: (ticket.assigned_to && 
           typeof ticket.assigned_to === 'object' && 
           'name' in ticket.assigned_to &&
-          (ticket.assigned_to as any).name !== null)
-          ? ticket.assigned_to as { name: string; email: string }
+          ticket.assigned_to.name !== null)
+          ? {
+              name: ticket.assigned_to.name as string,
+              email: ticket.assigned_to.email as string
+            }
           : null
       }));
 
@@ -117,7 +116,7 @@ export const useSupportTickets = (filter?: {
 };
 
 export const useTicketComments = (ticketId: string) => {
-  return useQuery({
+  const { data: comments = [], isLoading, error, refetch } = useQuery({
     queryKey: ['ticket-comments', ticketId],
     queryFn: async (): Promise<TicketComment[]> => {
       const { data, error } = await supabase
@@ -132,16 +131,22 @@ export const useTicketComments = (ticketId: string) => {
         .eq('ticket_id', ticketId)
         .order('created_at', { ascending: true });
 
-      if (error) throw error;
-      
+      if (error) {
+        console.error('Error fetching ticket comments:', error);
+        throw error;
+      }
+
       // Transform the data to handle potential null relations
       const transformedData = (data || []).map(comment => ({
         ...comment,
         profiles: (comment.profiles && 
           typeof comment.profiles === 'object' && 
           'name' in comment.profiles &&
-          (comment.profiles as any).name !== null)
-          ? comment.profiles as { name: string; email: string }
+          comment.profiles.name !== null)
+          ? {
+              name: comment.profiles.name as string,
+              email: comment.profiles.email as string
+            }
           : null
       }));
 
@@ -149,9 +154,16 @@ export const useTicketComments = (ticketId: string) => {
     },
     enabled: !!ticketId,
   });
+
+  return {
+    comments,
+    isLoading,
+    error,
+    refetch
+  };
 };
 
-export const useCreateSupportTicket = () => {
+export const useCreateTicket = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
@@ -159,8 +171,8 @@ export const useCreateSupportTicket = () => {
     mutationFn: async (ticketData: {
       title: string;
       description: string;
-      ticket_type: string;
       priority?: string;
+      ticket_type?: string;
     }) => {
       if (!user?.id) throw new Error('User not authenticated');
 
@@ -170,13 +182,40 @@ export const useCreateSupportTicket = () => {
         .from('request_tickets')
         .insert({
           ticket_number: ticketNumber,
-          ticket_type: ticketData.ticket_type,
+          ticket_type: ticketData.ticket_type || 'support',
           title: ticketData.title,
           description: ticketData.description,
           priority: ticketData.priority || 'medium',
           status: 'open',
           requester_id: user.id,
         })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['support-tickets'] });
+    },
+  });
+};
+
+export const useUpdateTicket = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ 
+      id, 
+      updates 
+    }: { 
+      id: string; 
+      updates: Partial<SupportTicket> 
+    }) => {
+      const { data, error } = await supabase
+        .from('request_tickets')
+        .update(updates)
+        .eq('id', id)
         .select()
         .single();
 
@@ -196,11 +235,11 @@ export const useAddTicketComment = () => {
   return useMutation({
     mutationFn: async ({
       ticketId,
-      comment,
-      isInternal = false
+      commentText,
+      isInternal = false,
     }: {
       ticketId: string;
-      comment: string;
+      commentText: string;
       isInternal?: boolean;
     }) => {
       if (!user?.id) throw new Error('User not authenticated');
@@ -210,7 +249,7 @@ export const useAddTicketComment = () => {
         .insert({
           ticket_id: ticketId,
           author_id: user.id,
-          comment_text: comment,
+          comment_text: commentText,
           is_internal: isInternal,
         })
         .select()
@@ -219,10 +258,8 @@ export const useAddTicketComment = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ 
-        queryKey: ['ticket-comments', variables.ticketId] 
-      });
+    onSuccess: (_, { ticketId }) => {
+      queryClient.invalidateQueries({ queryKey: ['ticket-comments', ticketId] });
     },
   });
 };

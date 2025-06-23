@@ -71,7 +71,13 @@ export const useOperationValidations = (filter?: {
         throw error;
       }
 
-      return data || [];
+      // Transform the data to ensure proper typing
+      const transformedData = (data || []).map(validation => ({
+        ...validation,
+        validation_status: validation.validation_status as 'pending' | 'approved' | 'rejected'
+      }));
+
+      return transformedData;
     },
   });
 
@@ -103,13 +109,15 @@ export const useValidateOperation = () => {
     }) => {
       if (!user?.id) throw new Error('User not authenticated');
 
-      const { data, error } = await supabase.rpc('validate_operation_atomic', {
-        p_operation_id: operationId,
-        p_validator_id: user.id,
-        p_validation_status: validationStatus,
-        p_validation_notes: validationNotes || null,
-        p_balance_impact: balanceImpact,
-        p_commission_calculated: commissionCalculated
+      const { data, error } = await supabase.functions.invoke('validate_operation_atomic', {
+        body: {
+          p_operation_id: operationId,
+          p_validator_id: user.id,
+          p_validation_status: validationStatus,
+          p_validation_notes: validationNotes || null,
+          p_balance_impact: balanceImpact,
+          p_commission_calculated: commissionCalculated
+        }
       });
 
       if (error) throw error;

@@ -70,7 +70,15 @@ export const useCommissionTransfers = (filter?: {
         throw error;
       }
 
-      return data || [];
+      // Transform the data to ensure proper typing
+      const transformedData = (data || []).map(transfer => ({
+        ...transfer,
+        transfer_type: transfer.transfer_type as 'agent_payment' | 'chef_payment' | 'bulk_transfer',
+        transfer_method: transfer.transfer_method as 'balance_credit' | 'bank_transfer' | 'mobile_money' | 'cash',
+        status: transfer.status as 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled'
+      }));
+
+      return transformedData;
     },
   });
 
@@ -104,13 +112,15 @@ export const useTransferCommission = () => {
     }) => {
       if (!user?.id) throw new Error('User not authenticated');
 
-      const { data, error } = await supabase.rpc('process_commission_transfer_atomic', {
-        p_commission_record_id: commissionRecordId,
-        p_transfer_type: transferType,
-        p_recipient_id: recipientId,
-        p_amount: amount,
-        p_transfer_method: transferMethod,
-        p_transfer_data: transferData
+      const { data, error } = await supabase.functions.invoke('process_commission_transfer_atomic', {
+        body: {
+          p_commission_record_id: commissionRecordId,
+          p_transfer_type: transferType,
+          p_recipient_id: recipientId,
+          p_amount: amount,
+          p_transfer_method: transferMethod,
+          p_transfer_data: transferData
+        }
       });
 
       if (error) throw error;
@@ -140,14 +150,24 @@ export const useBulkTransferCommissions = () => {
     }) => {
       if (!user?.id) throw new Error('User not authenticated');
 
-      const { data, error } = await supabase.rpc('process_bulk_commission_transfer', {
-        p_commission_record_ids: commissionRecordIds,
-        p_transfer_method: transferMethod,
-        p_transfer_data: transferData
-      });
+      const results = [];
+      for (const recordId of commissionRecordIds) {
+        const { data, error } = await supabase.functions.invoke('process_commission_transfer_atomic', {
+          body: {
+            p_commission_record_id: recordId,
+            p_transfer_type: 'bulk_transfer',
+            p_recipient_id: user.id,
+            p_amount: 0, // Amount will be determined by the record
+            p_transfer_method: transferMethod,
+            p_transfer_data: transferData
+          }
+        });
 
-      if (error) throw error;
-      return data;
+        if (error) throw error;
+        results.push(data);
+      }
+
+      return results;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['commission-transfers'] });

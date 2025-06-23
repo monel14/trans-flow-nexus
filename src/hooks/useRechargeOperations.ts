@@ -71,7 +71,14 @@ export const useRechargeOperations = (filter?: {
         throw error;
       }
 
-      return data || [];
+      // Transform the data to ensure proper typing
+      const transformedData = (data || []).map(operation => ({
+        ...operation,
+        recharge_method: operation.recharge_method as 'cash' | 'bank_transfer' | 'mobile_money' | 'card',
+        status: operation.status as 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled'
+      }));
+
+      return transformedData;
     },
   });
 
@@ -101,12 +108,14 @@ export const useProcessRecharge = () => {
     }) => {
       if (!user?.id) throw new Error('User not authenticated');
 
-      const { data, error } = await supabase.rpc('process_recharge_atomic', {
-        p_ticket_id: ticketId,
-        p_agent_id: user.id,
-        p_amount: amount,
-        p_recharge_method: rechargeMethod,
-        p_metadata: metadata
+      const { data, error } = await supabase.functions.invoke('process_recharge_atomic', {
+        body: {
+          p_ticket_id: ticketId,
+          p_agent_id: user.id,
+          p_amount: amount,
+          p_recharge_method: rechargeMethod,
+          p_metadata: metadata
+        }
       });
 
       if (error) throw error;

@@ -91,8 +91,11 @@ export const useOperations = (filter?: {
         initiator: (operation.initiator && 
           typeof operation.initiator === 'object' && 
           'name' in operation.initiator &&
-          (operation.initiator as any).name !== null)
-          ? operation.initiator as { name: string; email: string }
+          operation.initiator.name !== null)
+          ? {
+              name: operation.initiator.name as string,
+              email: operation.initiator.email as string
+            }
           : null
       }));
 
