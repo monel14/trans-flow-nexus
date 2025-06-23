@@ -1,3 +1,4 @@
+
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -26,7 +27,7 @@ export interface Operation {
   initiator?: {
     name: string;
     email: string;
-  };
+  } | null;
   agencies?: {
     name: string;
     city: string;
@@ -84,7 +85,15 @@ export const useOperations = (filter?: {
         throw error;
       }
 
-      return data || [];
+      // Transform the data to handle potential null relations
+      const transformedData = (data || []).map(operation => ({
+        ...operation,
+        initiator: operation.initiator && typeof operation.initiator === 'object' && 'name' in operation.initiator 
+          ? operation.initiator 
+          : null
+      }));
+
+      return transformedData;
     },
   });
 

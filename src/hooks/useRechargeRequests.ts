@@ -13,6 +13,7 @@ export interface RechargeRequest {
   requested_amount: number | null;
   requester_id: string;
   assigned_to_id: string | null;
+  resolved_by_id: string | null;
   created_at: string;
   updated_at: string;
   resolved_at: string | null;
@@ -20,7 +21,7 @@ export interface RechargeRequest {
   profiles?: {
     name: string;
     email: string;
-  };
+  } | null;
 }
 
 export const useRechargeRequests = (filter?: { status?: string; requester_id?: string }) => {
@@ -56,7 +57,15 @@ export const useRechargeRequests = (filter?: { status?: string; requester_id?: s
         throw error;
       }
 
-      return data || [];
+      // Transform the data to handle potential null relations
+      const transformedData = (data || []).map(request => ({
+        ...request,
+        profiles: request.profiles && typeof request.profiles === 'object' && 'name' in request.profiles 
+          ? request.profiles 
+          : null
+      }));
+
+      return transformedData;
     },
   });
 

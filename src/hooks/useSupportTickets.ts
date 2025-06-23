@@ -19,11 +19,11 @@ export interface SupportTicket {
   profiles?: {
     name: string;
     email: string;
-  };
+  } | null;
   assigned_to?: {
     name: string;
     email: string;
-  };
+  } | null;
 }
 
 export interface TicketComment {
@@ -37,7 +37,7 @@ export interface TicketComment {
   profiles?: {
     name: string;
     email: string;
-  };
+  } | null;
 }
 
 export const useSupportTickets = (filter?: { 
@@ -87,7 +87,18 @@ export const useSupportTickets = (filter?: {
         throw error;
       }
 
-      return data || [];
+      // Transform the data to handle potential null relations
+      const transformedData = (data || []).map(ticket => ({
+        ...ticket,
+        profiles: ticket.profiles && typeof ticket.profiles === 'object' && 'name' in ticket.profiles 
+          ? ticket.profiles 
+          : null,
+        assigned_to: ticket.assigned_to && typeof ticket.assigned_to === 'object' && 'name' in ticket.assigned_to 
+          ? ticket.assigned_to 
+          : null
+      }));
+
+      return transformedData;
     },
   });
 
@@ -107,7 +118,7 @@ export const useTicketComments = (ticketId: string) => {
         .from('request_ticket_comments')
         .select(`
           *,
-          profiles (
+          profiles!request_ticket_comments_author_id_fkey (
             name,
             email
           )
@@ -116,7 +127,16 @@ export const useTicketComments = (ticketId: string) => {
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      return data || [];
+      
+      // Transform the data to handle potential null relations
+      const transformedData = (data || []).map(comment => ({
+        ...comment,
+        profiles: comment.profiles && typeof comment.profiles === 'object' && 'name' in comment.profiles 
+          ? comment.profiles 
+          : null
+      }));
+
+      return transformedData;
     },
     enabled: !!ticketId,
   });

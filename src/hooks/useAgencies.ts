@@ -11,7 +11,7 @@ export interface Agency {
   chef_agence?: {
     name: string;
     email: string;
-  };
+  } | null;
 }
 
 export const useAgencies = () => {
@@ -34,7 +34,15 @@ export const useAgencies = () => {
         throw error;
       }
 
-      return data || [];
+      // Transform the data to handle potential null relations
+      const transformedData = (data || []).map(agency => ({
+        ...agency,
+        chef_agence: agency.chef_agence && typeof agency.chef_agence === 'object' && 'name' in agency.chef_agence 
+          ? agency.chef_agence 
+          : null
+      }));
+
+      return transformedData;
     },
   });
 
