@@ -18,78 +18,181 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { p_commission_record_id, p_transfer_type, p_recipient_id, p_amount, p_transfer_method, p_transfer_data } = await req.json()
-
-    // Generate reference number
-    const reference = `CT-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
-
-    // Create commission transfer
-    const { data: transfer, error: transferError } = await supabaseClient
-      .from('commission_transfers')
-      .insert({
-        commission_record_id: p_commission_record_id,
-        transfer_type: p_transfer_type,
-        recipient_id: p_recipient_id,
-        amount: p_amount,
-        transfer_method: p_transfer_method,
-        reference_number: reference,
-        transfer_data: p_transfer_data,
-        status: 'completed',
-        processed_at: new Date().toISOString()
-      })
-      .select()
-      .single()
-
-    if (transferError) throw transferError
-
-    // Update commission record status
-    await supabaseClient
-      .from('commission_records')
-      .update({ 
-        status: 'paid',
-        paid_at: new Date().toISOString()
-      })
-      .eq('id', p_commission_record_id)
-
-    // If balance credit, update recipient balance
-    if (p_transfer_method === 'balance_credit') {
-      const { data: profile } = await supabaseClient
-        .from('profiles')
-        .select('balance')
-        .eq('id', p_recipient_id)
-        .single()
-
-      const currentBalance = profile?.balance || 0
-      const newBalance = Number(currentBalance) + Number(p_amount)
-
-      await supabaseClient
-        .from('profiles')
-        .update({ balance: newBalance })
-        .eq('id', p_recipient_id)
-
-      // Create transaction ledger entry
-      await supabaseClient
-        .from('transaction_ledger')
-        .insert({
-          user_id: p_recipient_id,
-          transaction_type: 'commission_transfer',
-          amount: p_amount,
-          balance_before: currentBalance,
-          balance_after: newBalance,
-          description: `Commission transfer: ${p_transfer_type}`,
-          metadata: { reference_number: reference }
-        })
+    // Enhanced authentication
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: "Unauthorized: Missing or invalid authorization header" 
+      }), { 
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
-    return new Response(
-      JSON.stringify({ success: true, transfer }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
+    
+    if (authError || !user) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: "Unauthorized: Invalid token" 
+      }), { 
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Verify user has commission transfer permissions
+    const { data: userProfile, error: profileError } = await supabaseClient
+      .from("profiles")
+      .select(`
+        role_id,
+        agency_id,
+        is_active,
+        roles:role_id(name)
+      `)
+      .eq("id", user.id)
+      .single();
+
+    if (profileError || !userProfile?.is_active) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: "User profile not found or inactive" 
+      }), { 
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const userRole = userProfile.roles?.name;
+
+    // Get request body
+    const { 
+      commission_record_id, 
+      transfer_type, 
+      recipient_id 
+    } = await req.json()
+
+    // Validate required parameters
+    if (!commission_record_id || !transfer_type || !recipient_id) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: "Missing required parameters: commission_record_id, transfer_type, recipient_id" 
+      }), { 
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    if (!['agent_payment', 'chef_payment', 'bulk_transfer'].includes(transfer_type)) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: "Invalid transfer_type. Must be 'agent_payment', 'chef_payment', or 'bulk_transfer'" 
+      }), { 
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Check permissions based on transfer type and user role
+    if (transfer_type === 'agent_payment' && userRole === 'agent') {
+      // Agents can only transfer their own commissions
+      if (recipient_id !== user.id) {
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: "Agents can only transfer commissions to themselves" 
+        }), { 
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    } else if (transfer_type === 'chef_payment' && userRole === 'chef_agence') {
+      // Chefs can only transfer their own commissions
+      if (recipient_id !== user.id) {
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: "Chef can only transfer commissions to themselves" 
+        }), { 
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    } else if (!['admin_general', 'sous_admin'].includes(userRole)) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: "Insufficient permissions for commission transfers" 
+      }), { 
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Additional validation for chef_agence - they can only transfer commissions from their agency
+    if (userRole === 'chef_agence') {
+      const { data: commission, error: commissionError } = await supabaseClient
+        .from('commission_records')
+        .select(`
+          id,
+          agent_id,
+          chef_agence_id,
+          profiles:agent_id(agency_id)
+        `)
+        .eq('id', commission_record_id)
+        .single();
+
+      if (commissionError || !commission) {
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: "Commission record not found" 
+        }), { 
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      if (commission.profiles?.agency_id !== userProfile.agency_id) {
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: "Cannot transfer commissions from other agencies" 
+        }), { 
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    // Call the PostgreSQL atomic function
+    const { data: result, error: functionError } = await supabaseClient
+      .rpc('process_commission_transfer_atomic', {
+        p_commission_record_id: commission_record_id,
+        p_transfer_type: transfer_type,
+        p_recipient_id: recipient_id,
+        p_processor_id: user.id
+      });
+
+    if (functionError) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: `Database function error: ${functionError.message}` 
+      }), { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Return the result from the PostgreSQL function
+    return new Response(JSON.stringify(result), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
 
   } catch (error) {
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-    )
+    return new Response(JSON.stringify({ 
+      success: false, 
+      error: `Unexpected error: ${error.message}` 
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
+      status: 500 
+    });
   }
 })
