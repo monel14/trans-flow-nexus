@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -61,12 +60,11 @@ export const useRechargeRequests = (filter?: { status?: string; requester_id?: s
       // Transform the data to handle potential null relations
       const transformedData = (data || []).map(request => ({
         ...request,
-        profiles: request.profiles && 
+        profiles: (request.profiles && 
           typeof request.profiles === 'object' && 
-          request.profiles !== null && 
           'name' in request.profiles &&
-          request.profiles.name !== null
-          ? request.profiles 
+          request.profiles.name !== null)
+          ? request.profiles as { name: string; email: string }
           : null
       }));
 
