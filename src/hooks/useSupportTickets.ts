@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -86,24 +85,18 @@ export const useSupportTickets = (filter?: { status?: string; requester_id?: str
         ...ticket,
         profiles: ticket.profiles && 
           typeof ticket.profiles === 'object' && 
-          !Array.isArray(ticket.profiles) &&
-          ticket.profiles !== null &&
-          'name' in ticket.profiles &&
-          'email' in ticket.profiles
+          !Array.isArray(ticket.profiles)
           ? {
-              name: ticket.profiles.name as string,
-              email: ticket.profiles.email as string
+              name: (ticket.profiles as any).name as string,
+              email: (ticket.profiles as any).email as string
             }
           : null,
         assigned_to: ticket.assigned_to && 
           typeof ticket.assigned_to === 'object' && 
-          !Array.isArray(ticket.assigned_to) &&
-          ticket.assigned_to !== null &&
-          'name' in ticket.assigned_to &&
-          'email' in ticket.assigned_to
+          !Array.isArray(ticket.assigned_to)
           ? {
-              name: ticket.assigned_to.name as string,
-              email: ticket.assigned_to.email as string
+              name: (ticket.assigned_to as any).name as string,
+              email: (ticket.assigned_to as any).email as string
             }
           : null
       }));
@@ -146,13 +139,10 @@ export const useTicketComments = (ticketId: string) => {
         ...comment,
         profiles: comment.profiles && 
           typeof comment.profiles === 'object' && 
-          !Array.isArray(comment.profiles) &&
-          comment.profiles !== null &&
-          'name' in comment.profiles &&
-          'email' in comment.profiles
+          !Array.isArray(comment.profiles)
           ? {
-              name: comment.profiles.name as string,
-              email: comment.profiles.email as string
+              name: (comment.profiles as any).name as string,
+              email: (comment.profiles as any).email as string
             }
           : null
       }));

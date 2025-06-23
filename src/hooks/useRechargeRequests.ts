@@ -68,24 +68,18 @@ export const useRechargeRequests = (filter?: { requester_id?: string; status?: s
         ...request,
         profiles: request.profiles && 
           typeof request.profiles === 'object' && 
-          !Array.isArray(request.profiles) &&
-          request.profiles !== null &&
-          'name' in request.profiles &&
-          'email' in request.profiles
+          !Array.isArray(request.profiles)
           ? {
-              name: request.profiles.name as string,
-              email: request.profiles.email as string
+              name: (request.profiles as any).name as string,
+              email: (request.profiles as any).email as string
             }
           : null,
         assigned_to: request.assigned_to && 
           typeof request.assigned_to === 'object' && 
-          !Array.isArray(request.assigned_to) &&
-          request.assigned_to !== null &&
-          'name' in request.assigned_to &&
-          'email' in request.assigned_to
+          !Array.isArray(request.assigned_to)
           ? {
-              name: request.assigned_to.name as string,
-              email: request.assigned_to.email as string
+              name: (request.assigned_to as any).name as string,
+              email: (request.assigned_to as any).email as string
             }
           : null
       }));
