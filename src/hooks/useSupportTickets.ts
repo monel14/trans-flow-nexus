@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -90,10 +91,10 @@ export const useSupportTickets = (filter?: {
       // Transform the data to handle potential null relations
       const transformedData = (data || []).map(ticket => ({
         ...ticket,
-        profiles: ticket.profiles && typeof ticket.profiles === 'object' && 'name' in ticket.profiles 
+        profiles: ticket.profiles && typeof ticket.profiles === 'object' && ticket.profiles !== null && 'name' in ticket.profiles 
           ? ticket.profiles 
           : null,
-        assigned_to: ticket.assigned_to && typeof ticket.assigned_to === 'object' && 'name' in ticket.assigned_to 
+        assigned_to: ticket.assigned_to && typeof ticket.assigned_to === 'object' && ticket.assigned_to !== null && 'name' in ticket.assigned_to 
           ? ticket.assigned_to 
           : null
       }));
@@ -131,7 +132,7 @@ export const useTicketComments = (ticketId: string) => {
       // Transform the data to handle potential null relations
       const transformedData = (data || []).map(comment => ({
         ...comment,
-        profiles: comment.profiles && typeof comment.profiles === 'object' && 'name' in comment.profiles 
+        profiles: comment.profiles && typeof comment.profiles === 'object' && comment.profiles !== null && 'name' in comment.profiles 
           ? comment.profiles 
           : null
       }));

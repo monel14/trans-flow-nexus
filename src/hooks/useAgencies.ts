@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -37,7 +38,7 @@ export const useAgencies = () => {
       // Transform the data to handle potential null relations
       const transformedData = (data || []).map(agency => ({
         ...agency,
-        chef_agence: agency.chef_agence && typeof agency.chef_agence === 'object' && 'name' in agency.chef_agence 
+        chef_agence: agency.chef_agence && typeof agency.chef_agence === 'object' && agency.chef_agence !== null && 'name' in agency.chef_agence 
           ? agency.chef_agence 
           : null
       }));

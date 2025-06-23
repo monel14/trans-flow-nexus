@@ -33,6 +33,98 @@ const AgentRecharges = () => {
   const [resolutionNotes, setResolutionNotes] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
+  const handleApprove = async (request: any) => {
+    if (!user?.id) return;
+    
+    setIsProcessing(true);
+    try {
+      // Approuver la demande
+      await updateRequest.mutateAsync({
+        id: request.id,
+        updates: {
+          status: 'resolved',
+          resolved_by_id: user.id,
+          resolved_at: new Date().toISOString(),
+          resolution_notes: resolutionNotes || 'Demande approuvée'
+        }
+      });
+
+      // Créer la transaction de recharge
+      if (request.requested_amount) {
+        await createTransaction.mutateAsync({
+          user_id: request.requester_id,
+          transaction_type: 'credit',
+          amount: request.requested_amount,
+          description: `Recharge approuvée - ${request.title}`,
+          metadata: {
+            request_id: request.id,
+            approved_by: user.id
+          }
+        });
+      }
+
+      toast({
+        title: "Demande approuvée",
+        description: "La demande de recharge a été approuvée avec succès.",
+      });
+
+      refetch();
+      setSelectedRequest(null);
+      setResolutionNotes('');
+    } catch (error) {
+      console.error('Erreur lors de l\'approbation:', error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors de l'approbation de la demande.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleReject = async (request: any) => {
+    if (!user?.id || !resolutionNotes.trim()) {
+      toast({
+        title: "Notes requises",
+        description: "Veuillez ajouter une note expliquant le rejet.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsProcessing(true);
+    try {
+      await updateRequest.mutateAsync({
+        id: request.id,
+        updates: {
+          status: 'closed',
+          resolved_by_id: user.id,
+          resolved_at: new Date().toISOString(),
+          resolution_notes: resolutionNotes
+        }
+      });
+
+      toast({
+        title: "Demande rejetée",
+        description: "La demande de recharge a été rejetée.",
+      });
+
+      refetch();
+      setSelectedRequest(null);
+      setResolutionNotes('');
+    } catch (error) {
+      console.error('Erreur lors du rejet:', error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors du rejet de la demande.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const formatAmount = (amount: number) => {
     return new Intl.NumberFormat('fr-FR', {
       maximumFractionDigits: 0

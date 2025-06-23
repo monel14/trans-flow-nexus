@@ -88,7 +88,7 @@ export const useOperations = (filter?: {
       // Transform the data to handle potential null relations
       const transformedData = (data || []).map(operation => ({
         ...operation,
-        initiator: operation.initiator && typeof operation.initiator === 'object' && 'name' in operation.initiator 
+        initiator: operation.initiator && typeof operation.initiator === 'object' && operation.initiator !== null && 'name' in operation.initiator 
           ? operation.initiator 
           : null
       }));
