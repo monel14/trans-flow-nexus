@@ -72,42 +72,67 @@ async function handler(req: Request): Promise<Response> {
   }
 
   if (method === "GET" && resource === "users") {
+    // Use new profiles-based structure instead of user_roles
     let query = supabase
-      .from("user_roles")
+      .from("profiles")
       .select(`
-        id, user_id, role_id, is_active, agency_id, 
-        roles:role_id(name,label),
-        agencies:agency_id(name),
-        profiles:user_id(name, email)
+        id, 
+        name, 
+        email, 
+        first_name,
+        last_name,
+        phone,
+        balance,
+        is_active, 
+        role_id, 
+        agency_id,
+        created_at,
+        updated_at,
+        roles:role_id(id, name, label),
+        agencies:agency_id(id, name, city)
       `);
 
+    // Apply role filter if provided
     if (role) {
-      // On cherche l'id du rôle
-      const { data: roles, error: errRole } = await supabase
+      const { data: roleData, error: errRole } = await supabase
         .from("roles")
         .select("id")
         .eq("name", role)
-        .maybeSingle();
-      if (errRole || !roles) return new Response(JSON.stringify({ error: "Rôle introuvable" }), { status: 404 });
-      query = query.eq("role_id", roles.id);
+        .single();
+      
+      if (errRole || !roleData) {
+        return new Response(JSON.stringify({ error: "Role not found" }), { 
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      query = query.eq("role_id", roleData.id);
     }
 
-    // Filtrage par agence pour respecter la hiérarchie
-    if (agency_filter) {
+    // Apply agency filter based on current user's permissions
+    if (currentUserRole === 'chef_agence') {
+      // Chef can only see users in their agency
+      query = query.eq("agency_id", currentUserProfile.agency_id);
+    } else if (agency_filter && currentUserRole === 'admin_general') {
+      // Admin can filter by specific agency
       query = query.eq("agency_id", parseInt(agency_filter));
     }
 
-    const { data, error } = await query;
-    if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    // Only include active users by default
+    query = query.eq("is_active", true);
+
+    const { data, error } = await query.order('created_at', { ascending: false });
     
-    // Formatter les données pour inclure les informations utilisateur
-    const formattedData = data?.map(item => ({
-      ...item,
-      name: item.profiles?.name || 'N/A',
-      email: item.profiles?.email || 'N/A'
-    })) || [];
+    if (error) {
+      return new Response(JSON.stringify({ error: error.message }), { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
     
-    return new Response(JSON.stringify(formattedData), { headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify(data || []), { 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    });
   }
 
   if (method === "POST" && resource === "users") {
