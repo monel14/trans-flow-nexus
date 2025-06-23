@@ -18,83 +18,156 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { p_ticket_id, p_agent_id, p_amount, p_recharge_method, p_metadata } = await req.json()
+    // Enhanced authentication
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: "Unauthorized: Missing or invalid authorization header" 
+      }), { 
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
-    // Generate reference number
-    const reference = `RCH-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
+    
+    if (authError || !user) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: "Unauthorized: Invalid token" 
+      }), { 
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
-    // Get current balance
-    const { data: profile } = await supabaseClient
-      .from('profiles')
-      .select('balance')
-      .eq('id', p_agent_id)
-      .single()
+    // Verify user has recharge processing permissions
+    const { data: userProfile, error: profileError } = await supabaseClient
+      .from("profiles")
+      .select(`
+        role_id,
+        agency_id,
+        is_active,
+        roles:role_id(name)
+      `)
+      .eq("id", user.id)
+      .single();
 
-    const currentBalance = profile?.balance || 0
-    const newBalance = Number(currentBalance) + Number(p_amount)
+    if (profileError || !userProfile?.is_active) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: "User profile not found or inactive" 
+      }), { 
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
-    // Create recharge operation
-    const { data: operation, error: operationError } = await supabaseClient
-      .from('recharge_operations')
-      .insert({
-        ticket_id: p_ticket_id,
-        agent_id: p_agent_id,
-        amount: p_amount,
-        recharge_method: p_recharge_method,
-        reference_number: reference,
-        balance_before: currentBalance,
-        balance_after: newBalance,
-        metadata: p_metadata,
-        status: 'completed',
-        processed_at: new Date().toISOString()
-      })
-      .select()
-      .single()
+    const userRole = userProfile.roles?.name;
+    if (!['admin_general', 'sous_admin', 'chef_agence'].includes(userRole)) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: "Insufficient permissions for recharge processing" 
+      }), { 
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
-    if (operationError) throw operationError
+    // Get request body
+    const { 
+      ticket_id, 
+      action, 
+      notes 
+    } = await req.json()
 
-    // Update agent balance
-    const { error: balanceError } = await supabaseClient
-      .from('profiles')
-      .update({ balance: newBalance })
-      .eq('id', p_agent_id)
+    // Validate required parameters
+    if (!ticket_id || !action) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: "Missing required parameters: ticket_id, action" 
+      }), { 
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
-    if (balanceError) throw balanceError
+    if (!['approve', 'reject'].includes(action)) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: "Invalid action. Must be 'approve' or 'reject'" 
+      }), { 
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
-    // Update ticket status
-    const { error: ticketError } = await supabaseClient
-      .from('request_tickets')
-      .update({ 
-        status: 'resolved',
-        resolved_at: new Date().toISOString(),
-        resolved_by_id: p_agent_id
-      })
-      .eq('id', p_ticket_id)
+    // Additional validation for chef_agence - they can only process requests from their agency
+    if (userRole === 'chef_agence') {
+      const { data: ticket, error: ticketError } = await supabaseClient
+        .from('request_tickets')
+        .select(`
+          id,
+          requester_id,
+          profiles:requester_id(agency_id)
+        `)
+        .eq('id', ticket_id)
+        .single();
 
-    if (ticketError) throw ticketError
+      if (ticketError || !ticket) {
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: "Ticket not found" 
+        }), { 
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
 
-    // Create transaction ledger entry
-    await supabaseClient
-      .from('transaction_ledger')
-      .insert({
-        user_id: p_agent_id,
-        transaction_type: 'recharge',
-        amount: p_amount,
-        balance_before: currentBalance,
-        balance_after: newBalance,
-        description: `Recharge via ${p_recharge_method}`,
-        metadata: { reference_number: reference, ticket_id: p_ticket_id }
-      })
+      if (ticket.profiles?.agency_id !== userProfile.agency_id) {
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: "Cannot process tickets from other agencies" 
+        }), { 
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
 
-    return new Response(
-      JSON.stringify({ success: true, operation }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    // Call the PostgreSQL atomic function
+    const { data: result, error: functionError } = await supabaseClient
+      .rpc('process_recharge_atomic', {
+        p_ticket_id: ticket_id,
+        p_processor_id: user.id,
+        p_action: action,
+        p_notes: notes || null
+      });
+
+    if (functionError) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: `Database function error: ${functionError.message}` 
+      }), { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Return the result from the PostgreSQL function
+    return new Response(JSON.stringify(result), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
 
   } catch (error) {
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-    )
+    return new Response(JSON.stringify({ 
+      success: false, 
+      error: `Unexpected error: ${error.message}` 
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
+      status: 500 
+    });
   }
 })
