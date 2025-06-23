@@ -18,88 +18,122 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { p_operation_id, p_validator_id, p_validation_status, p_validation_notes, p_balance_impact, p_commission_calculated } = await req.json()
-
-    // Create validation record
-    const { data: validation, error: validationError } = await supabaseClient
-      .from('operation_validations')
-      .insert({
-        operation_id: p_operation_id,
-        validator_id: p_validator_id,
-        validation_status: p_validation_status,
-        validation_notes: p_validation_notes,
-        balance_impact: p_balance_impact,
-        commission_calculated: p_commission_calculated,
-        validated_at: new Date().toISOString()
-      })
-      .select()
-      .single()
-
-    if (validationError) throw validationError
-
-    // Update operation status
-    const newStatus = p_validation_status === 'approved' ? 'completed' : 'rejected'
-    const { error: operationError } = await supabaseClient
-      .from('operations')
-      .update({ 
-        status: newStatus,
-        validated_at: new Date().toISOString(),
-        validator_id: p_validator_id,
-        commission_amount: p_commission_calculated
-      })
-      .eq('id', p_operation_id)
-
-    if (operationError) throw operationError
-
-    if (p_validation_status === 'approved' && p_balance_impact !== 0) {
-      // Get operation details for balance update
-      const { data: operation } = await supabaseClient
-        .from('operations')
-        .select('initiator_id')
-        .eq('id', p_operation_id)
-        .single()
-
-      if (operation) {
-        // Get current balance
-        const { data: profile } = await supabaseClient
-          .from('profiles')
-          .select('balance')
-          .eq('id', operation.initiator_id)
-          .single()
-
-        const currentBalance = profile?.balance || 0
-        const newBalance = Number(currentBalance) + Number(p_balance_impact)
-
-        // Update balance
-        await supabaseClient
-          .from('profiles')
-          .update({ balance: newBalance })
-          .eq('id', operation.initiator_id)
-
-        // Create transaction ledger entry
-        await supabaseClient
-          .from('transaction_ledger')
-          .insert({
-            user_id: operation.initiator_id,
-            operation_id: p_operation_id,
-            transaction_type: 'operation_validation',
-            amount: p_balance_impact,
-            balance_before: currentBalance,
-            balance_after: newBalance,
-            description: `Operation validated: ${p_validation_status}`
-          })
-      }
+    // Enhanced authentication
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: "Unauthorized: Missing or invalid authorization header" 
+      }), { 
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
-    return new Response(
-      JSON.stringify({ success: true, validation }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
+    
+    if (authError || !user) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: "Unauthorized: Invalid token" 
+      }), { 
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Verify user has validation permissions
+    const { data: userProfile, error: profileError } = await supabaseClient
+      .from("profiles")
+      .select(`
+        role_id,
+        is_active,
+        roles:role_id(name)
+      `)
+      .eq("id", user.id)
+      .single();
+
+    if (profileError || !userProfile?.is_active) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: "User profile not found or inactive" 
+      }), { 
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const userRole = userProfile.roles?.name;
+    if (!['admin_general', 'sous_admin'].includes(userRole)) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: "Insufficient permissions for operation validation" 
+      }), { 
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Get request body
+    const { 
+      operation_id, 
+      action, 
+      notes 
+    } = await req.json()
+
+    // Validate required parameters
+    if (!operation_id || !action) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: "Missing required parameters: operation_id, action" 
+      }), { 
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    if (!['approve', 'reject'].includes(action)) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: "Invalid action. Must be 'approve' or 'reject'" 
+      }), { 
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Call the PostgreSQL atomic function
+    const { data: result, error: functionError } = await supabaseClient
+      .rpc('validate_operation_atomic', {
+        p_operation_id: operation_id,
+        p_validator_id: user.id,
+        p_action: action,
+        p_notes: notes || null
+      });
+
+    if (functionError) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: `Database function error: ${functionError.message}` 
+      }), { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Return the result from the PostgreSQL function
+    return new Response(JSON.stringify(result), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
 
   } catch (error) {
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-    )
+    return new Response(JSON.stringify({ 
+      success: false, 
+      error: `Unexpected error: ${error.message}` 
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
+      status: 500 
+    });
   }
 })
