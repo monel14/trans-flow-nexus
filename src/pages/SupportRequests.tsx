@@ -55,7 +55,7 @@ const SupportRequests = () => {
   });
 
   // Hook pour les commentaires du ticket sélectionné
-  const { data: comments = [], refetch: refetchComments } = useTicketComments(selectedTicket?.id || '');
+  const { comments = [], refetch: refetchComments } = useTicketComments(selectedTicket?.id || '');
   const addComment = useAddTicketComment();
 
   const handleCreateTicket = async (e: React.FormEvent) => {
@@ -106,7 +106,7 @@ const SupportRequests = () => {
     try {
       await addComment.mutateAsync({
         ticketId: selectedTicket.id,
-        comment: newComment.trim(),
+        commentText: newComment.trim(),
         isInternal: false,
       });
 

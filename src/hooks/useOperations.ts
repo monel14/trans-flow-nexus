@@ -90,7 +90,9 @@ export const useOperations = (filter?: {
         ...operation,
         initiator: (operation.initiator && 
           typeof operation.initiator === 'object' && 
+          !Array.isArray(operation.initiator) &&
           'name' in operation.initiator &&
+          'email' in operation.initiator &&
           operation.initiator.name !== null)
           ? {
               name: operation.initiator.name as string,

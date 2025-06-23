@@ -85,7 +85,9 @@ export const useSupportTickets = (filter?: { status?: string; requester_id?: str
         ...ticket,
         profiles: (ticket.profiles && 
           typeof ticket.profiles === 'object' && 
+          !Array.isArray(ticket.profiles) &&
           'name' in ticket.profiles &&
+          'email' in ticket.profiles &&
           ticket.profiles.name !== null)
           ? {
               name: ticket.profiles.name as string,
@@ -94,7 +96,9 @@ export const useSupportTickets = (filter?: { status?: string; requester_id?: str
           : null,
         assigned_to: (ticket.assigned_to && 
           typeof ticket.assigned_to === 'object' && 
+          !Array.isArray(ticket.assigned_to) &&
           'name' in ticket.assigned_to &&
+          'email' in ticket.assigned_to &&
           ticket.assigned_to.name !== null)
           ? {
               name: ticket.assigned_to.name as string,
@@ -141,7 +145,9 @@ export const useTicketComments = (ticketId: string) => {
         ...comment,
         profiles: (comment.profiles && 
           typeof comment.profiles === 'object' && 
+          !Array.isArray(comment.profiles) &&
           'name' in comment.profiles &&
+          'email' in comment.profiles &&
           comment.profiles.name !== null)
           ? {
               name: comment.profiles.name as string,
@@ -263,3 +269,6 @@ export const useAddTicketComment = () => {
     },
   });
 };
+
+// Add the missing export that SupportRequests.tsx expects
+export const useCreateSupportTicket = useCreateTicket;

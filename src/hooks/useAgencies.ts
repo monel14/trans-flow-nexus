@@ -40,7 +40,9 @@ export const useAgencies = () => {
         ...agency,
         chef_agence: (agency.chef_agence && 
           typeof agency.chef_agence === 'object' && 
+          !Array.isArray(agency.chef_agence) &&
           'name' in agency.chef_agence &&
+          'email' in agency.chef_agence &&
           agency.chef_agence.name !== null) 
           ? {
               name: agency.chef_agence.name as string,
