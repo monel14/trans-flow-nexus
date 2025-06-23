@@ -88,11 +88,12 @@ export const useOperations = (filter?: {
       // Transform the data to handle potential null relations
       const transformedData = (data || []).map(operation => ({
         ...operation,
-        initiator: (operation.initiator && 
+        initiator: operation.initiator && 
+          typeof operation.initiator === 'object' && 
           !Array.isArray(operation.initiator) &&
-          typeof operation.initiator === 'object' &&
+          operation.initiator !== null &&
           'name' in operation.initiator &&
-          'email' in operation.initiator)
+          'email' in operation.initiator
           ? {
               name: operation.initiator.name as string,
               email: operation.initiator.email as string
