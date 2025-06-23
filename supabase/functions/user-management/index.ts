@@ -136,55 +136,151 @@ async function handler(req: Request): Promise<Response> {
   }
 
   if (method === "POST" && resource === "users") {
-    const body = await req.json();
-    // { email, name, password, role_name, agency_id }
-    const { email, name, password, role_name, agency_id } = body;
-    // Vérification de la présence des données
-    if (!email || !name || !password || !role_name) {
-      return new Response(JSON.stringify({ error: "Champs obligatoires manquants" }), { status: 400 });
-    }
-    // Création de l'utilisateur dans Supabase Auth
-    const { data: newUser, error: authError } = await supabase.auth.admin.createUser({
-      email,
-      password,
-      user_metadata: { name },
-    });
-    if (authError || !newUser || !newUser.user) {
-      return new Response(JSON.stringify({ error: authError?.message || "Erreur création utilisateur" }), { status: 400 });
-    }
+    try {
+      const body = await req.json();
+      const { 
+        email, 
+        name, 
+        first_name, 
+        last_name, 
+        phone, 
+        password, 
+        role_name, 
+        agency_id,
+        initial_balance = 0
+      } = body;
 
-    // Créer le profil utilisateur
-    const { error: profileError } = await supabase.from("profiles").insert([{
-      id: newUser.user.id,
-      name,
-      email,
-    }]);
-    if (profileError) {
-      console.error("Erreur création profil:", profileError);
-      // Continue même si le profil n'est pas créé
-    }
+      // Validate required fields
+      if (!email || !name || !password || !role_name) {
+        return new Response(JSON.stringify({ 
+          error: "Missing required fields: email, name, password, role_name" 
+        }), { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
 
-    // Trouver role_id
-    const { data: role, error: errRole } = await supabase
-      .from("roles")
-      .select("id")
-      .eq("name", role_name)
-      .maybeSingle();
-    if (errRole || !role) return new Response(JSON.stringify({ error: "Rôle introuvable" }), { status: 400 });
-    // Insertion user_roles
-    const { error: userRoleError } = await supabase.from("user_roles").insert([{
-      user_id: newUser.user.id,
-      role_id: role.id,
-      is_active: true,
-      agency_id: agency_id ?? null,
-    }]);
-    if (userRoleError) {
-      // On supprime l'utilisateur créé dans Auth (rollback)
-      await supabase.auth.admin.deleteUser(newUser.user.id);
-      return new Response(JSON.stringify({ error: userRoleError.message }), { status: 400 });
-    }
+      // Validate agency restrictions for chef_agence
+      if (currentUserRole === 'chef_agence') {
+        if (!agency_id || agency_id !== currentUserProfile.agency_id) {
+          return new Response(JSON.stringify({ 
+            error: "Chef can only create users in their own agency" 
+          }), { 
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Chef can only create agents
+        if (role_name !== 'agent') {
+          return new Response(JSON.stringify({ 
+            error: "Chef can only create agents" 
+          }), { 
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+      }
 
-    return new Response(JSON.stringify({ user_id: newUser.user.id }), { status: 201 });
+      // Get role ID
+      const { data: role, error: roleError } = await supabase
+        .from("roles")
+        .select("id")
+        .eq("name", role_name)
+        .single();
+
+      if (roleError || !role) {
+        return new Response(JSON.stringify({ error: "Role not found" }), { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Create user in Supabase Auth
+      const { data: newUser, error: authError } = await supabase.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true, // Auto-confirm email for admin-created users
+        user_metadata: { 
+          name,
+          first_name: first_name || '',
+          last_name: last_name || '',
+          created_by: user.id,
+          created_via: 'admin_panel'
+        },
+      });
+
+      if (authError || !newUser?.user) {
+        return new Response(JSON.stringify({ 
+          error: authError?.message || "Failed to create user in auth system" 
+        }), { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Create comprehensive profile with new structure
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .insert({
+          id: newUser.user.id,
+          name,
+          email,
+          first_name: first_name || null,
+          last_name: last_name || null,
+          phone: phone || null,
+          role_id: role.id,
+          agency_id: agency_id || null,
+          balance: Number(initial_balance) || 0,
+          is_active: true
+        });
+
+      if (profileError) {
+        // Rollback: delete the created auth user
+        await supabase.auth.admin.deleteUser(newUser.user.id);
+        return new Response(JSON.stringify({ 
+          error: `Failed to create profile: ${profileError.message}` 
+        }), { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Create initial transaction ledger entry if balance > 0
+      if (Number(initial_balance) > 0) {
+        await supabase
+          .from("transaction_ledger")
+          .insert({
+            user_id: newUser.user.id,
+            transaction_type: 'initial_credit',
+            amount: Number(initial_balance),
+            balance_before: 0,
+            balance_after: Number(initial_balance),
+            description: 'Initial balance credit',
+            metadata: {
+              created_by: user.id,
+              creation_method: 'admin_panel'
+            }
+          });
+      }
+
+      return new Response(JSON.stringify({ 
+        success: true,
+        user_id: newUser.user.id,
+        message: "User created successfully"
+      }), { 
+        status: 201,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+
+    } catch (error) {
+      return new Response(JSON.stringify({ 
+        error: `Unexpected error: ${error.message}` 
+      }), { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
   }
 
   if (method === "PATCH" && resource === "users") {
