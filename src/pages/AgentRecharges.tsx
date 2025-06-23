@@ -26,7 +26,7 @@ const AgentRecharges = () => {
   const { requests, isLoading, refetch } = useRechargeRequests({ 
     status: 'open' // Seules les demandes ouvertes pour traitement
   });
-  const updateRequest = useUpdateRechargeRequest();
+  const { updateRechargeRequest } = useUpdateRechargeRequest();
   const createTransaction = useCreateTransaction();
 
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
@@ -39,7 +39,7 @@ const AgentRecharges = () => {
     setIsProcessing(true);
     try {
       // Approuver la demande
-      await updateRequest.mutateAsync({
+      await updateRechargeRequest({
         id: request.id,
         updates: {
           status: 'resolved',
@@ -95,7 +95,7 @@ const AgentRecharges = () => {
     
     setIsProcessing(true);
     try {
-      await updateRequest.mutateAsync({
+      await updateRechargeRequest({
         id: request.id,
         updates: {
           status: 'closed',

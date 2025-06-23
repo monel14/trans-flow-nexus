@@ -1,5 +1,7 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface RechargeRequest {
   id: string;
@@ -34,7 +36,7 @@ export const useRechargeRequests = (filter?: { requester_id?: string; status?: s
         .from('request_tickets')
         .select(`
           *,
-          requester:profiles!request_tickets_requester_id_fkey (
+          profiles!request_tickets_requester_id_fkey (
             name,
             email
           ),
@@ -64,15 +66,15 @@ export const useRechargeRequests = (filter?: { requester_id?: string; status?: s
       // Transform the data to handle potential null relations
       const transformedData = (data || []).map(request => ({
         ...request,
-        requester: (request.requester && 
-          typeof request.requester === 'object' && 
-          !Array.isArray(request.requester) &&
-          'name' in request.requester &&
-          'email' in request.requester &&
-          request.requester.name !== null)
+        profiles: (request.profiles && 
+          typeof request.profiles === 'object' && 
+          !Array.isArray(request.profiles) &&
+          'name' in request.profiles &&
+          'email' in request.profiles &&
+          request.profiles.name !== null)
           ? {
-              name: request.requester.name as string,
-              email: request.requester.email as string
+              name: request.profiles.name as string,
+              email: request.profiles.email as string
             }
           : null,
         assigned_to: (request.assigned_to && 
@@ -102,61 +104,78 @@ export const useRechargeRequests = (filter?: { requester_id?: string; status?: s
 
 export const useCreateRechargeRequest = () => {
   const queryClient = useQueryClient();
-  const { mutate: createTicket, isLoading, error } = useCreateTicket();
+  const { user } = useAuth();
 
-  const handleCreateRechargeRequest = async (rechargeData: {
-    title: string;
-    description: string;
-    priority?: string;
-    requested_amount?: number;
-  }) => {
-    try {
-      await createTicket({
-        title: rechargeData.title,
-        description: rechargeData.description,
-        priority: rechargeData.priority || 'medium',
-        ticket_type: 'recharge',
-        requested_amount: rechargeData.requested_amount,
-      });
+  const mutation = useMutation({
+    mutationFn: async (rechargeData: {
+      title: string;
+      description: string;
+      priority?: string;
+      requested_amount?: number;
+    }) => {
+      if (!user?.id) throw new Error('User not authenticated');
+
+      const ticketNumber = `RCH-${Date.now()}`;
+
+      const { data, error } = await supabase
+        .from('request_tickets')
+        .insert({
+          ticket_number: ticketNumber,
+          ticket_type: 'recharge',
+          title: rechargeData.title,
+          description: rechargeData.description,
+          priority: rechargeData.priority || 'medium',
+          status: 'open',
+          requester_id: user.id,
+          requested_amount: rechargeData.requested_amount,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['recharge-requests'] });
-    } catch (err) {
-      console.error("Failed to create recharge request:", err);
-      throw err;
-    }
-  };
+    },
+  });
 
   return {
-    createRechargeRequest: handleCreateRechargeRequest,
-    isLoading,
-    error,
+    createRechargeRequest: mutation.mutateAsync,
+    isLoading: mutation.isPending,
+    error: mutation.error,
   };
 };
 
 export const useUpdateRechargeRequest = () => {
   const queryClient = useQueryClient();
-  const { mutate: updateTicket, isLoading, error } = useUpdateTicket();
 
-  const handleUpdateRechargeRequest = async ({
-    id,
-    updates,
-  }: {
-    id: string;
-    updates: Partial<RechargeRequest>;
-  }) => {
-    try {
-      await updateTicket({ id, updates });
+  const mutation = useMutation({
+    mutationFn: async ({
+      id,
+      updates,
+    }: {
+      id: string;
+      updates: Partial<RechargeRequest>;
+    }) => {
+      const { data, error } = await supabase
+        .from('request_tickets')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['recharge-requests'] });
-    } catch (err) {
-      console.error("Failed to update recharge request:", err);
-      throw err;
-    }
-  };
+    },
+  });
 
   return {
-    updateRechargeRequest: handleUpdateRechargeRequest,
-    isLoading,
-    error,
+    updateRechargeRequest: mutation.mutateAsync,
+    isLoading: mutation.isPending,
+    error: mutation.error,
   };
 };
-
-import { useCreateTicket, useUpdateTicket } from './useSupportTickets';

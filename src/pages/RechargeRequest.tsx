@@ -22,7 +22,7 @@ import { fr } from 'date-fns/locale';
 const RechargeRequest = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const createRechargeRequest = useCreateRechargeRequest();
+  const { createRechargeRequest, isLoading: isCreating } = useCreateRechargeRequest();
   const { requests, isLoading, refetch } = useRechargeRequests({ 
     requester_id: user?.id 
   });
@@ -61,7 +61,7 @@ const RechargeRequest = () => {
     setIsSubmitting(true);
 
     try {
-      await createRechargeRequest.mutateAsync({
+      await createRechargeRequest({
         title: formData.title,
         description: formData.description,
         requested_amount: amount,
@@ -224,9 +224,9 @@ const RechargeRequest = () => {
               <Button 
                 type="submit" 
                 className="w-full"
-                disabled={isSubmitting}
+                disabled={isSubmitting || isCreating}
               >
-                {isSubmitting ? 'Envoi en cours...' : 'Soumettre la demande'}
+                {isSubmitting || isCreating ? 'Envoi en cours...' : 'Soumettre la demande'}
               </Button>
             </form>
           </CardContent>
