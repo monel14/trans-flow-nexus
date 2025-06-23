@@ -236,6 +236,66 @@ export type Database = {
           },
         ]
       }
+      commission_transfers: {
+        Row: {
+          amount: number
+          commission_record_id: string
+          created_at: string
+          id: string
+          processed_at: string | null
+          recipient_id: string
+          reference_number: string
+          status: string
+          transfer_data: Json | null
+          transfer_method: string
+          transfer_type: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          commission_record_id: string
+          created_at?: string
+          id?: string
+          processed_at?: string | null
+          recipient_id: string
+          reference_number: string
+          status?: string
+          transfer_data?: Json | null
+          transfer_method: string
+          transfer_type: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          commission_record_id?: string
+          created_at?: string
+          id?: string
+          processed_at?: string | null
+          recipient_id?: string
+          reference_number?: string
+          status?: string
+          transfer_data?: Json | null
+          transfer_method?: string
+          transfer_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_transfers_commission_record_id_fkey"
+            columns: ["commission_record_id"]
+            isOneToOne: false
+            referencedRelation: "commission_records"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commission_transfers_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -378,6 +438,63 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: []
+      }
+      operation_validations: {
+        Row: {
+          balance_impact: number
+          commission_calculated: number
+          created_at: string
+          id: string
+          operation_id: string
+          updated_at: string
+          validated_at: string | null
+          validation_data: Json | null
+          validation_notes: string | null
+          validation_status: string
+          validator_id: string
+        }
+        Insert: {
+          balance_impact?: number
+          commission_calculated?: number
+          created_at?: string
+          id?: string
+          operation_id: string
+          updated_at?: string
+          validated_at?: string | null
+          validation_data?: Json | null
+          validation_notes?: string | null
+          validation_status: string
+          validator_id: string
+        }
+        Update: {
+          balance_impact?: number
+          commission_calculated?: number
+          created_at?: string
+          id?: string
+          operation_id?: string
+          updated_at?: string
+          validated_at?: string | null
+          validation_data?: Json | null
+          validation_notes?: string | null
+          validation_status?: string
+          validator_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operation_validations_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: false
+            referencedRelation: "operations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operation_validations_validator_id_fkey"
+            columns: ["validator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       operations: {
         Row: {
@@ -528,6 +645,69 @@ export type Database = {
             columns: ["role_id"]
             isOneToOne: false
             referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recharge_operations: {
+        Row: {
+          agent_id: string
+          amount: number
+          balance_after: number
+          balance_before: number
+          created_at: string
+          id: string
+          metadata: Json | null
+          processed_at: string | null
+          recharge_method: string
+          reference_number: string
+          status: string
+          ticket_id: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          amount: number
+          balance_after?: number
+          balance_before?: number
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          processed_at?: string | null
+          recharge_method: string
+          reference_number: string
+          status?: string
+          ticket_id: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          amount?: number
+          balance_after?: number
+          balance_before?: number
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          processed_at?: string | null
+          recharge_method?: string
+          reference_number?: string
+          status?: string
+          ticket_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recharge_operations_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recharge_operations_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "request_tickets"
             referencedColumns: ["id"]
           },
         ]

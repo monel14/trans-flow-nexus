@@ -93,13 +93,13 @@ export const useSupportTickets = (filter?: {
         profiles: (ticket.profiles && 
           typeof ticket.profiles === 'object' && 
           'name' in ticket.profiles &&
-          ticket.profiles.name !== null)
+          (ticket.profiles as any).name !== null)
           ? ticket.profiles as { name: string; email: string }
           : null,
         assigned_to: (ticket.assigned_to && 
           typeof ticket.assigned_to === 'object' && 
           'name' in ticket.assigned_to &&
-          ticket.assigned_to.name !== null)
+          (ticket.assigned_to as any).name !== null)
           ? ticket.assigned_to as { name: string; email: string }
           : null
       }));
@@ -140,7 +140,7 @@ export const useTicketComments = (ticketId: string) => {
         profiles: (comment.profiles && 
           typeof comment.profiles === 'object' && 
           'name' in comment.profiles &&
-          comment.profiles.name !== null)
+          (comment.profiles as any).name !== null)
           ? comment.profiles as { name: string; email: string }
           : null
       }));

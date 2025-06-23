@@ -40,7 +40,7 @@ export const useAgencies = () => {
         chef_agence: (agency.chef_agence && 
           typeof agency.chef_agence === 'object' && 
           'name' in agency.chef_agence &&
-          agency.chef_agence.name !== null) 
+          (agency.chef_agence as any).name !== null) 
           ? agency.chef_agence as { name: string; email: string }
           : null
       }));

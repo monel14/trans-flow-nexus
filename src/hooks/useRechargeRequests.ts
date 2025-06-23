@@ -63,7 +63,7 @@ export const useRechargeRequests = (filter?: { status?: string; requester_id?: s
         profiles: (request.profiles && 
           typeof request.profiles === 'object' && 
           'name' in request.profiles &&
-          request.profiles.name !== null)
+          (request.profiles as any).name !== null)
           ? request.profiles as { name: string; email: string }
           : null
       }));
