@@ -810,6 +810,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_user_agency_id: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      get_user_role: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       is_admin_general: {
         Args: Record<PropertyKey, never>
         Returns: boolean
