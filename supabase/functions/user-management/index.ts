@@ -1,23 +1,74 @@
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-
-// Utilisation du client Supabase pour functions Deno
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 async function handler(req: Request): Promise<Response> {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
   const { method } = req;
   const url = new URL(req.url);
   const resource = url.searchParams.get("resource");
   const role = url.searchParams.get("role");
   const agency_filter = url.searchParams.get("agency_id");
 
-  // Authentification rudimentaire par header (à renforcer!)
-  const auth = req.headers.get("authorization");
-  if (!auth || !auth.startsWith("Bearer ")) {
-    return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 });
+  // Enhanced JWT authentication using Supabase Auth
+  const authHeader = req.headers.get("authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return new Response(JSON.stringify({ error: "Unauthorized: Missing or invalid authorization header" }), { 
+      status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
+  const token = authHeader.replace("Bearer ", "");
+  
+  // Verify JWT token with Supabase
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+  if (authError || !user) {
+    return new Response(JSON.stringify({ error: "Unauthorized: Invalid token" }), { 
+      status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
+  // Get current user's role to ensure they have permission for user management
+  const { data: currentUserProfile, error: profileError } = await supabase
+    .from("profiles")
+    .select(`
+      role_id,
+      agency_id,
+      is_active,
+      roles:role_id(name)
+    `)
+    .eq("id", user.id)
+    .single();
+
+  if (profileError || !currentUserProfile?.is_active) {
+    return new Response(JSON.stringify({ error: "User profile not found or inactive" }), { 
+      status: 403,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
+  const currentUserRole = currentUserProfile.roles?.name;
+  
+  // Check if user has permission for user management
+  if (!['admin_general', 'chef_agence'].includes(currentUserRole)) {
+    return new Response(JSON.stringify({ error: "Insufficient permissions for user management" }), { 
+      status: 403,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
   }
 
   if (method === "GET" && resource === "users") {
