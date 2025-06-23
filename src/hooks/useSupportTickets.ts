@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -85,22 +84,20 @@ export const useSupportTickets = (filter?: { status?: string; requester_id?: str
       const transformedData = (data || []).map(ticket => ({
         ...ticket,
         profiles: (ticket.profiles && 
-          typeof ticket.profiles === 'object' && 
           !Array.isArray(ticket.profiles) &&
+          typeof ticket.profiles === 'object' &&
           'name' in ticket.profiles &&
-          'email' in ticket.profiles &&
-          ticket.profiles.name !== null)
+          'email' in ticket.profiles)
           ? {
               name: ticket.profiles.name as string,
               email: ticket.profiles.email as string
             }
           : null,
         assigned_to: (ticket.assigned_to && 
-          typeof ticket.assigned_to === 'object' && 
           !Array.isArray(ticket.assigned_to) &&
+          typeof ticket.assigned_to === 'object' &&
           'name' in ticket.assigned_to &&
-          'email' in ticket.assigned_to &&
-          ticket.assigned_to.name !== null)
+          'email' in ticket.assigned_to)
           ? {
               name: ticket.assigned_to.name as string,
               email: ticket.assigned_to.email as string
@@ -145,11 +142,10 @@ export const useTicketComments = (ticketId: string) => {
       const transformedData = (data || []).map(comment => ({
         ...comment,
         profiles: (comment.profiles && 
-          typeof comment.profiles === 'object' && 
           !Array.isArray(comment.profiles) &&
+          typeof comment.profiles === 'object' &&
           'name' in comment.profiles &&
-          'email' in comment.profiles &&
-          comment.profiles.name !== null)
+          'email' in comment.profiles)
           ? {
               name: comment.profiles.name as string,
               email: comment.profiles.email as string

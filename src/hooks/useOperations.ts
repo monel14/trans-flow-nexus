@@ -89,11 +89,10 @@ export const useOperations = (filter?: {
       const transformedData = (data || []).map(operation => ({
         ...operation,
         initiator: (operation.initiator && 
-          typeof operation.initiator === 'object' && 
           !Array.isArray(operation.initiator) &&
+          typeof operation.initiator === 'object' &&
           'name' in operation.initiator &&
-          'email' in operation.initiator &&
-          operation.initiator.name !== null)
+          'email' in operation.initiator)
           ? {
               name: operation.initiator.name as string,
               email: operation.initiator.email as string

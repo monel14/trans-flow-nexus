@@ -67,22 +67,20 @@ export const useRechargeRequests = (filter?: { requester_id?: string; status?: s
       const transformedData = (data || []).map(request => ({
         ...request,
         profiles: (request.profiles && 
-          typeof request.profiles === 'object' && 
           !Array.isArray(request.profiles) &&
+          typeof request.profiles === 'object' &&
           'name' in request.profiles &&
-          'email' in request.profiles &&
-          request.profiles.name !== null)
+          'email' in request.profiles)
           ? {
               name: request.profiles.name as string,
               email: request.profiles.email as string
             }
           : null,
         assigned_to: (request.assigned_to && 
-          typeof request.assigned_to === 'object' && 
           !Array.isArray(request.assigned_to) &&
+          typeof request.assigned_to === 'object' &&
           'name' in request.assigned_to &&
-          'email' in request.assigned_to &&
-          request.assigned_to.name !== null)
+          'email' in request.assigned_to)
           ? {
               name: request.assigned_to.name as string,
               email: request.assigned_to.email as string
