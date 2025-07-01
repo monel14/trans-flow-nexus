@@ -145,8 +145,10 @@ const FieldEditor: React.FC<FieldEditorProps> = ({ operationTypeId, fields }) =>
       if (editField) {
         await updateField.mutateAsync({
           id: editField.id,
-          operation_type_id: operationTypeId,
-          ...fieldData,
+          updates: {
+            operation_type_id: operationTypeId,
+            ...fieldData,
+          }
         });
         toast({ 
           title: "Succès", 
