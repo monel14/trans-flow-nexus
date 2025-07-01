@@ -114,9 +114,11 @@ def main():
     
     # Test credentials - try different combinations
     test_credentials = [
-        {"email": "admin@transflownexus.com", "password": "Admin123!"},
-        {"email": "agent@transflownexus.com", "password": "Agent123!"},
-        {"email": "test@example.com", "password": "password123"}
+        {"email": "admin@transflow.com", "password": "admin123"},
+        {"email": "sousadmin@transflow.com", "password": "sousadmin123"},
+        {"email": "chef@transflow.com", "password": "chef123"},
+        {"email": "agent@transflow.com", "password": "agent123"},
+        {"email": "dev@transflow.com", "password": "dev123"}
     ]
     
     print("\n🔒 Testing Supabase Connection and Authentication")
