@@ -1,284 +1,512 @@
-
-import React, { useState, useMemo } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Search, Filter, Download, AlertTriangle, XCircle, Info, RefreshCw } from "lucide-react";
+import React, { useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useErrorLogs, useClearErrorLogs } from '@/hooks/useErrorLogs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+import { 
+  AlertTriangle, 
+  Bug,
+  RefreshCw,
+  Search,
+  Trash2,
+  Eye,
+  Download,
+  Filter,
+  Calendar,
+  Server,
+  Database,
+  Code
+} from 'lucide-react';
+import { formatDate } from '@/lib/utils';
 
 const ErrorLogs = () => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterLevel, setFilterLevel] = useState("all");
-  const [refreshKey, setRefreshKey] = useState(0);
+  const { user } = useAuth();
+  const { toast } = useToast();
+  
+  // État des filtres
+  const [filters, setFilters] = useState({
+    level: 'all',
+    source: 'all',
+    search: '',
+    dateFrom: '',
+    dateTo: ''
+  });
+  
+  // État des modales
+  const [selectedLog, setSelectedLog] = useState<any>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-  // Données simulées plus réalistes pour les journaux d'erreurs
-  const mockLogs = useMemo(() => [
-    {
-      id: 1,
-      timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString(), // il y a 5 minutes
-      level: "error",
-      message: "Échec de connexion à la base de données",
-      source: "database.connection",
-      user: "system",
-      details: "Connection timeout after 30 seconds"
-    },
-    {
-      id: 2,
-      timestamp: new Date(Date.now() - 1000 * 60 * 15).toISOString(), // il y a 15 minutes
-      level: "warning",
-      message: "Tentative de connexion échouée",
-      source: "auth.login",
-      user: "user@example.com",
-      details: "Invalid credentials provided"
-    },
-    {
-      id: 3,
-      timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // il y a 30 minutes
-      level: "info",
-      message: "Nouvelle session utilisateur créée",
-      source: "auth.session",
-      user: "admin@transflow.com",
-      details: "Session ID: abc123xyz"
-    },
-    {
-      id: 4,
-      timestamp: new Date(Date.now() - 1000 * 60 * 45).toISOString(), // il y a 45 minutes
-      level: "error",
-      message: "Erreur de validation des données",
-      source: "api.validation",
-      user: "agent@transflow.com",
-      details: "Required field 'amount' is missing"
-    },
-    {
-      id: 5,
-      timestamp: new Date(Date.now() - 1000 * 60 * 60).toISOString(), // il y a 1 heure
-      level: "warning",
-      message: "Limite de taux atteinte",
-      source: "api.rateLimit",
-      user: "system",
-      details: "Rate limit exceeded for IP 192.168.1.100"
-    },
-  ], [refreshKey]);
+  // Hooks
+  const { data: errorLogs = [], isLoading, refetch } = useErrorLogs(filters);
+  const clearLogs = useClearErrorLogs();
 
-  const getLevelIcon = (level: string) => {
-    switch (level) {
-      case 'error':
-        return <XCircle className="h-4 w-4 text-red-500" />;
-      case 'warning':
-        return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
-      case 'info':
-        return <Info className="h-4 w-4 text-blue-500" />;
-      default:
-        return <Info className="h-4 w-4" />;
+  const getLevelBadge = (level: string) => {
+    const variants = {
+      'error': 'bg-red-100 text-red-800 border-red-300',
+      'warning': 'bg-yellow-100 text-yellow-800 border-yellow-300',
+      'info': 'bg-blue-100 text-blue-800 border-blue-300',
+      'debug': 'bg-gray-100 text-gray-800 border-gray-300'
+    };
+    
+    const icons = {
+      'error': AlertTriangle,
+      'warning': AlertTriangle,
+      'info': Bug,
+      'debug': Code
+    };
+    
+    const Icon = icons[level as keyof typeof icons] || Bug;
+
+    return (
+      <Badge className={variants[level as keyof typeof variants] || variants.error}>
+        <Icon className="h-3 w-3 mr-1" />
+        {level.toUpperCase()}
+      </Badge>
+    );
+  };
+
+  const getSourceIcon = (source: string) => {
+    const icons = {
+      'api': Server,
+      'database': Database,
+      'frontend': Code,
+      'system': Bug
+    };
+    
+    const Icon = icons[source as keyof typeof icons] || Bug;
+    return <Icon className="h-4 w-4" />;
+  };
+
+  const handleViewDetail = (log: any) => {
+    setSelectedLog(log);
+    setIsDetailModalOpen(true);
+  };
+
+  const handleClearLogs = async () => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer tous les logs ? Cette action ne peut pas être annulée.')) {
+      return;
+    }
+
+    try {
+      await clearLogs.mutateAsync({ beforeDate: new Date().toISOString() });
+      toast({
+        title: "Logs supprimés",
+        description: "Tous les logs ont été supprimés avec succès",
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de la suppression des logs",
+        variant: "destructive"
+      });
     }
   };
 
-  const getLevelBadge = (level: string) => {
-    const variants: { [key: string]: "destructive" | "secondary" | "default" } = {
-      error: "destructive",
-      warning: "secondary",
-      info: "default"
-    };
-    return <Badge variant={variants[level] || "default"}>{level.toUpperCase()}</Badge>;
-  };
-
-  const filteredLogs = useMemo(() => {
-    return mockLogs.filter(log => {
-      const matchesSearch = log.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           log.source.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           log.user.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesLevel = filterLevel === "all" || log.level === filterLevel;
-      return matchesSearch && matchesLevel;
-    });
-  }, [mockLogs, searchTerm, filterLevel]);
-
-  const stats = useMemo(() => {
-    const last24h = Date.now() - 24 * 60 * 60 * 1000;
-    const recentLogs = mockLogs.filter(log => new Date(log.timestamp).getTime() > last24h);
-    
-    return {
-      errors: recentLogs.filter(log => log.level === 'error').length,
-      warnings: recentLogs.filter(log => log.level === 'warning').length,
-      errorRate: ((recentLogs.filter(log => log.level === 'error').length / Math.max(recentLogs.length, 1)) * 100).toFixed(1)
-    };
-  }, [mockLogs]);
-
-  const handleExport = () => {
-    const csv = [
-      ['Timestamp', 'Level', 'Message', 'Source', 'User', 'Details'],
-      ...filteredLogs.map(log => [
+  const exportLogs = () => {
+    // TODO: Implémenter l'export des logs
+    const csvContent = [
+      ['Timestamp', 'Level', 'Source', 'Message', 'Context'].join(','),
+      ...errorLogs.map(log => [
         log.timestamp,
         log.level,
-        log.message,
         log.source,
-        log.user,
-        log.details
-      ])
-    ].map(row => row.join(',')).join('\n');
+        `"${log.message.replace(/"/g, '""')}"`,
+        `"${JSON.stringify(log.context || {}).replace(/"/g, '""')}"`
+      ].join(','))
+    ].join('\n');
 
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `error-logs-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
   };
 
-  const handleRefresh = () => {
-    setRefreshKey(prev => prev + 1);
+  const updateFilter = (key: string, value: string) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
   };
 
-  const formatTimestamp = (timestamp: string) => {
-    return new Date(timestamp).toLocaleString('fr-FR', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
-  };
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p>Chargement des logs d'erreurs...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const errorCount = errorLogs.filter(log => log.level === 'error').length;
+  const warningCount = errorLogs.filter(log => log.level === 'warning').length;
+  const todayCount = errorLogs.filter(log => {
+    const logDate = new Date(log.timestamp);
+    const today = new Date();
+    return logDate.toDateString() === today.toDateString();
+  }).length;
 
   return (
-    <div className="max-w-6xl mx-auto py-8 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      {/* En-tête */}
+      <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold mb-2">Journaux d'Erreurs</h1>
-          <p className="text-gray-600">
-            Surveillance et analyse des erreurs système en temps réel.
+          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+            <Bug className="h-8 w-8" />
+            Journaux d'Erreurs Système
+          </h1>
+          <p className="text-gray-600 mt-2">
+            Surveillez et diagnostiquez les erreurs de l'application
           </p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={handleRefresh} variant="outline" className="flex items-center gap-2">
-            <RefreshCw className="h-4 w-4" />
+          <Button variant="outline" onClick={exportLogs}>
+            <Download className="h-4 w-4 mr-2" />
+            Exporter
+          </Button>
+          <Button variant="outline" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4 mr-2" />
             Actualiser
           </Button>
-          <Button onClick={handleExport} variant="outline" className="flex items-center gap-2">
-            <Download className="h-4 w-4" />
-            Exporter
+          <Button variant="destructive" onClick={handleClearLogs}>
+            <Trash2 className="h-4 w-4 mr-2" />
+            Vider les logs
           </Button>
         </div>
       </div>
 
-      {/* Filtres et recherche */}
+      {/* Statistiques rapides */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-red-600">
+                {errorCount}
+              </div>
+              <div className="text-sm text-gray-600 flex items-center justify-center gap-1">
+                <AlertTriangle className="h-4 w-4" />
+                Erreurs
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-yellow-600">
+                {warningCount}
+              </div>
+              <div className="text-sm text-gray-600 flex items-center justify-center gap-1">
+                <AlertTriangle className="h-4 w-4" />
+                Avertissements
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">
+                {todayCount}
+              </div>
+              <div className="text-sm text-gray-600 flex items-center justify-center gap-1">
+                <Calendar className="h-4 w-4" />
+                Aujourd'hui
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-gray-600">
+                {errorLogs.length}
+              </div>
+              <div className="text-sm text-gray-600 flex items-center justify-center gap-1">
+                <Bug className="h-4 w-4" />
+                Total
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filtres */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Filter className="h-5 w-5" />
-            Filtres
+            Filtres de Recherche
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="search">Recherche</Label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="Rechercher dans les logs..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  id="search"
+                  placeholder="Message d'erreur..."
+                  value={filters.search}
+                  onChange={(e) => updateFilter('search', e.target.value)}
                   className="pl-10"
                 />
               </div>
             </div>
-            <div className="w-full md:w-48">
-              <Select value={filterLevel} onValueChange={setFilterLevel}>
+
+            <div className="space-y-2">
+              <Label>Niveau</Label>
+              <Select value={filters.level} onValueChange={(value) => updateFilter('level', value)}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Niveau" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tous les niveaux</SelectItem>
-                  <SelectItem value="error">Erreurs</SelectItem>
-                  <SelectItem value="warning">Avertissements</SelectItem>
-                  <SelectItem value="info">Informations</SelectItem>
+                  <SelectItem value="error">Erreur</SelectItem>
+                  <SelectItem value="warning">Avertissement</SelectItem>
+                  <SelectItem value="info">Info</SelectItem>
+                  <SelectItem value="debug">Debug</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Source</Label>
+              <Select value={filters.source} onValueChange={(value) => updateFilter('source', value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toutes les sources</SelectItem>
+                  <SelectItem value="api">API</SelectItem>
+                  <SelectItem value="database">Base de données</SelectItem>
+                  <SelectItem value="frontend">Frontend</SelectItem>
+                  <SelectItem value="system">Système</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="date-from">Date de début</Label>
+              <Input
+                id="date-from"
+                type="datetime-local"
+                value={filters.dateFrom}
+                onChange={(e) => updateFilter('dateFrom', e.target.value)}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="date-to">Date de fin</Label>
+              <Input
+                id="date-to"
+                type="datetime-local"
+                value={filters.dateTo}
+                onChange={(e) => updateFilter('dateTo', e.target.value)}
+              />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Statistiques rapides */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Erreurs (24h)</p>
-                <p className="text-2xl font-bold text-red-600">{stats.errors}</p>
-              </div>
-              <XCircle className="h-8 w-8 text-red-500" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Avertissements (24h)</p>
-                <p className="text-2xl font-bold text-yellow-600">{stats.warnings}</p>
-              </div>
-              <AlertTriangle className="h-8 w-8 text-yellow-500" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Taux d'erreur (%)</p>
-                <p className="text-2xl font-bold text-green-600">{stats.errorRate}%</p>
-              </div>
-              <Info className="h-8 w-8 text-green-500" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Table des logs */}
+      {/* Liste des logs */}
       <Card>
         <CardHeader>
-          <CardTitle>Logs Récents ({filteredLogs.length})</CardTitle>
+          <CardTitle>
+            Logs d'Erreurs ({errorLogs.length} entrées)
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Timestamp</TableHead>
-                <TableHead>Niveau</TableHead>
-                <TableHead>Message</TableHead>
-                <TableHead>Source</TableHead>
-                <TableHead>Utilisateur</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredLogs.map((log) => (
-                <TableRow key={log.id} className="cursor-pointer hover:bg-gray-50">
-                  <TableCell className="font-mono text-sm">{formatTimestamp(log.timestamp)}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {getLevelIcon(log.level)}
-                      {getLevelBadge(log.level)}
-                    </div>
-                  </TableCell>
-                  <TableCell>{log.message}</TableCell>
-                  <TableCell className="font-mono text-sm">{log.source}</TableCell>
-                  <TableCell>{log.user}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          
-          {filteredLogs.length === 0 && (
-            <div className="text-center py-8 text-gray-500">
-              Aucun log trouvé avec les critères de recherche actuels.
+          {errorLogs.length > 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Timestamp</TableHead>
+                    <TableHead>Niveau</TableHead>
+                    <TableHead>Source</TableHead>
+                    <TableHead>Message</TableHead>
+                    <TableHead>Utilisateur</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {errorLogs.map((log) => (
+                    <TableRow key={log.id}>
+                      <TableCell className="font-mono text-xs">
+                        {formatDate(log.timestamp)}
+                      </TableCell>
+                      <TableCell>
+                        {getLevelBadge(log.level)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {getSourceIcon(log.source)}
+                          <span className="capitalize">{log.source}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="max-w-md">
+                        <p className="truncate" title={log.message}>
+                          {log.message}
+                        </p>
+                      </TableCell>
+                      <TableCell>
+                        {log.user_id ? (
+                          <div className="flex flex-col">
+                            <span className="text-sm">{log.user_name || 'Utilisateur'}</span>
+                            <span className="text-xs text-gray-500">{log.user_id.slice(-8)}</span>
+                          </div>
+                        ) : (
+                          <span className="text-gray-500">Système</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleViewDetail(log)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-center py-12 text-gray-500">
+              <Bug className="h-16 w-16 mx-auto mb-4 opacity-50" />
+              <h3 className="text-lg font-medium mb-2">Aucun log trouvé</h3>
+              <p className="mb-4">
+                {Object.values(filters).some(f => f && f !== 'all')
+                  ? 'Aucun log ne correspond aux filtres sélectionnés'
+                  : 'Aucun log d\'erreur enregistré'
+                }
+              </p>
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Modale de détail */}
+      <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Bug className="h-5 w-5" />
+              Détail du Log d'Erreur
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedLog && (
+            <div className="space-y-6">
+              {/* Informations principales */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Timestamp</Label>
+                  <p className="font-mono">{formatDate(selectedLog.timestamp)}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Niveau</Label>
+                  <div className="mt-1">
+                    {getLevelBadge(selectedLog.level)}
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Source</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    {getSourceIcon(selectedLog.source)}
+                    <span className="capitalize">{selectedLog.source}</span>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Utilisateur</Label>
+                  <p>{selectedLog.user_name || selectedLog.user_id || 'Système'}</p>
+                </div>
+              </div>
+
+              {/* Message d'erreur */}
+              <div>
+                <Label className="text-sm font-medium text-gray-500">Message d'erreur</Label>
+                <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-800 font-mono text-sm">{selectedLog.message}</p>
+                </div>
+              </div>
+
+              {/* Stack trace */}
+              {selectedLog.stack_trace && (
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Stack Trace</Label>
+                  <div className="mt-2 p-3 bg-gray-50 border rounded-lg">
+                    <pre className="text-xs text-gray-800 whitespace-pre-wrap overflow-x-auto">
+                      {selectedLog.stack_trace}
+                    </pre>
+                  </div>
+                </div>
+              )}
+
+              {/* Contexte */}
+              {selectedLog.context && Object.keys(selectedLog.context).length > 0 && (
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Contexte</Label>
+                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <pre className="text-sm text-blue-800 whitespace-pre-wrap overflow-x-auto">
+                      {JSON.stringify(selectedLog.context, null, 2)}
+                    </pre>
+                  </div>
+                </div>
+              )}
+
+              {/* URL et requête HTTP si applicable */}
+              {selectedLog.request_url && (
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">URL de la requête</Label>
+                  <div className="mt-2 p-3 bg-gray-50 border rounded-lg">
+                    <p className="font-mono text-sm break-all">{selectedLog.request_url}</p>
+                  </div>
+                </div>
+              )}
+
+              {selectedLog.request_method && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium text-gray-500">Méthode HTTP</Label>
+                    <Badge variant="outline" className="mt-1">
+                      {selectedLog.request_method}
+                    </Badge>
+                  </div>
+                  {selectedLog.response_status && (
+                    <div>
+                      <Label className="text-sm font-medium text-gray-500">Status HTTP</Label>
+                      <Badge 
+                        variant={selectedLog.response_status >= 400 ? "destructive" : "default"}
+                        className="mt-1"
+                      >
+                        {selectedLog.response_status}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
