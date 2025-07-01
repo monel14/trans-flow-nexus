@@ -146,7 +146,7 @@ const OperationTypeModalForm: React.FC<Props> = ({ isOpen, onClose, operationTyp
       if (operationType) {
         await updateOperationType.mutateAsync({
           id: operationType.id,
-          ...formData,
+          updates: formData,
         });
         toast({ 
           title: "Succès", 
