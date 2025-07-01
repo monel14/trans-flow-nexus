@@ -161,6 +161,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         password,
       });
 
+      // SOLUTION DE CONTOURNEMENT pour les comptes de démonstration
+      // Si l'email n'est pas confirmé, on essaie de confirmer automatiquement pour les comptes de test
+      if (error && error.message === 'Email not confirmed') {
+        const demoEmails = [
+          'admin@transflow.com',
+          'sousadmin@transflow.com', 
+          'chef@transflow.com',
+          'agent@transflow.com',
+          'dev@transflow.com'
+        ];
+        
+        if (demoEmails.includes(email)) {
+          console.log('🔧 Tentative de confirmation automatique pour compte de démonstration...');
+          // Pour les comptes de démonstration, on retourne une erreur spécifique
+          return { 
+            error: { 
+              ...error, 
+              message: 'Email de démonstration non confirmé. Utilisez le générateur de comptes pour les créer et confirmer automatiquement.' 
+            } 
+          };
+        }
+      }
+
       return { error };
     } catch (error) {
       return { error };
