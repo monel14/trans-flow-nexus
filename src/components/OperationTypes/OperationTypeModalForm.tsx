@@ -177,8 +177,7 @@ const OperationTypeModalForm: React.FC<Props> = ({ isOpen, onClose, operationTyp
       if (editingField) {
         await updateField.mutateAsync({
           id: editingField.id,
-          operation_type_id: operationType!.id,
-          ...fieldData,
+          updates: fieldData,
         });
         toast({ title: "Succès", description: "Champ modifié avec succès." });
       } else {
