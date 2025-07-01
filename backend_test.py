@@ -5,8 +5,9 @@ import uuid
 from datetime import datetime
 
 class SupabaseAPITester:
-    def __init__(self, supabase_url="https://khgbnikgsptoflokvtzu.supabase.co"):
+    def __init__(self, supabase_url="https://khgbnikgsptoflokvtzu.supabase.co", api_key="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtoZ2JuaWtnc3B0b2Zsb2t2dHp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5NTY5MjEsImV4cCI6MjA2NTUzMjkyMX0.ivvTK10biQNOHd4cAc9zmMDApkm4xMGImEpCVsMzp4M"):
         self.supabase_url = supabase_url
+        self.api_key = api_key
         self.token = None
         self.tests_run = 0
         self.tests_passed = 0
@@ -18,7 +19,12 @@ class SupabaseAPITester:
         url = f"{self.supabase_url}/{endpoint}"
         
         if not headers:
-            headers = {'Content-Type': 'application/json'}
+            headers = {
+                'Content-Type': 'application/json',
+                'apikey': self.api_key
+            }
+        else:
+            headers['apikey'] = self.api_key
         
         if self.token:
             headers['Authorization'] = f'Bearer {self.token}'
