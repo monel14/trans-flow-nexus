@@ -125,7 +125,7 @@ const DemoAccountsGenerator = () => {
           return false;
         }
 
-        // 4. Mettre à jour le profil avec le rôle et l'agence
+        // 5. Mettre à jour le profil avec le rôle et l'agence
         const { error: profileError } = await supabase
           .from('profiles')
           .update({
