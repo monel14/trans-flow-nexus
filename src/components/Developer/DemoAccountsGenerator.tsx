@@ -113,7 +113,7 @@ const DemoAccountsGenerator = () => {
         // 3. Attendre un moment pour que le trigger crée le profil
         await new Promise(resolve => setTimeout(resolve, 1000));
 
-        // 3. Récupérer l'ID du rôle
+        // 4. Récupérer l'ID du rôle
         const { data: roleData, error: roleError } = await supabase
           .from('roles')
           .select('id')
