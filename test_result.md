@@ -80,3 +80,73 @@ When testing is requested:
 **User Problem Statement**: Test Supabase connection and authentication in the TransFlow Nexus application.
 
 **Next Steps**: Fix RLS policies in Supabase database to resolve the infinite recursion issue.
+
+## Issues Fixed
+
+### 1. Hook Return Type Issues
+- **Problem**: Dashboard components were trying to destructure `{ operations }` directly from `useOperations` hook, but React Query hooks return objects with `data`, `isLoading`, `error` properties
+- **Solution**: Updated all dashboard components to use correct destructuring:
+  ```typescript
+  const { data: operations = [], isLoading: operationsLoading } = useOperations();
+  ```
+
+### 2. Missing Exports from useOperationTypes Hook
+- **Problem**: Several components were importing types and hooks that didn't exist
+- **Solution**: Added missing exports:
+  - `CommissionRule` interface
+  - `useOperationTypeFields` (alias for `useOperationTypeWithFields`)
+  - `useCommissionRules` hook
+  - `useCreateCommissionRule` hook
+  - `useUpdateCommissionRule` hook
+
+### 3. Missing Export from useCommissions Hook  
+- **Problem**: `useCommissionsStats` was imported but not exported
+- **Solution**: Added `useCommissionsStats` as an alias for `useCommissionSummary`
+
+### 4. Function Parameter Type Mismatches
+- **Problem**: Several mutation hooks expected different parameter structures
+- **Solution**: Fixed parameter structures in:
+  - `useUpdateOperationType` - now expects `{ id, updates }` structure
+  - `useUpdateOperationTypeField` - now expects `{ id, updates }` structure  
+  - `useDeleteOperationTypeField` - now expects just the field ID string
+
+### 5. Data Type Inconsistencies
+- **Problem**: `options` field in OperationTypeField was passed as objects but expected as strings
+- **Solution**: Fixed data transformation in FieldConfigForm to convert option objects to string arrays
+
+## Critical Issue Identified: Supabase RLS Infinite Recursion ❌
+
+### Problem
+The authentication system is **completely broken** due to infinite recursion in Supabase Row Level Security (RLS) policies:
+
+- **Error**: "infinite recursion detected in policy for relation profiles"
+- **Cause**: RLS policies on the `profiles` table reference the `profiles` table itself
+- **Impact**: Complete authentication failure, no database access possible
+
+### Root Cause
+In `/app/supabase/migrations/20250625120002_comprehensive_rls_policies.sql`, the policy:
+```sql
+CREATE POLICY "profiles_admin_access" ON public.profiles
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles p  -- ← RECURSION HERE!
+      JOIN public.roles r ON p.role_id = r.id
+      WHERE p.id = auth.uid() 
+      AND r.name IN ('admin_general', 'sous_admin')
+    )
+  );
+```
+
+### Solution Created ✅
+Created `/app/fix_rls_recursion.sql` with:
+1. **Security Definer Functions**: Break recursion by using `SECURITY DEFINER` functions
+2. **Helper Functions**: 
+   - `get_user_role_name(uuid)` 
+   - `get_user_agency_id(uuid)`
+   - `user_has_role(uuid, text[])`
+3. **Non-recursive Policies**: Rewrite all RLS policies to use helper functions
+
+### Next Steps Required
+1. **Apply the SQL fix** to Supabase database via SQL Editor
+2. **Test authentication** after applying the fix
+3. **Generate demo accounts** using the DemoAccountsGenerator component
