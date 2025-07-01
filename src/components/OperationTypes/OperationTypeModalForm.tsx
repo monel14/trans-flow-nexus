@@ -228,10 +228,7 @@ const OperationTypeModalForm: React.FC<Props> = ({ isOpen, onClose, operationTyp
   const handleDeleteField = async (field: OperationTypeField) => {
     if (confirm(`Êtes-vous sûr de vouloir supprimer le champ "${field.label}" ?`)) {
       try {
-        await deleteField.mutateAsync({
-          id: field.id,
-          operation_type_id: field.operation_type_id
-        });
+        await deleteField.mutateAsync(field.id);
         toast({ title: "Succès", description: "Champ supprimé avec succès." });
       } catch (error: any) {
         toast({ 
