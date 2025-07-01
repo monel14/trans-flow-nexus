@@ -73,13 +73,15 @@ const DemoAccountsGenerator = () => {
 
   const createDemoAccount = async (account: DemoAccount) => {
     try {
-      // 1. Créer le compte utilisateur
+      // 1. Créer le compte utilisateur avec confirmation automatique
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: account.email,
         password: account.password,
         options: {
+          emailRedirectTo: undefined, // Désactiver la redirection email
           data: {
             name: account.name,
+            email_confirm: true // Tenter la confirmation automatique
           }
         }
       });
