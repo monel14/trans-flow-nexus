@@ -1,143 +1,212 @@
-
 import React, { useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useOperations } from '@/hooks/useOperations';
+import { useOperationTypes } from '@/hooks/useOperationTypes';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Eye, Download, Filter } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { 
+  History, 
+  Search, 
+  Filter, 
+  Eye, 
+  Calendar,
+  FileText,
+  Download,
+  RefreshCw
+} from 'lucide-react';
+import { formatCurrency, formatDate } from '@/lib/utils';
 
 const OperationHistory = () => {
-  const [dateFilter, setDateFilter] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const { user } = useAuth();
+  
+  // État des filtres
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [selectedOperation, setSelectedOperation] = useState<any>(null);
 
-  // Données mockées
-  const operations = [
-    {
-      id: 'OP001',
-      date: '2024-01-15 14:30',
-      type: 'Transfert Western Union',
-      amount: 50000,
-      fees: 1250,
-      total: 51250,
-      beneficiary: '+226 70 XX XX XX',
-      status: 'Validée',
-      proof: 'proof_001.jpg',
-      commission: 1250,
-      validator: 'Admin Général',
-      rejectReason: null
-    },
-    {
-      id: 'OP002',
-      date: '2024-01-15 10:15',
-      type: 'Paiement Orange Money',
-      amount: 25000,
-      fees: 375,
-      total: 25375,
-      beneficiary: '+226 75 XX XX XX',
-      status: 'En attente',
-      proof: 'proof_002.jpg',
-      commission: 375,
-      validator: null,
-      rejectReason: null
-    },
-    {
-      id: 'OP003',
-      date: '2024-01-14 16:45',
-      type: 'Recharge Moov',
-      amount: 10000,
-      fees: 100,
-      total: 10100,
-      beneficiary: '+226 76 XX XX XX',
-      status: 'Rejetée',
-      proof: 'proof_003.jpg',
-      commission: 0,
-      validator: 'Sous-Admin',
-      rejectReason: 'Preuve illisible'
-    }
-  ];
+  // Hooks
+  const { data: operationTypes } = useOperationTypes(user?.agenceId);
+  const { data: operations, isLoading, refetch } = useOperations({
+    agentId: user?.id,
+    search: searchTerm,
+    status: statusFilter !== 'all' ? statusFilter : undefined,
+    typeId: typeFilter !== 'all' ? typeFilter : undefined,
+    dateFrom,
+    dateTo,
+    orderBy: 'created_at',
+    order: 'desc'
+  });
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'Validée':
-        return <Badge className="bg-green-100 text-green-800">Validée</Badge>;
-      case 'En attente':
-        return <Badge className="bg-yellow-100 text-yellow-800">En attente</Badge>;
-      case 'Rejetée':
-        return <Badge className="bg-red-100 text-red-800">Rejetée</Badge>;
-      default:
-        return <Badge variant="secondary">{status}</Badge>;
-    }
+    const variants = {
+      'pending': 'bg-yellow-100 text-yellow-800 border-yellow-300',
+      'validated': 'bg-green-100 text-green-800 border-green-300', 
+      'rejected': 'bg-red-100 text-red-800 border-red-300',
+      'processing': 'bg-blue-100 text-blue-800 border-blue-300'
+    };
+    
+    const labels = {
+      'pending': 'En attente',
+      'validated': 'Validée',
+      'rejected': 'Rejetée', 
+      'processing': 'En cours'
+    };
+
+    return (
+      <Badge className={variants[status as keyof typeof variants] || variants.pending}>
+        {labels[status as keyof typeof labels] || status}
+      </Badge>
+    );
   };
 
-  const filteredOperations = operations.filter(op => {
-    const matchesSearch = searchTerm === '' || 
-      op.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      op.beneficiary.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = typeFilter === '' || op.type === typeFilter;
-    const matchesStatus = statusFilter === '' || op.status === statusFilter;
-    
-    return matchesSearch && matchesType && matchesStatus;
-  });
+  const resetFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+    setTypeFilter('all');
+    setDateFrom('');
+    setDateTo('');
+  };
+
+  const exportData = () => {
+    // TODO: Implémenter l'export CSV/PDF
+    console.log('Export des données...');
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p>Chargement de l'historique...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Historique des Opérations</h1>
-        <p className="text-gray-600">Consultez toutes vos transactions</p>
+      {/* En-tête */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+          <History className="h-8 w-8" />
+          Historique des Opérations
+        </h1>
+        <p className="text-gray-600 mt-2">
+          Consultez et filtrez toutes vos transactions
+        </p>
       </div>
 
-      {/* Filtres */}
+      {/* Zone de filtres */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center">
-            <Filter className="mr-2 h-5 w-5" />
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="h-5 w-5" />
             Filtres de Recherche
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <Input
-                placeholder="Rechercher (ID, bénéficiaire...)"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Recherche libre */}
+            <div className="space-y-2">
+              <Label htmlFor="search">Recherche</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  id="search"
+                  placeholder="ID, bénéficiaire..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
             </div>
-            <div>
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Type d'opération" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Tous les types</SelectItem>
-                  <SelectItem value="Transfert Western Union">Western Union</SelectItem>
-                  <SelectItem value="Paiement Orange Money">Orange Money</SelectItem>
-                  <SelectItem value="Recharge Moov">Moov Money</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
+
+            {/* Filtre par statut */}
+            <div className="space-y-2">
+              <Label>Statut</Label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Statut" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tous les statuts</SelectItem>
-                  <SelectItem value="Validée">Validée</SelectItem>
-                  <SelectItem value="En attente">En attente</SelectItem>
-                  <SelectItem value="Rejetée">Rejetée</SelectItem>
+                  <SelectItem value="all">Tous les statuts</SelectItem>
+                  <SelectItem value="pending">En attente</SelectItem>
+                  <SelectItem value="validated">Validées</SelectItem>
+                  <SelectItem value="rejected">Rejetées</SelectItem>
+                  <SelectItem value="processing">En cours</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Button variant="outline" className="w-full">
-                <Download className="mr-2 h-4 w-4" />
-                Export
-              </Button>
+
+            {/* Filtre par type */}
+            <div className="space-y-2">
+              <Label>Type d'opération</Label>
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les types</SelectItem>
+                  {operationTypes?.map((type) => (
+                    <SelectItem key={type.id} value={type.id}>
+                      {type.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Actions */}
+            <div className="space-y-2">
+              <Label>Actions</Label>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={resetFilters}>
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="sm" onClick={exportData}>
+                  <Download className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Filtres de date */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t">
+            <div className="space-y-2">
+              <Label htmlFor="date-from">Date de début</Label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  id="date-from"
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="date-to">Date de fin</Label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  id="date-to"
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
             </div>
           </div>
         </CardContent>
@@ -145,50 +214,180 @@ const OperationHistory = () => {
 
       {/* Tableau des opérations */}
       <Card>
-        <CardHeader>
-          <CardTitle>Opérations ({filteredOperations.length})</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>
+            Résultats ({operations?.length || 0} opérations)
+          </CardTitle>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Actualiser
+          </Button>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Date/Heure</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Montant</TableHead>
-                  <TableHead>Frais</TableHead>
-                  <TableHead>Total Débité</TableHead>
-                  <TableHead>Bénéficiaire</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead>Commission</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredOperations.map((operation) => (
-                  <TableRow key={operation.id}>
-                    <TableCell className="font-medium">{operation.id}</TableCell>
-                    <TableCell>{operation.date}</TableCell>
-                    <TableCell>{operation.type}</TableCell>
-                    <TableCell>{operation.amount.toLocaleString()} FCFA</TableCell>
-                    <TableCell>{operation.fees.toLocaleString()} FCFA</TableCell>
-                    <TableCell className="font-medium">{operation.total.toLocaleString()} FCFA</TableCell>
-                    <TableCell>{operation.beneficiary}</TableCell>
-                    <TableCell>{getStatusBadge(operation.status)}</TableCell>
-                    <TableCell>
-                      {operation.commission > 0 ? `${operation.commission.toLocaleString()} FCFA` : '-'}
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
+          {operations && operations.length > 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ID</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Montant</TableHead>
+                    <TableHead>Bénéficiaire</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead>Commission</TableHead>
+                    <TableHead>Validateur</TableHead>
+                    <TableHead className="text-center">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {operations.map((operation) => (
+                    <TableRow key={operation.id}>
+                      <TableCell className="font-mono text-xs">
+                        {operation.reference_number}
+                      </TableCell>
+                      <TableCell>
+                        {formatDate(operation.created_at)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-medium">
+                            {operation.operation_types?.name || 'N/A'}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {operation.operation_types?.description}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-semibold">
+                        {formatCurrency(operation.amount)}
+                      </TableCell>
+                      <TableCell>
+                        {operation.operation_data?.beneficiaire || 
+                         operation.operation_data?.destinataire || 
+                         operation.operation_data?.client || 'N/A'}
+                      </TableCell>
+                      <TableCell>
+                        {getStatusBadge(operation.status)}
+                      </TableCell>
+                      <TableCell className="font-semibold text-green-600">
+                        {formatCurrency(operation.commission_amount || 0)}
+                      </TableCell>
+                      <TableCell>
+                        {operation.validator?.name || 
+                         operation.profiles?.name || 'Non assigné'}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setSelectedOperation(operation)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                            <DialogHeader>
+                              <DialogTitle className="flex items-center gap-2">
+                                <FileText className="h-5 w-5" />
+                                Détails de l'Opération #{operation.reference_number}
+                              </DialogTitle>
+                            </DialogHeader>
+                            
+                            {selectedOperation && (
+                              <div className="space-y-6">
+                                {/* Informations générales */}
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <Label className="text-sm font-medium text-gray-500">Date</Label>
+                                    <p>{formatDate(selectedOperation.created_at)}</p>
+                                  </div>
+                                  <div>
+                                    <Label className="text-sm font-medium text-gray-500">Statut</Label>
+                                    <div className="mt-1">
+                                      {getStatusBadge(selectedOperation.status)}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <Label className="text-sm font-medium text-gray-500">Type</Label>
+                                    <p>{selectedOperation.operation_types?.name}</p>
+                                  </div>
+                                  <div>
+                                    <Label className="text-sm font-medium text-gray-500">Montant</Label>
+                                    <p className="font-semibold">{formatCurrency(selectedOperation.amount)}</p>
+                                  </div>
+                                </div>
+
+                                {/* Données de l'opération */}
+                                <div>
+                                  <Label className="text-sm font-medium text-gray-500">Informations saisies</Label>
+                                  <div className="mt-2 p-3 bg-gray-50 rounded-lg">
+                                    <pre className="text-sm">
+                                      {JSON.stringify(selectedOperation.operation_data, null, 2)}
+                                    </pre>
+                                  </div>
+                                </div>
+
+                                {/* Commission */}
+                                <div>
+                                  <Label className="text-sm font-medium text-gray-500">Commission</Label>
+                                  <p className="text-green-600 font-semibold">
+                                    {formatCurrency(selectedOperation.commission_amount || 0)}
+                                  </p>
+                                </div>
+
+                                {/* Message de rejet si applicable */}
+                                {selectedOperation.status === 'rejected' && selectedOperation.error_message && (
+                                  <div>
+                                    <Label className="text-sm font-medium text-red-500">Motif de rejet</Label>
+                                    <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                                      <p className="text-red-800">{selectedOperation.error_message}</p>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* TODO: Afficher la preuve (image) */}
+                                {selectedOperation.proof_url && (
+                                  <div>
+                                    <Label className="text-sm font-medium text-gray-500">Preuve jointe</Label>
+                                    <div className="mt-2">
+                                      <img 
+                                        src={selectedOperation.proof_url} 
+                                        alt="Preuve de transaction"
+                                        className="max-w-full h-auto rounded-lg border"
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </DialogContent>
+                        </Dialog>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-center py-12 text-gray-500">
+              <History className="h-16 w-16 mx-auto mb-4 opacity-50" />
+              <h3 className="text-lg font-medium mb-2">Aucune opération trouvée</h3>
+              <p className="mb-4">
+                {searchTerm || statusFilter !== 'all' || typeFilter !== 'all' || dateFrom || dateTo
+                  ? 'Essayez de modifier vos filtres de recherche'
+                  : 'Vous n\'avez pas encore d\'opérations'
+                }
+              </p>
+              {(!searchTerm && statusFilter === 'all' && typeFilter === 'all' && !dateFrom && !dateTo) && (
+                <Button onClick={() => window.location.href = '/operations/new'}>
+                  Créer votre première opération
+                </Button>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
