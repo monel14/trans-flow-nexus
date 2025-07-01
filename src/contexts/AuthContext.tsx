@@ -50,10 +50,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchUserProfile = async (userId: string): Promise<UserProfile | null> => {
     try {
-      // Récupérer le profil de base
+      // Récupérer le profil avec le rôle et l'agence
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('*')
+        .select(`
+          *,
+          roles (name, label),
+          agencies (name)
+        `)
         .eq('id', userId)
         .single();
 
@@ -62,30 +66,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return null;
       }
 
-      // Récupérer le rôle de l'utilisateur
-      const { data: userRole, error: roleError } = await supabase
-        .from('user_roles')
-        .select(`
-          role_id,
-          agency_id,
-          roles (name, label),
-          agencies (name)
-        `)
-        .eq('user_id', userId)
-        .eq('is_active', true)
-        .single();
-
-      if (roleError) {
-        console.error('Error fetching user role:', roleError);
-      }
-
       const userProfile: UserProfile = {
         id: profile.id,
         email: profile.email,
         name: profile.name,
-        role: userRole?.roles?.name as UserProfile['role'] || 'agent',
-        agenceId: userRole?.agency_id?.toString(),
-        agenceName: userRole?.agencies?.name,
+        role: profile.roles?.name as UserProfile['role'] || 'agent',
+        agenceId: profile.agency_id?.toString(),
+        agenceName: profile.agencies?.name,
         isActive: profile.is_active ?? true,
         balance: profile.balance || 0,
         commissions: 0, // À calculer si nécessaire
