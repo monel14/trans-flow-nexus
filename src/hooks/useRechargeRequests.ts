@@ -1,175 +1,186 @@
-
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSupabaseQuery, useSupabaseMutation } from './useSupabase';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface RechargeRequest {
   id: string;
-  ticket_number: string;
-  title: string;
-  description: string;
-  priority: string;
-  status: string;
-  requested_amount: number | null;
   requester_id: string;
-  assigned_to_id: string | null;
-  resolved_by_id: string | null;
+  assigned_to_id?: string;
+  ticket_type: string;
+  subject: string;
+  description?: string;
+  priority: 'low' | 'normal' | 'high' | 'urgent';
+  status: 'pending' | 'approved' | 'rejected' | 'processing';
+  requested_amount?: number;
+  approved_amount?: number;
+  resolution_notes?: string;
+  resolved_at?: string;
   created_at: string;
   updated_at: string;
-  resolved_at: string | null;
-  resolution_notes: string | null;
+  
+  // Relations
   profiles?: {
+    id: string;
     name: string;
     email: string;
-  } | null;
-  assigned_to?: {
+    balance?: number;
+  };
+  assigned_profiles?: {
+    id: string;
     name: string;
     email: string;
-  } | null;
+  };
 }
 
-export const useRechargeRequests = (filter?: { requester_id?: string; status?: string }) => {
-  const { data: requests = [], isLoading, error, refetch } = useQuery({
-    queryKey: ['recharge-requests', filter],
-    queryFn: async (): Promise<RechargeRequest[]> => {
-      let query = supabase
+export interface CreateRechargeRequestData {
+  amount: number;
+  priority: 'low' | 'normal' | 'high' | 'urgent';
+  description?: string;
+  requester_id: string;
+  assigned_to_id?: string;
+  ticket_type: string;
+}
+
+// Hook to get recharge requests for current user
+export function useRechargeRequests(userId?: string) {
+  return useSupabaseQuery(
+    ['recharge-requests', userId],
+    async () => {
+      const { data, error } = await supabase
         .from('request_tickets')
         .select(`
           *,
-          profiles!request_tickets_requester_id_fkey (
-            name,
-            email
-          ),
-          assigned_to:profiles!request_tickets_assigned_to_id_fkey (
-            name,
-            email
-          )
+          profiles!request_tickets_requester_id_fkey (id, name, email, balance),
+          assigned_profiles:profiles!request_tickets_assigned_to_id_fkey (id, name, email)
         `)
-        .eq('ticket_type', 'recharge')
+        .eq('requester_id', userId)
+        .eq('ticket_type', 'recharge_request')
         .order('created_at', { ascending: false });
-
-      if (filter?.requester_id) {
-        query = query.eq('requester_id', filter.requester_id);
-      }
-
-      if (filter?.status) {
-        query = query.eq('status', filter.status);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error fetching recharge requests:', error);
-        throw error;
-      }
-
-      // Transform the data to handle potential null relations
-      const transformedData = (data || []).map(request => ({
-        ...request,
-        profiles: request.profiles && 
-          typeof request.profiles === 'object' && 
-          !Array.isArray(request.profiles)
-          ? {
-              name: (request.profiles as any).name as string,
-              email: (request.profiles as any).email as string
-            }
-          : null,
-        assigned_to: request.assigned_to && 
-          typeof request.assigned_to === 'object' && 
-          !Array.isArray(request.assigned_to)
-          ? {
-              name: (request.assigned_to as any).name as string,
-              email: (request.assigned_to as any).email as string
-            }
-          : null
-      }));
-
-      return transformedData;
+      
+      if (error) throw error;
+      return data as RechargeRequest[];
     },
-  });
+    {
+      enabled: !!userId,
+    }
+  );
+}
 
-  return {
-    requests,
-    isLoading,
-    error,
-    refetch
-  };
-};
+// Hook to get agent recharge requests for Chef d'agence
+export function useAgentRechargeRequests(agencyId?: string) {
+  return useSupabaseQuery(
+    ['agent-recharge-requests', agencyId],
+    async () => {
+      const { data, error } = await supabase
+        .from('request_tickets')
+        .select(`
+          *,
+          profiles!request_tickets_requester_id_fkey (id, name, email, balance, agency_id),
+          assigned_profiles:profiles!request_tickets_assigned_to_id_fkey (id, name, email)
+        `)
+        .eq('ticket_type', 'recharge_request')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      // Filter by agency (since we can't do complex joins directly)
+      const filteredData = data?.filter(request => 
+        request.profiles?.agency_id === parseInt(agencyId || '0')
+      ) || [];
+      
+      return filteredData as RechargeRequest[];
+    },
+    {
+      enabled: !!agencyId,
+    }
+  );
+}
 
-export const useCreateRechargeRequest = () => {
-  const queryClient = useQueryClient();
-  const { user } = useAuth();
-
-  const mutation = useMutation({
-    mutationFn: async (rechargeData: {
-      title: string;
-      description: string;
-      priority?: string;
-      requested_amount?: number;
-    }) => {
-      if (!user?.id) throw new Error('User not authenticated');
-
-      const ticketNumber = `RCH-${Date.now()}`;
-
+// Hook to create a new recharge request
+export function useCreateRechargeRequest() {
+  return useSupabaseMutation<RechargeRequest, CreateRechargeRequestData>(
+    async (requestData) => {
       const { data, error } = await supabase
         .from('request_tickets')
         .insert({
-          ticket_number: ticketNumber,
-          ticket_type: 'recharge',
-          title: rechargeData.title,
-          description: rechargeData.description,
-          priority: rechargeData.priority || 'medium',
-          status: 'open',
-          requester_id: user.id,
-          requested_amount: rechargeData.requested_amount,
+          requester_id: requestData.requester_id,
+          assigned_to_id: requestData.assigned_to_id,
+          ticket_type: requestData.ticket_type,
+          subject: `Demande de recharge - ${requestData.amount.toLocaleString()} FCFA`,
+          description: requestData.description,
+          priority: requestData.priority,
+          status: 'pending',
+          requested_amount: requestData.amount,
         })
-        .select()
+        .select(`
+          *,
+          profiles!request_tickets_requester_id_fkey (id, name, email, balance)
+        `)
         .single();
-
+      
       if (error) throw error;
-      return data;
+      return data as RechargeRequest;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['recharge-requests'] });
+    {
+      invalidateQueries: [['recharge-requests'], ['agent-recharge-requests']],
+      successMessage: 'Demande de recharge envoyée',
+      errorMessage: 'Erreur lors de l\'envoi de la demande',
+    }
+  );
+}
+
+// Hook to process a recharge request (approve/reject)
+export function useProcessRecharge() {
+  return useSupabaseMutation<any, {
+    requestId: string;
+    action: 'approve' | 'reject';
+    notes?: string;
+    amount?: number;
+  }>(
+    async ({ requestId, action, notes, amount }) => {
+      if (action === 'approve' && amount) {
+        // Use the atomic function for approval with fund transfer
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process_recharge_atomic`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          },
+          body: JSON.stringify({
+            request_id: requestId,
+            approved_amount: amount,
+            notes,
+          }),
+        });
+        
+        const result = await response.json();
+        
+        if (!result.success) {
+          throw new Error(result.error || 'Erreur lors de l\'approbation');
+        }
+        
+        return result;
+      } else {
+        // Simple rejection
+        const { data, error } = await supabase
+          .from('request_tickets')
+          .update({
+            status: 'rejected',
+            resolution_notes: notes,
+            resolved_at: new Date().toISOString(),
+          })
+          .eq('id', requestId)
+          .select()
+          .single();
+        
+        if (error) throw error;
+        return data;
+      }
     },
-  });
-
-  return {
-    createRechargeRequest: mutation.mutateAsync,
-    isLoading: mutation.isPending,
-    error: mutation.error,
-  };
-};
-
-export const useUpdateRechargeRequest = () => {
-  const queryClient = useQueryClient();
-
-  const mutation = useMutation({
-    mutationFn: async ({
-      id,
-      updates,
-    }: {
-      id: string;
-      updates: Partial<RechargeRequest>;
-    }) => {
-      const { data, error } = await supabase
-        .from('request_tickets')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['recharge-requests'] });
-    },
-  });
-
-  return {
-    updateRechargeRequest: mutation.mutateAsync,
-    isLoading: mutation.isPending,
-    error: mutation.error,
-  };
-};
+    {
+      invalidateQueries: [['recharge-requests'], ['agent-recharge-requests'], ['transaction-ledger']],
+      successMessage: 'Demande traitée avec succès',
+      errorMessage: 'Erreur lors du traitement',
+    }
+  );
+}

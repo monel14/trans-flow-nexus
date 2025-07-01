@@ -1,265 +1,218 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSupabaseQuery, useSupabaseMutation } from './useSupabase';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface SupportTicket {
   id: string;
-  title: string;
-  description: string;
-  ticket_number: string;
-  ticket_type: string;
-  status: string;
-  priority: string;
-  requested_amount: number | null;
   requester_id: string;
-  assigned_to_id: string | null;
-  resolved_by_id: string | null;
+  assigned_to_id?: string;
+  ticket_type: string;
+  subject: string;
+  description?: string;
+  priority: 'low' | 'normal' | 'high' | 'urgent';
+  status: 'open' | 'assigned' | 'in_progress' | 'pending_user' | 'resolved' | 'closed';
+  resolution_notes?: string;
+  resolved_at?: string;
   created_at: string;
   updated_at: string;
-  resolved_at: string | null;
-  resolution_notes: string | null;
+  
+  // Relations
   profiles?: {
+    id: string;
     name: string;
     email: string;
-  } | null;
-  assigned_to?: {
+    role: string;
+  };
+  assigned_profiles?: {
+    id: string;
     name: string;
     email: string;
-  } | null;
+  };
 }
 
-export interface TicketComment {
-  id: string;
-  ticket_id: string;
-  author_id: string;
-  comment_text: string;
-  is_internal: boolean;
-  created_at: string;
-  updated_at: string;
-  profiles?: {
-    name: string;
-    email: string;
-  } | null;
-}
-
-export const useSupportTickets = (filter?: { status?: string; requester_id?: string; ticket_type?: string }) => {
-  const { data: tickets = [], isLoading, error, refetch } = useQuery({
-    queryKey: ['support-tickets', filter],
-    queryFn: async (): Promise<SupportTicket[]> => {
-      let query = supabase
+// Hook to get all support tickets (for admins)
+export function useSupportTickets() {
+  const { user } = useAuth();
+  
+  return useSupabaseQuery(
+    ['support-tickets', user?.role],
+    async () => {
+      const { data, error } = await supabase
         .from('request_tickets')
         .select(`
           *,
-          profiles!request_tickets_requester_id_fkey (
-            name,
-            email
-          ),
-          assigned_to:profiles!request_tickets_assigned_to_id_fkey (
-            name,
-            email
-          )
+          profiles!request_tickets_requester_id_fkey (id, name, email, role_id),
+          assigned_profiles:profiles!request_tickets_assigned_to_id_fkey (id, name, email)
         `)
         .order('created_at', { ascending: false });
-
-      if (filter?.status) {
-        query = query.eq('status', filter.status);
-      }
-
-      if (filter?.requester_id) {
-        query = query.eq('requester_id', filter.requester_id);
-      }
-
-      if (filter?.ticket_type) {
-        query = query.eq('ticket_type', filter.ticket_type);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error fetching support tickets:', error);
-        throw error;
-      }
-
-      // Transform the data to handle potential null relations
-      const transformedData = (data || []).map(ticket => ({
-        ...ticket,
-        profiles: ticket.profiles && 
-          typeof ticket.profiles === 'object' && 
-          !Array.isArray(ticket.profiles)
-          ? {
-              name: (ticket.profiles as any).name as string,
-              email: (ticket.profiles as any).email as string
-            }
-          : null,
-        assigned_to: ticket.assigned_to && 
-          typeof ticket.assigned_to === 'object' && 
-          !Array.isArray(ticket.assigned_to)
-          ? {
-              name: (ticket.assigned_to as any).name as string,
-              email: (ticket.assigned_to as any).email as string
-            }
-          : null
-      }));
-
-      return transformedData;
+      
+      if (error) throw error;
+      return data as SupportTicket[];
     },
-  });
+    {
+      enabled: user?.role && ['admin_general', 'sous_admin'].includes(user.role),
+    }
+  );
+}
 
-  return {
-    tickets,
-    isLoading,
-    error,
-    refetch
-  };
-};
-
-export const useTicketComments = (ticketId: string) => {
-  const { data: comments = [], isLoading, error, refetch } = useQuery({
-    queryKey: ['ticket-comments', ticketId],
-    queryFn: async (): Promise<TicketComment[]> => {
+// Hook to get tickets assigned to current user
+export function useMyTickets() {
+  const { user } = useAuth();
+  
+  return useSupabaseQuery(
+    ['my-tickets', user?.id],
+    async () => {
       const { data, error } = await supabase
-        .from('request_ticket_comments')
+        .from('request_tickets')
         .select(`
           *,
-          profiles!request_ticket_comments_author_id_fkey (
-            name,
-            email
-          )
+          profiles!request_tickets_requester_id_fkey (id, name, email, role_id)
         `)
-        .eq('ticket_id', ticketId)
-        .order('created_at', { ascending: true });
-
-      if (error) {
-        console.error('Error fetching ticket comments:', error);
-        throw error;
-      }
-
-      // Transform the data to handle potential null relations
-      const transformedData = (data || []).map(comment => ({
-        ...comment,
-        profiles: comment.profiles && 
-          typeof comment.profiles === 'object' && 
-          !Array.isArray(comment.profiles)
-          ? {
-              name: (comment.profiles as any).name as string,
-              email: (comment.profiles as any).email as string
-            }
-          : null
-      }));
-
-      return transformedData;
+        .eq('assigned_to_id', user?.id)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data as SupportTicket[];
     },
-    enabled: !!ticketId,
-  });
+    {
+      enabled: !!user?.id,
+    }
+  );
+}
 
-  return {
-    comments,
-    isLoading,
-    error,
-    refetch
-  };
-};
-
-export const useCreateTicket = () => {
-  const queryClient = useQueryClient();
-  const { user } = useAuth();
-
-  return useMutation({
-    mutationFn: async (ticketData: {
-      title: string;
-      description: string;
-      priority?: string;
-      ticket_type?: string;
-    }) => {
-      if (!user?.id) throw new Error('User not authenticated');
-
-      const ticketNumber = `SUP-${Date.now()}`;
-
+// Hook to create a support ticket
+export function useCreateSupportTicket() {
+  return useSupabaseMutation<SupportTicket, {
+    subject: string;
+    description?: string;
+    ticket_type: string;
+    priority: 'low' | 'normal' | 'high' | 'urgent';
+    requester_id: string;
+  }>(
+    async (ticketData) => {
       const { data, error } = await supabase
         .from('request_tickets')
         .insert({
-          ticket_number: ticketNumber,
-          ticket_type: ticketData.ticket_type || 'support',
-          title: ticketData.title,
-          description: ticketData.description,
-          priority: ticketData.priority || 'medium',
+          ...ticketData,
           status: 'open',
-          requester_id: user.id,
         })
-        .select()
+        .select(`
+          *,
+          profiles!request_tickets_requester_id_fkey (id, name, email)
+        `)
         .single();
-
+      
       if (error) throw error;
-      return data;
+      return data as SupportTicket;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['support-tickets'] });
-    },
-  });
-};
+    {
+      invalidateQueries: [['support-tickets']],
+      successMessage: 'Ticket créé avec succès',
+      errorMessage: 'Erreur lors de la création du ticket',
+    }
+  );
+}
 
-export const useUpdateTicket = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ 
-      id, 
-      updates 
-    }: { 
-      id: string; 
-      updates: Partial<SupportTicket> 
-    }) => {
+// Hook to assign a ticket
+export function useAssignTicket() {
+  return useSupabaseMutation<SupportTicket, {
+    ticketId: string;
+    assigneeId: string;
+  }>(
+    async ({ ticketId, assigneeId }) => {
       const { data, error } = await supabase
         .from('request_tickets')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['support-tickets'] });
-    },
-  });
-};
-
-export const useAddTicketComment = () => {
-  const queryClient = useQueryClient();
-  const { user } = useAuth();
-
-  return useMutation({
-    mutationFn: async ({
-      ticketId,
-      commentText,
-      isInternal = false,
-    }: {
-      ticketId: string;
-      commentText: string;
-      isInternal?: boolean;
-    }) => {
-      if (!user?.id) throw new Error('User not authenticated');
-
-      const { data, error } = await supabase
-        .from('request_ticket_comments')
-        .insert({
-          ticket_id: ticketId,
-          author_id: user.id,
-          comment_text: commentText,
-          is_internal: isInternal,
+        .update({
+          assigned_to_id: assigneeId,
+          status: 'assigned',
+          updated_at: new Date().toISOString(),
         })
+        .eq('id', ticketId)
+        .select(`
+          *,
+          profiles!request_tickets_requester_id_fkey (id, name, email),
+          assigned_profiles:profiles!request_tickets_assigned_to_id_fkey (id, name, email)
+        `)
+        .single();
+      
+      if (error) throw error;
+      return data as SupportTicket;
+    },
+    {
+      invalidateQueries: [['support-tickets'], ['my-tickets']],
+      successMessage: 'Ticket assigné',
+      errorMessage: 'Erreur lors de l\'assignation',
+    }
+  );
+}
+
+// Hook to resolve a ticket
+export function useResolveTicket() {
+  return useSupabaseMutation<SupportTicket, {
+    ticketId: string;
+    response: string;
+    status: 'resolved' | 'in_progress' | 'pending_user';
+  }>(
+    async ({ ticketId, response, status }) => {
+      const updateData: any = {
+        resolution_notes: response,
+        status,
+        updated_at: new Date().toISOString(),
+      };
+      
+      if (status === 'resolved') {
+        updateData.resolved_at = new Date().toISOString();
+      }
+      
+      const { data, error } = await supabase
+        .from('request_tickets')
+        .update(updateData)
+        .eq('id', ticketId)
+        .select(`
+          *,
+          profiles!request_tickets_requester_id_fkey (id, name, email),
+          assigned_profiles:profiles!request_tickets_assigned_to_id_fkey (id, name, email)
+        `)
+        .single();
+      
+      if (error) throw error;
+      return data as SupportTicket;
+    },
+    {
+      invalidateQueries: [['support-tickets'], ['my-tickets']],
+      successMessage: 'Ticket mis à jour',
+      errorMessage: 'Erreur lors de la mise à jour',
+    }
+  );
+}
+
+// Hook to escalate a ticket (for sous-admin to admin)
+export function useEscalateTicket() {
+  return useSupabaseMutation<SupportTicket, {
+    ticketId: string;
+    notes: string;
+  }>(
+    async ({ ticketId, notes }) => {
+      const { data, error } = await supabase
+        .from('request_tickets')
+        .update({
+          assigned_to_id: null, // Remove current assignment
+          status: 'open',
+          priority: 'high', // Escalate priority
+          description: `${notes}\n\n--- ESCALATION ---\nTicket escaladé par un sous-administrateur.`,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', ticketId)
         .select()
         .single();
-
+      
       if (error) throw error;
-      return data;
+      return data as SupportTicket;
     },
-    onSuccess: (_, { ticketId }) => {
-      queryClient.invalidateQueries({ queryKey: ['ticket-comments', ticketId] });
-    },
-  });
-};
-
-// Add the missing export that SupportRequests.tsx expects
-export const useCreateSupportTicket = useCreateTicket;
+    {
+      invalidateQueries: [['support-tickets'], ['my-tickets']],
+      successMessage: 'Ticket escaladé vers l\'administrateur général',
+      errorMessage: 'Erreur lors de l\'escalade',
+    }
+  );
+}

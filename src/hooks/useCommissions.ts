@@ -7,62 +7,52 @@ export interface Commission {
   operation_id: string;
   agent_id: string;
   chef_agence_id?: string;
-  commission_rule_id: string;
   agent_commission: number;
-  chef_commission: number;
+  chef_commission?: number;
   total_commission: number;
-  status: 'earned' | 'pending_transfer' | 'partially_paid' | 'paid';
+  commission_rule_id: string;
+  calculation_base: string;
+  status: 'pending' | 'paid' | 'processing';
   paid_at?: string;
   created_at: string;
-  updated_at: string;
   
   // Relations
-  operations?: {
+  operation?: {
     id: string;
     reference_number: string;
     amount: number;
-    operation_types: {
+    created_at: string;
+    operation_types?: {
+      id: string;
       name: string;
+      description: string;
     };
   };
-  agent?: {
+  commission_rule?: {
     id: string;
-    name: string;
-  };
-  chef_agence?: {
-    id: string;
-    name: string;
+    rule_type: 'percentage' | 'fixed';
+    percentage?: number;
+    fixed_amount?: number;
   };
 }
 
-export interface CommissionTransfer {
-  id: string;
-  commission_record_id: string;
-  transfer_type: 'agent_payment' | 'chef_payment' | 'bulk_transfer';
-  recipient_id: string;
-  amount: number;
-  transfer_method: string;
-  reference_number: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
-  processed_at?: string;
-  created_at: string;
+export interface CommissionSummary {
+  total_pending: number;
+  total_paid: number;
+  current_month: number;
+  last_month: number;
+  current_year: number;
 }
 
-// Hook to get commissions for current user
-export function useCommissions(filters?: {
+// Hook to get commissions for a user
+export function useCommissions(userId?: string, filters?: {
+  period?: string;
   status?: string;
   limit?: number;
-  offset?: number;
-  date_from?: string;
-  date_to?: string;
 }) {
-  const { user } = useAuth();
-  
   return useSupabaseQuery(
-    ['commissions', user?.id, filters],
+    ['commissions', userId, filters],
     async () => {
-      if (!user?.id) return [];
-      
       let query = supabase
         .from('commission_records')
         .select(`
@@ -71,39 +61,52 @@ export function useCommissions(filters?: {
             id,
             reference_number,
             amount,
-            operation_types (name)
+            created_at,
+            operation_types (id, name, description)
           ),
-          agent:profiles!commission_records_agent_id_fkey (id, name),
-          chef_agence:profiles!commission_records_chef_agence_id_fkey (id, name)
+          commission_rules (
+            id,
+            rule_type,
+            percentage,
+            fixed_amount
+          )
         `)
+        .eq('agent_id', userId)
         .order('created_at', { ascending: false });
 
-      // Filter based on user role
-      if (user.role === 'agent') {
-        query = query.eq('agent_id', user.id);
-      } else if (user.role === 'chef_agence') {
-        query = query.or(`chef_agence_id.eq.${user.id},agent_id.in.(select id from profiles where agency_id=${user.agenceId})`);
-      }
-      
-      // Apply additional filters
+      // Apply filters
       if (filters?.status) {
         query = query.eq('status', filters.status);
       }
       
-      if (filters?.date_from) {
-        query = query.gte('created_at', filters.date_from);
-      }
-      
-      if (filters?.date_to) {
-        query = query.lte('created_at', filters.date_to);
+      if (filters?.period) {
+        const now = new Date();
+        let dateFrom: Date;
+        
+        switch (filters.period) {
+          case 'current-month':
+            dateFrom = new Date(now.getFullYear(), now.getMonth(), 1);
+            break;
+          case 'last-month':
+            dateFrom = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            const dateTo = new Date(now.getFullYear(), now.getMonth(), 0);
+            query = query.gte('created_at', dateFrom.toISOString())
+                        .lte('created_at', dateTo.toISOString());
+            break;
+          case 'current-year':
+            dateFrom = new Date(now.getFullYear(), 0, 1);
+            break;
+          default:
+            dateFrom = new Date(0); // All time
+        }
+        
+        if (filters.period !== 'last-month' && filters.period !== 'all') {
+          query = query.gte('created_at', dateFrom.toISOString());
+        }
       }
       
       if (filters?.limit) {
         query = query.limit(filters.limit);
-      }
-      
-      if (filters?.offset) {
-        query = query.range(filters.offset, (filters.offset + (filters.limit || 10)) - 1);
       }
 
       const { data, error } = await query;
@@ -112,73 +115,78 @@ export function useCommissions(filters?: {
       return data as Commission[];
     },
     {
-      enabled: !!user?.id,
+      enabled: !!userId,
     }
   );
 }
 
-// Hook to get commission summary for current user
-export function useCommissionSummary() {
-  const { user } = useAuth();
-  
+// Hook to get commission summary
+export function useCommissionSummary(userId?: string) {
   return useSupabaseQuery(
-    ['commission-summary', user?.id],
+    ['commission-summary', userId],
     async () => {
-      if (!user?.id) return null;
-      
-      // Get commission totals based on user role
-      let query = supabase
+      const now = new Date();
+      const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+      const currentYearStart = new Date(now.getFullYear(), 0, 1);
+
+      // Get all commissions for calculations
+      const { data: allCommissions, error } = await supabase
         .from('commission_records')
-        .select('agent_commission, chef_commission, status');
-      
-      if (user.role === 'agent') {
-        query = query.eq('agent_id', user.id);
-      } else if (user.role === 'chef_agence') {
-        query = query.or(`chef_agence_id.eq.${user.id},agent_id.in.(select id from profiles where agency_id=${user.agenceId})`);
-      }
-      
-      const { data, error } = await query;
-      
+        .select('agent_commission, status, created_at')
+        .eq('agent_id', userId);
+
       if (error) throw error;
-      
-      // Calculate totals
-      const summary = data?.reduce((acc, commission) => {
-        const userCommission = user.role === 'agent' 
-          ? commission.agent_commission 
-          : commission.chef_commission;
-        
-        if (commission.status === 'earned' || commission.status === 'pending_transfer') {
-          acc.pending += userCommission;
+
+      const summary: CommissionSummary = {
+        total_pending: 0,
+        total_paid: 0,
+        current_month: 0,
+        last_month: 0,
+        current_year: 0
+      };
+
+      allCommissions?.forEach(commission => {
+        const createdAt = new Date(commission.created_at);
+        const amount = commission.agent_commission;
+
+        // Status-based totals
+        if (commission.status === 'pending') {
+          summary.total_pending += amount;
         } else if (commission.status === 'paid') {
-          acc.paid += userCommission;
+          summary.total_paid += amount;
+        }
+
+        // Period-based totals
+        if (createdAt >= currentMonthStart) {
+          summary.current_month += amount;
         }
         
-        acc.total += userCommission;
+        if (createdAt >= lastMonthStart && createdAt <= lastMonthEnd) {
+          summary.last_month += amount;
+        }
         
-        return acc;
-      }, {
-        total: 0,
-        paid: 0,
-        pending: 0,
-      }) || { total: 0, paid: 0, pending: 0 };
-      
+        if (createdAt >= currentYearStart) {
+          summary.current_year += amount;
+        }
+      });
+
       return summary;
     },
     {
-      enabled: !!user?.id,
+      enabled: !!userId,
     }
   );
 }
 
-// Hook to transfer commission (agent or chef can transfer their own)
-export function useTransferCommission() {
-  const { user } = useAuth();
-  
+// Hook to transfer commissions to balance (for Chef d'agence)
+export function useTransferCommissions() {
   return useSupabaseMutation<any, {
-    commission_record_id: string;
-    transfer_type: 'agent_payment' | 'chef_payment';
+    commission_ids: string[];
+    transfer_type: 'agent_payment' | 'chef_payment' | 'bulk_transfer';
   }>(
-    async ({ commission_record_id, transfer_type }) => {
+    async ({ commission_ids, transfer_type }) => {
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process_commission_transfer_atomic`, {
         method: 'POST',
         headers: {
@@ -186,124 +194,26 @@ export function useTransferCommission() {
           'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
         },
         body: JSON.stringify({
-          commission_record_id,
+          commission_ids,
           transfer_type,
-          recipient_id: user?.id,
         }),
       });
       
       const result = await response.json();
       
       if (!result.success) {
-        throw new Error(result.error || 'Erreur lors du transfert de commission');
+        throw new Error(result.error || 'Erreur lors du transfert');
       }
       
       return result;
     },
     {
-      invalidateQueries: [['commissions'], ['commission-summary'], ['profile']],
-      successMessage: 'Commission transférée avec succès',
-      errorMessage: 'Erreur lors du transfert de commission',
+      invalidateQueries: [['commissions'], ['commission-summary'], ['transaction-ledger']],
+      successMessage: 'Commissions transférées avec succès',
+      errorMessage: 'Erreur lors du transfert des commissions',
     }
   );
 }
 
-// Hook to get commission transfers
-export function useCommissionTransfers() {
-  const { user } = useAuth();
-  
-  return useSupabaseQuery(
-    ['commission-transfers', user?.id],
-    async () => {
-      if (!user?.id) return [];
-      
-      const { data, error } = await supabase
-        .from('commission_transfers')
-        .select(`
-          *,
-          commission_records (
-            operations (reference_number, operation_types (name))
-          )
-        `)
-        .eq('recipient_id', user.id)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data as CommissionTransfer[];
-    },
-    {
-      enabled: !!user?.id,
-    }
-  );
-}
-
-// Hook to get agency commission summary (for chef_agence)
-export function useAgencyCommissionSummary() {
-  const { user } = useAuth();
-  
-  return useSupabaseQuery(
-    ['agency-commission-summary', user?.agenceId],
-    async () => {
-      if (user?.role !== 'chef_agence' || !user?.agenceId) return null;
-      
-      // Get all commissions for agency agents
-      const { data, error } = await supabase
-        .from('commission_records')
-        .select(`
-          agent_commission,
-          chef_commission,
-          status,
-          agent_id,
-          chef_agence_id
-        `)
-        .or(`chef_agence_id.eq.${user.id},agent_id.in.(select id from profiles where agency_id=${user.agenceId})`);
-      
-      if (error) throw error;
-      
-      // Calculate agency-wide commission summary
-      const summary = data?.reduce((acc, commission) => {
-        // Chef's own commissions
-        if (commission.chef_agence_id === user.id) {
-          acc.chef_total += commission.chef_commission;
-          if (commission.status === 'paid') {
-            acc.chef_paid += commission.chef_commission;
-          } else {
-            acc.chef_pending += commission.chef_commission;
-          }
-        }
-        
-        // Agency agents' commissions
-        acc.agency_total += commission.agent_commission;
-        if (commission.status === 'paid') {
-          acc.agency_paid += commission.agent_commission;
-        } else {
-          acc.agency_pending += commission.agent_commission;
-        }
-        
-        return acc;
-      }, {
-        chef_total: 0,
-        chef_paid: 0,
-        chef_pending: 0,
-        agency_total: 0,
-        agency_paid: 0,
-        agency_pending: 0,
-      }) || {
-        chef_total: 0,
-        chef_paid: 0,
-        chef_pending: 0,
-        agency_total: 0,
-        agency_paid: 0,
-        agency_pending: 0,
-      };
-      
-      return summary;
-    },
-    {
-      enabled: user?.role === 'chef_agence' && !!user?.agenceId,
-    }
-  );
-}
-
-// Alias for useCommissionSummary for compatibility
+// Alias pour compatibilité avec les composants existants
 export const useCommissionsStats = useCommissionSummary;
