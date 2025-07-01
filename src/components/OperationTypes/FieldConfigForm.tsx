@@ -37,7 +37,7 @@ const FieldConfigForm: React.FC<FieldConfigFormProps> = ({
   });
 
   const [options, setOptions] = useState<Array<{value: string, label: string}>>(
-    field?.options || []
+    field?.options?.map(opt => typeof opt === 'string' ? {value: opt, label: opt} : opt) || []
   );
 
   const fieldTypes = [
