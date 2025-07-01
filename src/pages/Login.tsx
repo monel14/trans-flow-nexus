@@ -25,11 +25,18 @@ const Login = () => {
     try {
       const { error } = await signIn(email, password);
       if (error) {
+        let errorMessage = error.message;
+        
+        // Gestion spécifique des erreurs
+        if (error.message === 'Invalid login credentials') {
+          errorMessage = "Email ou mot de passe incorrect.";
+        } else if (error.message === 'Email not confirmed') {
+          errorMessage = "Votre email n'est pas encore confirmé. Pour les comptes de démonstration, utilisez le générateur de comptes pour créer et confirmer automatiquement les comptes.";
+        }
+        
         toast({
           title: "Erreur de connexion",
-          description: error.message === 'Invalid login credentials' 
-            ? "Email ou mot de passe incorrect." 
-            : error.message,
+          description: errorMessage,
           variant: "destructive",
         });
       } else {
