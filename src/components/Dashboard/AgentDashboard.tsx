@@ -12,8 +12,8 @@ import { useNavigate } from 'react-router-dom';
 const AgentDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { operations } = useOperations({ initiator_id: user?.id });
-  const { ledgerEntries } = useTransactionLedger(user?.id);
+  const { data: operations = [], isLoading: operationsLoading } = useOperations();
+  const { ledgerEntries, isLoading: ledgerLoading } = useTransactionLedger(user?.id);
 
   // Calcul des métriques
   const currentBalance = ledgerEntries.length > 0 
