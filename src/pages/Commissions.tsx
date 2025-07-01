@@ -1,155 +1,172 @@
 import React, { useState } from 'react';
-import { useCommissions, useCommissionsStats } from '@/hooks/useCommissions';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCommissions } from '@/hooks/useCommissions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { 
-  DollarSign, 
   TrendingUp, 
-  Calendar, 
-  Download,
-  Search,
-  Filter
+  Download, 
+  Calendar,
+  DollarSign,
+  Clock,
+  CheckCircle,
+  Filter,
+  RefreshCw
 } from 'lucide-react';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { formatCurrency, formatDate } from '@/lib/utils';
 
 const Commissions = () => {
   const { user } = useAuth();
-  const { commissions, totalCommissions, paidCommissions, pendingCommissions, isLoading } = useCommissions();
-  const { data: stats } = useCommissionsStats();
   
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [dateFilter, setDateFilter] = useState<string>('all');
+  // État des filtres
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
-  const formatAmount = (amount: number) => {
-    return new Intl.NumberFormat('fr-FR', {
-      maximumFractionDigits: 0
-    }).format(amount) + ' XOF';
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'paid': return 'bg-green-100 text-green-800';
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'paid': return 'Payée';
-      case 'pending': return 'En attente';
-      case 'cancelled': return 'Annulée';
-      default: return status;
-    }
-  };
-
-  const filteredCommissions = commissions.filter(commission => {
-    const matchesSearch = commission.operations?.reference_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      commission.operations?.operation_types?.name?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || commission.status === statusFilter;
-    
-    let matchesDate = true;
-    if (dateFilter !== 'all') {
-      const commissionDate = new Date(commission.created_at);
-      const now = new Date();
-      
-      switch (dateFilter) {
-        case 'week':
-          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          matchesDate = commissionDate >= weekAgo;
-          break;
-        case 'month':
-          const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
-          matchesDate = commissionDate >= monthAgo;
-          break;
-        case 'year':
-          const yearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
-          matchesDate = commissionDate >= yearAgo;
-          break;
-      }
-    }
-    
-    return matchesSearch && matchesStatus && matchesDate;
+  // Hooks
+  const { data: commissions, isLoading, refetch } = useCommissions(user?.id, {
+    status: statusFilter !== 'all' ? statusFilter : undefined,
+    dateFrom,
+    dateTo
   });
+
+  // Calculs des statistiques
+  const totalCommissions = commissions?.reduce((sum, c) => sum + c.agent_commission, 0) || 0;
+  const paidCommissions = commissions?.filter(c => c.status === 'paid')
+    .reduce((sum, c) => sum + c.agent_commission, 0) || 0;
+  const pendingCommissions = commissions?.filter(c => c.status === 'pending')
+    .reduce((sum, c) => sum + c.agent_commission, 0) || 0;
+
+  // Commissions du mois en cours
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+  const monthlyCommissions = commissions?.filter(c => {
+    const date = new Date(c.created_at);
+    return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+  }).reduce((sum, c) => sum + c.agent_commission, 0) || 0;
+
+  const getStatusBadge = (status: string) => {
+    const variants = {
+      'pending': 'bg-orange-100 text-orange-800 border-orange-300',
+      'paid': 'bg-green-100 text-green-800 border-green-300',
+      'processing': 'bg-blue-100 text-blue-800 border-blue-300'
+    };
+    
+    const labels = {
+      'pending': 'En attente',
+      'paid': 'Payée',
+      'processing': 'En traitement'
+    };
+
+    return (
+      <Badge className={variants[status as keyof typeof variants] || variants.pending}>
+        {labels[status as keyof typeof labels] || status}
+      </Badge>
+    );
+  };
+
+  const exportCommissions = () => {
+    // TODO: Implémenter l'export PDF/CSV
+    console.log('Export des commissions...');
+  };
+
+  const resetFilters = () => {
+    setStatusFilter('all');
+    setDateFrom('');
+    setDateTo('');
+  };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-lg">Chargement des commissions...</div>
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p>Chargement des commissions...</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Mes Commissions</h1>
-          <p className="text-gray-600">Consultez l'historique de vos gains</p>
-        </div>
-        <Button variant="outline" className="flex items-center gap-2">
-          <Download className="h-4 w-4" />
-          Exporter
-        </Button>
+      {/* En-tête */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+          <TrendingUp className="h-8 w-8" />
+          Mes Commissions
+        </h1>
+        <p className="text-gray-600 mt-2">
+          Suivez vos gains et l'évolution de vos commissions
+        </p>
       </div>
 
-      {/* Statistiques */}
+      {/* Cartes de statistiques */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
+        {/* Total Commissions */}
+        <Card className="border-l-4 border-l-blue-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Commissions</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {formatAmount(totalCommissions)}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Payées</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {formatAmount(paidCommissions)}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">En Attente</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">
-              {formatAmount(pendingCommissions)}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ce Mois</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <DollarSign className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              {formatAmount(stats?.monthlyTotal || 0)}
+              {formatCurrency(totalCommissions)}
             </div>
             <p className="text-xs text-muted-foreground">
-              {stats?.monthlyCount || 0} opérations
+              Toutes opérations confondues
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Commissions Payées */}
+        <Card className="border-l-4 border-l-green-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Commissions Payées</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {formatCurrency(paidCommissions)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Déjà versées
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Commissions En Attente */}
+        <Card className="border-l-4 border-l-orange-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">En Attente</CardTitle>
+            <Clock className="h-4 w-4 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">
+              {formatCurrency(pendingCommissions)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              À recevoir
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Commissions du Mois */}
+        <Card className="border-l-4 border-l-purple-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Ce Mois-ci</CardTitle>
+            <Calendar className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">
+              {formatCurrency(monthlyCommissions)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
             </p>
           </CardContent>
         </Card>
@@ -158,101 +175,151 @@ const Commissions = () => {
       {/* Filtres */}
       <Card>
         <CardHeader>
-          <CardTitle>Historique des Commissions</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="h-5 w-5" />
+            Filtres
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-4 mb-6">
-            <div className="flex items-center space-x-2">
-              <Search className="h-4 w-4 text-gray-400" />
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Filtre par statut */}
+            <div className="space-y-2">
+              <Label>Statut</Label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les statuts</SelectItem>
+                  <SelectItem value="pending">En attente</SelectItem>
+                  <SelectItem value="paid">Payées</SelectItem>
+                  <SelectItem value="processing">En traitement</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Date de début */}
+            <div className="space-y-2">
+              <Label htmlFor="date-from">Date de début</Label>
               <Input
-                placeholder="Rechercher par référence..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-64"
+                id="date-from"
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
               />
             </div>
             
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-48">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Statut" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les statuts</SelectItem>
-                <SelectItem value="paid">Payées</SelectItem>
-                <SelectItem value="pending">En attente</SelectItem>
-                <SelectItem value="cancelled">Annulées</SelectItem>
-              </SelectContent>
-            </Select>
+            {/* Date de fin */}
+            <div className="space-y-2">
+              <Label htmlFor="date-to">Date de fin</Label>
+              <Input
+                id="date-to"
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+              />
+            </div>
 
-            <Select value={dateFilter} onValueChange={setDateFilter}>
-              <SelectTrigger className="w-48">
-                <Calendar className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Période" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Toutes les périodes</SelectItem>
-                <SelectItem value="week">Cette semaine</SelectItem>
-                <SelectItem value="month">Ce mois</SelectItem>
-                <SelectItem value="year">Cette année</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Table des commissions */}
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left p-4 font-semibold">Date</th>
-                  <th className="text-left p-4 font-semibold">Référence</th>
-                  <th className="text-left p-4 font-semibold">Type d'opération</th>
-                  <th className="text-left p-4 font-semibold">Montant Opération</th>
-                  <th className="text-left p-4 font-semibold">Commission</th>
-                  <th className="text-left p-4 font-semibold">Statut</th>
-                  <th className="text-left p-4 font-semibold">Date de paiement</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredCommissions.map((commission) => (
-                  <tr key={commission.id} className="border-b hover:bg-gray-50">
-                    <td className="p-4">
-                      {format(new Date(commission.created_at), 'dd/MM/yyyy', { locale: fr })}
-                    </td>
-                    <td className="p-4 font-mono text-sm">
-                      {commission.operations?.reference_number || '-'}
-                    </td>
-                    <td className="p-4">
-                      {commission.operations?.operation_types?.name || '-'}
-                    </td>
-                    <td className="p-4">
-                      {commission.operations ? formatAmount(commission.operations.amount) : '-'}
-                    </td>
-                    <td className="p-4 font-semibold text-green-600">
-                      {formatAmount(commission.agent_commission)}
-                    </td>
-                    <td className="p-4">
-                      <Badge className={getStatusColor(commission.status)}>
-                        {getStatusLabel(commission.status)}
-                      </Badge>
-                    </td>
-                    <td className="p-4">
-                      {commission.paid_at 
-                        ? format(new Date(commission.paid_at), 'dd/MM/yyyy', { locale: fr })
-                        : '-'
-                      }
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            
-            {filteredCommissions.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                Aucune commission trouvée
+            {/* Actions */}
+            <div className="space-y-2">
+              <Label>Actions</Label>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={resetFilters}>
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="sm" onClick={exportCommissions}>
+                  <Download className="h-4 w-4" />
+                </Button>
               </div>
-            )}
+            </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Tableau détaillé des commissions */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>
+            Détail des Commissions ({commissions?.length || 0})
+          </CardTitle>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Actualiser
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {commissions && commissions.length > 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Opération</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Montant Opération</TableHead>
+                    <TableHead>Base de Calcul</TableHead>
+                    <TableHead>Commission</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead>Date de Paiement</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {commissions.map((commission) => (
+                    <TableRow key={commission.id}>
+                      <TableCell>
+                        {formatDate(commission.created_at)}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {commission.operations?.reference_number || 'N/A'}
+                      </TableCell>
+                      <TableCell>
+                        {commission.operations?.operation_types?.name || 'N/A'}
+                      </TableCell>
+                      <TableCell className="font-semibold">
+                        {formatCurrency(commission.operations?.amount || 0)}
+                      </TableCell>
+                      <TableCell>
+                        {commission.commission_rules?.commission_type === 'percentage' && (
+                          <span>{commission.commission_rules.percentage_rate}%</span>
+                        )}
+                        {commission.commission_rules?.commission_type === 'fixed' && (
+                          <span>Montant fixe</span>
+                        )}
+                        {commission.commission_rules?.commission_type === 'tiered' && (
+                          <span>Paliers</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="font-bold text-green-600">
+                        {formatCurrency(commission.agent_commission)}
+                      </TableCell>
+                      <TableCell>
+                        {getStatusBadge(commission.status)}
+                      </TableCell>
+                      <TableCell>
+                        {commission.paid_at ? formatDate(commission.paid_at) : '-'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-center py-12 text-gray-500">
+              <TrendingUp className="h-16 w-16 mx-auto mb-4 opacity-50" />
+              <h3 className="text-lg font-medium mb-2">Aucune commission trouvée</h3>
+              <p className="mb-4">
+                {statusFilter !== 'all' || dateFrom || dateTo
+                  ? 'Essayez de modifier vos filtres'
+                  : 'Vous n\'avez pas encore gagné de commissions'
+                }
+              </p>
+              {(!statusFilter || statusFilter === 'all') && !dateFrom && !dateTo && (
+                <Button onClick={() => window.location.href = '/operations/new'}>
+                  Créer une opération
+                </Button>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
