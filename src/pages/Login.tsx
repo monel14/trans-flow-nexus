@@ -59,7 +59,47 @@ const Login = () => {
     }
   };
 
-  const handleSignUp = async (e: React.FormEvent) => {
+  const handleQuickSignIn = async (demoEmail: string, demoPassword: string) => {
+    setEmail(demoEmail);
+    setPassword(demoPassword);
+    
+    // Attendre un moment pour que les champs soient mis à jour visuellement
+    setTimeout(async () => {
+      setIsLoading(true);
+      try {
+        const { error } = await signIn(demoEmail, demoPassword);
+        if (error) {
+          if (error.message === 'Email not confirmed') {
+            toast({
+              title: "Email non confirmé",
+              description: "Utilisation du générateur de comptes pour confirmer automatiquement...",
+              variant: "destructive",
+            });
+          } else {
+            toast({
+              title: "Erreur de connexion",
+              description: error.message,
+              variant: "destructive",
+            });
+          }
+        } else {
+          toast({
+            title: "Connexion réussie",
+            description: "Bienvenue dans TransFlow Nexus!",
+          });
+          navigate('/dashboard');
+        }
+      } catch (error) {
+        toast({
+          title: "Erreur",
+          description: "Une erreur est survenue lors de la connexion.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    }, 100);
+  };
     e.preventDefault();
     setIsLoading(true);
 
