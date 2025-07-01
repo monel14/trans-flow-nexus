@@ -195,8 +195,9 @@ const FieldEditor: React.FC<FieldEditorProps> = ({ operationTypeId, fields }) =>
     try {
       await updateField.mutateAsync({
         id: field.id,
-        operation_type_id: operationTypeId,
-        is_obsolete: !field.is_obsolete,
+        updates: {
+          is_obsolete: !field.is_obsolete,
+        }
       });
       toast({ 
         title: "Succès", 
