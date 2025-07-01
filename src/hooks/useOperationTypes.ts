@@ -113,7 +113,7 @@ export function useOperationTypeWithFields(operationTypeId: string) {
       
       // Sort fields by display_order
       if (data.operation_type_fields) {
-        data.operation_type_fields.sort((a: OperationTypeField, b: OperationTypeField) => 
+        data.operation_type_fields.sort((a: any, b: any) => 
           a.display_order - b.display_order
         );
       }
