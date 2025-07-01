@@ -1,24 +1,23 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRechargeRequests } from '@/hooks/useRechargeRequests';
+import { useRechargeRequests, useCreateRechargeRequest } from '@/hooks/useRechargeRequests';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { 
   CreditCard, 
-  Plus, 
-  History,
-  AlertCircle,
-  CheckCircle,
+  Plus,
   Clock,
+  CheckCircle,
   XCircle,
-  RefreshCw
+  History,
+  AlertTriangle,
+  Wallet
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
@@ -27,18 +26,16 @@ const RechargeRequest = () => {
   const { toast } = useToast();
   
   // État du formulaire
-  const [amount, setAmount] = useState('');
-  const [priority, setPriority] = useState('normal');
-  const [reason, setReason] = useState('');
+  const [formData, setFormData] = useState({
+    amount: '',
+    priority: 'normal',
+    description: ''
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Hooks
-  const { 
-    data: rechargeRequests, 
-    isLoading, 
-    createRequest,
-    refetch 
-  } = useRechargeRequests(user?.id);
+  const { data: requests = [], isLoading } = useRechargeRequests(user?.id);
+  const createRequest = useCreateRechargeRequest();
 
   const getStatusBadge = (status: string) => {
     const variants = {
@@ -52,19 +49,11 @@ const RechargeRequest = () => {
       'pending': 'En attente',
       'approved': 'Approuvée',
       'rejected': 'Rejetée',
-      'processing': 'En traitement'
-    };
-
-    const icons = {
-      'pending': <Clock className="h-3 w-3" />,
-      'approved': <CheckCircle className="h-3 w-3" />,
-      'rejected': <XCircle className="h-3 w-3" />,
-      'processing': <AlertCircle className="h-3 w-3" />
+      'processing': 'En cours'
     };
 
     return (
-      <Badge className={`${variants[status as keyof typeof variants] || variants.pending} flex items-center gap-1`}>
-        {icons[status as keyof typeof icons]}
+      <Badge className={variants[status as keyof typeof variants] || variants.pending}>
         {labels[status as keyof typeof labels] || status}
       </Badge>
     );
@@ -82,7 +71,7 @@ const RechargeRequest = () => {
       'low': 'Faible',
       'normal': 'Normal',
       'high': 'Élevée',
-      'urgent': 'Urgente'
+      'urgent': 'Urgent'
     };
 
     return (
@@ -95,20 +84,21 @@ const RechargeRequest = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!amount || !reason) {
+    const amount = parseFloat(formData.amount);
+    
+    if (!amount || amount <= 0) {
       toast({
-        title: "Champs manquants",
-        description: "Veuillez remplir tous les champs obligatoires",
+        title: "Erreur",
+        description: "Veuillez saisir un montant valide",
         variant: "destructive"
       });
       return;
     }
 
-    const amountValue = parseFloat(amount);
-    if (isNaN(amountValue) || amountValue <= 0) {
+    if (amount < 10000) {
       toast({
-        title: "Montant invalide",
-        description: "Veuillez saisir un montant valide",
+        title: "Montant insuffisant",
+        description: "Le montant minimum pour une recharge est de 10,000 FCFA",
         variant: "destructive"
       });
       return;
@@ -117,36 +107,51 @@ const RechargeRequest = () => {
     setIsSubmitting(true);
     
     try {
-      await createRequest({
-        requester_id: user?.id,
-        requested_amount: amountValue,
-        priority,
-        description: reason,
-        ticket_type: 'recharge'
+      await createRequest.mutateAsync({
+        amount,
+        priority: formData.priority as 'low' | 'normal' | 'high' | 'urgent',
+        description: formData.description || undefined,
+        requester_id: user?.id!,
+        assigned_to_id: user?.agenceId, // Chef d'agence
+        ticket_type: 'recharge_request'
       });
       
       toast({
-        title: "Demande soumise",
-        description: "Votre demande de recharge a été envoyée à votre Chef d'Agence",
+        title: "Demande envoyée",
+        description: "Votre demande de recharge a été transmise à votre Chef d'Agence",
       });
       
       // Réinitialiser le formulaire
-      setAmount('');
-      setReason('');
-      setPriority('normal');
-      
-      // Actualiser la liste
-      refetch();
+      setFormData({
+        amount: '',
+        priority: 'normal',
+        description: ''
+      });
     } catch (error) {
       toast({
         title: "Erreur",
-        description: "Erreur lors de la soumission de la demande",
+        description: "Erreur lors de l'envoi de la demande",
         variant: "destructive"
       });
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p>Chargement des demandes...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const pendingRequests = requests.filter(r => r.status === 'pending');
+  const approvedRequests = requests.filter(r => r.status === 'approved');
+  const rejectedRequests = requests.filter(r => r.status === 'rejected');
 
   return (
     <div className="space-y-6">
@@ -157,193 +162,186 @@ const RechargeRequest = () => {
           Demandes de Recharge
         </h1>
         <p className="text-gray-600 mt-2">
-          Demandez un crédit à votre Chef d'Agence pour poursuivre vos opérations
+          Demandez une recharge de solde à votre Chef d'Agence
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Formulaire de nouvelle demande */}
+      {/* Informations sur le solde actuel */}
+      <Card className="border-l-4 border-l-blue-500">
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Wallet className="h-5 w-5 text-blue-600" />
+                <span className="text-sm font-medium text-gray-600">Votre solde actuel</span>
+              </div>
+              <div className="text-2xl font-bold text-blue-600">
+                {formatCurrency(user?.balance || 0)}
+              </div>
+            </div>
+            {(user?.balance || 0) < 50000 && (
+              <div className="flex items-center gap-2 text-orange-600">
+                <AlertTriangle className="h-5 w-5" />
+                <span className="text-sm font-medium">Solde faible</span>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Statistiques rapides */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Plus className="h-5 w-5" />
-              Nouvelle Demande de Recharge
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Montant */}
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-yellow-600">
+                {pendingRequests.length}
+              </div>
+              <div className="text-sm text-gray-600 flex items-center justify-center gap-1">
+                <Clock className="h-4 w-4" />
+                En attente
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">
+                {approvedRequests.length}
+              </div>
+              <div className="text-sm text-gray-600 flex items-center justify-center gap-1">
+                <CheckCircle className="h-4 w-4" />
+                Approuvées
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-red-600">
+                {rejectedRequests.length}
+              </div>
+              <div className="text-sm text-gray-600 flex items-center justify-center gap-1">
+                <XCircle className="h-4 w-4" />
+                Rejetées
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Formulaire de nouvelle demande */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Plus className="h-5 w-5" />
+            Nouvelle Demande de Recharge
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="amount">Montant demandé *</Label>
+                <Label htmlFor="amount">Montant souhaité (FCFA) *</Label>
                 <Input
                   id="amount"
                   type="number"
-                  placeholder="Ex: 100000"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  min="1000"
+                  min="10000"
                   step="1000"
+                  value={formData.amount}
+                  onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
+                  placeholder="Ex: 100000"
                   required
                 />
-                <p className="text-xs text-gray-500">
-                  Montant minimum : 1 000 XOF
-                </p>
+                <p className="text-xs text-gray-500">Montant minimum : 10,000 FCFA</p>
               </div>
 
-              {/* Priorité */}
               <div className="space-y-2">
                 <Label htmlFor="priority">Priorité</Label>
-                <Select value={priority} onValueChange={setPriority}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Faible</SelectItem>
-                    <SelectItem value="normal">Normal</SelectItem>
-                    <SelectItem value="high">Élevée</SelectItem>
-                    <SelectItem value="urgent">Urgente</SelectItem>
-                  </SelectContent>
-                </Select>
+                <select 
+                  id="priority"
+                  value={formData.priority}
+                  onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value }))}
+                  className="w-full p-2 border rounded-md"
+                >
+                  <option value="low">Faible</option>
+                  <option value="normal">Normal</option>
+                  <option value="high">Élevée</option>
+                  <option value="urgent">Urgent</option>
+                </select>
               </div>
+            </div>
 
-              {/* Motif */}
-              <div className="space-y-2">
-                <Label htmlFor="reason">Motif de la demande *</Label>
-                <Textarea
-                  id="reason"
-                  placeholder="Expliquez brièvement pourquoi vous avez besoin de cette recharge..."
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  className="min-h-[100px]"
-                  required
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Motif / Commentaire (optionnel)</Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Expliquez brièvement pourquoi vous avez besoin de cette recharge..."
+                className="min-h-[100px]"
+              />
+            </div>
 
-              {/* Informations sur le solde */}
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <h4 className="font-medium text-blue-900 mb-2">Votre solde actuel</h4>
-                <p className="text-2xl font-bold text-blue-600">
-                  {formatCurrency(user?.balance || 0)}
-                </p>
-                <p className="text-xs text-blue-700 mt-1">
-                  Après validation, le montant sera ajouté à votre solde
-                </p>
-              </div>
-
-              {/* Bouton de soumission */}
+            <div className="flex justify-end gap-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setFormData({ amount: '', priority: 'normal', description: '' })}
+              >
+                Annuler
+              </Button>
+              
               <Button
                 type="submit"
-                className="w-full"
-                disabled={isSubmitting}
+                disabled={isSubmitting || !formData.amount}
+                className="min-w-[150px]"
               >
                 {isSubmitting ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                    Soumission...
+                    Envoi...
                   </>
                 ) : (
                   <>
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    Soumettre la Demande
+                    <Plus className="h-4 w-4 mr-2" />
+                    Envoyer la Demande
                   </>
                 )}
               </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        {/* Statistiques */}
-        <div className="space-y-6">
-          {/* Résumé */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <History className="h-5 w-5" />
-                Résumé de vos Demandes
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Total demandes</span>
-                  <span className="font-semibold">{rechargeRequests?.length || 0}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">En attente</span>
-                  <span className="font-semibold text-yellow-600">
-                    {rechargeRequests?.filter(r => r.status === 'pending').length || 0}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Approuvées</span>
-                  <span className="font-semibold text-green-600">
-                    {rechargeRequests?.filter(r => r.status === 'approved').length || 0}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Rejetées</span>
-                  <span className="font-semibold text-red-600">
-                    {rechargeRequests?.filter(r => r.status === 'rejected').length || 0}
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Conseils */}
-          <Card className="border-blue-200 bg-blue-50">
-            <CardHeader>
-              <CardTitle className="text-blue-900 flex items-center gap-2">
-                <AlertCircle className="h-5 w-5" />
-                Conseils
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-blue-800">
-              <ul className="space-y-2">
-                <li>• Soyez précis dans le motif de votre demande</li>
-                <li>• Les demandes urgentes sont traitées en priorité</li>
-                <li>• Votre Chef d'Agence sera notifié automatiquement</li>
-                <li>• Le traitement prend généralement 24-48h</li>
-              </ul>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
 
       {/* Historique des demandes */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <History className="h-5 w-5" />
-            Historique de vos Demandes
+            Historique de Mes Demandes
           </CardTitle>
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Actualiser
-          </Button>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="text-center py-8">
-              <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin mx-auto mb-2"></div>
-              <p className="text-gray-500">Chargement...</p>
-            </div>
-          ) : rechargeRequests && rechargeRequests.length > 0 ? (
+          {requests && requests.length > 0 ? (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Date</TableHead>
+                    <TableHead>Date Demande</TableHead>
                     <TableHead>Montant</TableHead>
                     <TableHead>Priorité</TableHead>
                     <TableHead>Statut</TableHead>
-                    <TableHead>Motif</TableHead>
-                    <TableHead>Réponse</TableHead>
-                    <TableHead>Date de Traitement</TableHead>
+                    <TableHead>Date Traitement</TableHead>
+                    <TableHead>Commentaire</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rechargeRequests.map((request) => (
+                  {requests.map((request) => (
                     <TableRow key={request.id}>
                       <TableCell>
                         {formatDate(request.created_at)}
@@ -357,22 +355,20 @@ const RechargeRequest = () => {
                       <TableCell>
                         {getStatusBadge(request.status)}
                       </TableCell>
-                      <TableCell className="max-w-xs">
-                        <div className="truncate" title={request.description}>
-                          {request.description}
-                        </div>
-                      </TableCell>
-                      <TableCell className="max-w-xs">
-                        {request.resolution_notes ? (
-                          <div className="truncate" title={request.resolution_notes}>
-                            {request.resolution_notes}
-                          </div>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
-                      </TableCell>
                       <TableCell>
                         {request.resolved_at ? formatDate(request.resolved_at) : '-'}
+                      </TableCell>
+                      <TableCell className="max-w-xs">
+                        <div className="space-y-1">
+                          {request.description && (
+                            <p className="text-sm">{request.description}</p>
+                          )}
+                          {request.resolution_notes && (
+                            <p className="text-sm text-gray-600 italic">
+                              Réponse: {request.resolution_notes}
+                            </p>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -382,8 +378,13 @@ const RechargeRequest = () => {
           ) : (
             <div className="text-center py-12 text-gray-500">
               <CreditCard className="h-16 w-16 mx-auto mb-4 opacity-50" />
-              <h3 className="text-lg font-medium mb-2">Aucune demande de recharge</h3>
-              <p>Vous n'avez pas encore fait de demande de recharge</p>
+              <h3 className="text-lg font-medium mb-2">Aucune demande trouvée</h3>
+              <p className="mb-4">
+                Vous n'avez pas encore fait de demande de recharge
+              </p>
+              <p className="text-sm">
+                Utilisez le formulaire ci-dessus pour envoyer votre première demande
+              </p>
             </div>
           )}
         </CardContent>
