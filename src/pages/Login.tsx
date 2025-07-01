@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -8,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CreateDeveloperAccount from '@/components/CreateDeveloperAccount';
+import DemoAccountsGenerator from '@/components/Developer/DemoAccountsGenerator';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -81,7 +81,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl w-full space-y-8">
+      <div className="max-w-6xl w-full space-y-8">
         <div className="text-center">
           <div className="mx-auto w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center mb-4">
             <span className="text-white font-bold text-2xl">TF</span>
@@ -94,7 +94,8 @@ const Login = () => {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8">
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Connexion/Inscription */}
           <div>
             <Tabs defaultValue="signin" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
@@ -198,16 +199,23 @@ const Login = () => {
             </Tabs>
           </div>
 
-          <div className="flex items-center justify-center">
+          {/* Compte Développeur */}
+          <div className="flex items-start justify-center">
             <CreateDeveloperAccount />
+          </div>
+
+          {/* Comptes de Démonstration */}
+          <div className="flex items-start justify-center">
+            <DemoAccountsGenerator />
           </div>
         </div>
 
         <div className="mt-6 p-4 bg-blue-50 rounded-lg text-center">
           <h3 className="text-sm font-medium text-blue-900 mb-2">Instructions pour les tests :</h3>
           <div className="text-xs text-blue-700 space-y-1">
-            <p><strong>Option 1 :</strong> Utilisez le bouton "Créer le Compte Développeur" pour créer rapidement un compte avec toutes les permissions</p>
-            <p><strong>Option 2 :</strong> Inscrivez-vous normalement et demandez à un administrateur d'assigner votre rôle</p>
+            <p><strong>Option 1 :</strong> Générez des comptes de démonstration pour tester tous les rôles</p>
+            <p><strong>Option 2 :</strong> Créez un compte développeur pour accéder aux outils de développement</p>
+            <p><strong>Option 3 :</strong> Inscrivez-vous normalement et demandez à un administrateur d'assigner votre rôle</p>
           </div>
         </div>
       </div>

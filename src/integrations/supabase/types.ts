@@ -15,6 +15,8 @@ export type Database = {
           city: string | null
           created_at: string | null
           id: number
+          id_new: string | null
+          is_active: boolean | null
           name: string
           updated_at: string | null
         }
@@ -23,6 +25,8 @@ export type Database = {
           city?: string | null
           created_at?: string | null
           id?: number
+          id_new?: string | null
+          is_active?: boolean | null
           name: string
           updated_at?: string | null
         }
@@ -31,6 +35,8 @@ export type Database = {
           city?: string | null
           created_at?: string | null
           id?: number
+          id_new?: string | null
+          is_active?: boolean | null
           name?: string
           updated_at?: string | null
         }
@@ -294,6 +300,20 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "commission_transfers_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "user_roles_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commission_transfers_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "user_roles_view"
+            referencedColumns: ["user_id"]
+          },
         ]
       }
       notifications: {
@@ -493,6 +513,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operation_validations_validator_id_fkey"
+            columns: ["validator_id"]
+            isOneToOne: false
+            referencedRelation: "user_roles_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operation_validations_validator_id_fkey"
+            columns: ["validator_id"]
+            isOneToOne: false
+            referencedRelation: "user_roles_view"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -704,6 +738,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "recharge_operations_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "user_roles_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recharge_operations_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "user_roles_view"
+            referencedColumns: ["user_id"]
+          },
+          {
             foreignKeyName: "recharge_operations_ticket_id_fkey"
             columns: ["ticket_id"]
             isOneToOne: false
@@ -904,6 +952,7 @@ export type Database = {
           metadata: Json | null
           operation_id: string | null
           transaction_type: string
+          updated_at: string | null
           user_id: string
         }
         Insert: {
@@ -916,6 +965,7 @@ export type Database = {
           metadata?: Json | null
           operation_id?: string | null
           transaction_type: string
+          updated_at?: string | null
           user_id: string
         }
         Update: {
@@ -928,6 +978,7 @@ export type Database = {
           metadata?: Json | null
           operation_id?: string | null
           transaction_type?: string
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: [
@@ -987,7 +1038,51 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      user_roles_view: {
+        Row: {
+          agency_id: number | null
+          created_at: string | null
+          id: string | null
+          is_active: boolean | null
+          role_id: number | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          agency_id?: number | null
+          created_at?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          role_id?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          agency_id?: number | null
+          created_at?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          role_id?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       get_user_agency_id: {
@@ -1005,6 +1100,33 @@ export type Database = {
       is_developer: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      process_commission_transfer_atomic: {
+        Args: {
+          p_commission_record_id: string
+          p_transfer_type: string
+          p_recipient_id: string
+          p_processor_id?: string
+        }
+        Returns: Json
+      }
+      process_recharge_atomic: {
+        Args: {
+          p_ticket_id: string
+          p_processor_id: string
+          p_action: string
+          p_notes?: string
+        }
+        Returns: Json
+      }
+      validate_operation_atomic: {
+        Args: {
+          p_operation_id: string
+          p_validator_id: string
+          p_action: string
+          p_notes?: string
+        }
+        Returns: Json
       }
     }
     Enums: {
