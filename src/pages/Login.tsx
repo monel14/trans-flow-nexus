@@ -16,9 +16,21 @@ const Login = () => {
   const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isConfirmingEmail, setIsConfirmingEmail] = useState(false);
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Fonction pour obtenir la route spécifique selon le rôle
+  const getDashboardRoute = (userRole: string) => {
+    const roleRoutes = {
+      'agent': '/dashboard/agent',
+      'chef_agence': '/dashboard/chef-agence',
+      'admin_general': '/dashboard/admin',
+      'sous_admin': '/dashboard/sous-admin',
+      'developer': '/dashboard/developer'
+    };
+    return roleRoutes[userRole] || '/dashboard';
+  };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,6 +58,7 @@ const Login = () => {
           title: "Connexion réussie",
           description: "Bienvenue dans TransFlow Nexus!",
         });
+        // Redirection vers le dashboard spécifique sera gérée par useEffect dans AuthContext
         navigate('/dashboard');
       }
     } catch (error) {
@@ -87,6 +100,7 @@ const Login = () => {
             title: "Connexion réussie",
             description: "Bienvenue dans TransFlow Nexus!",
           });
+          // Redirection vers le dashboard spécifique sera gérée par useEffect dans AuthContext
           navigate('/dashboard');
         }
       } catch (error) {

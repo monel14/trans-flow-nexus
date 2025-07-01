@@ -1,39 +1,36 @@
-
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import AgentDashboard from '@/components/Dashboard/AgentDashboard';
-import ChefAgenceDashboard from '@/components/Dashboard/ChefAgenceDashboard';
-import AdminGeneralDashboard from '@/components/Dashboard/AdminGeneralDashboard';
-import SousAdminDashboard from '@/components/Dashboard/SousAdminDashboard';
-import DeveloperDashboard from '@/components/Dashboard/DeveloperDashboard';
+import { useNavigate } from 'react-router-dom';
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
-  const renderDashboard = () => {
-    switch (user?.role) {
-      case 'agent':
-        return <AgentDashboard />;
-      case 'chef_agence':
-        return <ChefAgenceDashboard />;
-      case 'admin_general':
-        return <AdminGeneralDashboard />;
-      case 'sous_admin':
-        return <SousAdminDashboard />;
-      case 'developer':
-        return <DeveloperDashboard />;
-      default:
-        return (
-          <div className="text-center py-12">
-            <p className="text-gray-600">Tableau de bord non configuré pour ce rôle.</p>
-          </div>
-        );
+  useEffect(() => {
+    // Rediriger automatiquement vers le dashboard spécifique du rôle
+    if (user?.role) {
+      const roleRoutes = {
+        'agent': '/dashboard/agent',
+        'chef_agence': '/dashboard/chef-agence',
+        'admin_general': '/dashboard/admin',
+        'sous_admin': '/dashboard/sous-admin',
+        'developer': '/dashboard/developer'
+      };
+
+      const targetRoute = roleRoutes[user.role];
+      if (targetRoute) {
+        navigate(targetRoute, { replace: true });
+      }
     }
-  };
+  }, [user?.role, navigate]);
 
+  // Affichage de chargement pendant la redirection
   return (
-    <div className="space-y-6">
-      {renderDashboard()}
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-gray-600">Redirection vers votre tableau de bord...</p>
+      </div>
     </div>
   );
 };

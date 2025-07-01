@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -27,6 +26,13 @@ import AgentRecharges from "@/pages/AgentRecharges";
 import AgencyManagement from "@/pages/AgencyManagement";
 import SupportRequests from "@/pages/SupportRequests";
 
+// Dashboard Components
+import AgentDashboard from "@/components/Dashboard/AgentDashboard";
+import ChefAgenceDashboard from "@/components/Dashboard/ChefAgenceDashboard";
+import AdminGeneralDashboard from "@/components/Dashboard/AdminGeneralDashboard";
+import SousAdminDashboard from "@/components/Dashboard/SousAdminDashboard";
+import DeveloperDashboard from "@/components/Dashboard/DeveloperDashboard";
+
 // Lazy-load special pages
 const AdminGestionChefsAgence = React.lazy(() => import("@/pages/AdminGestionChefsAgence"));
 const AdminGestionSousAdmins = React.lazy(() => import("@/pages/AdminGestionSousAdmins"));
@@ -47,12 +53,69 @@ const AppRoutes = () => {
       
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       
+      {/* Route dashboard générale qui redirige automatiquement */}
       <Route 
         path="/dashboard" 
         element={
           <ProtectedRoute>
             <MainLayout>
               <Dashboard />
+            </MainLayout>
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Routes spécifiques pour chaque rôle */}
+      <Route 
+        path="/dashboard/agent" 
+        element={
+          <ProtectedRoute requiredRole={['agent']}>
+            <MainLayout>
+              <AgentDashboard />
+            </MainLayout>
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/dashboard/chef-agence" 
+        element={
+          <ProtectedRoute requiredRole={['chef_agence']}>
+            <MainLayout>
+              <ChefAgenceDashboard />
+            </MainLayout>
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/dashboard/admin" 
+        element={
+          <ProtectedRoute requiredRole={['admin_general']}>
+            <MainLayout>
+              <AdminGeneralDashboard />
+            </MainLayout>
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/dashboard/sous-admin" 
+        element={
+          <ProtectedRoute requiredRole={['sous_admin']}>
+            <MainLayout>
+              <SousAdminDashboard />
+            </MainLayout>
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/dashboard/developer" 
+        element={
+          <ProtectedRoute requiredRole={['developer']}>
+            <MainLayout>
+              <DeveloperDashboard />
             </MainLayout>
           </ProtectedRoute>
         } 
@@ -209,61 +272,6 @@ const AppRoutes = () => {
         } 
       />
 
-      {/* Autres routes à implémenter */}
-      <Route 
-        path="/commissions" 
-        element={
-          <ProtectedRoute>
-            <MainLayout>
-              <Commissions />
-            </MainLayout>
-          </ProtectedRoute>
-        } 
-      />
-
-      <Route 
-        path="/recharge" 
-        element={
-          <ProtectedRoute requiredRole={['agent', 'chef_agence']}>
-            <MainLayout>
-              <RechargeRequest />
-            </MainLayout>
-          </ProtectedRoute>
-        } 
-      />
-
-      <Route 
-        path="/agent-recharges" 
-        element={
-          <ProtectedRoute requiredRole={['chef_agence']}>
-            <MainLayout>
-              <AgentRecharges />
-            </MainLayout>
-          </ProtectedRoute>
-        } 
-      />
-
-      <Route 
-        path="/agencies" 
-        element={
-          <ProtectedRoute requiredRole={['admin_general']}>
-            <MainLayout>
-              <AgencyManagement />
-            </MainLayout>
-          </ProtectedRoute>
-        } 
-      />
-
-      <Route 
-        path="/support" 
-        element={
-          <ProtectedRoute requiredRole={['admin_general', 'sous_admin']}>
-            <MainLayout>
-              <SupportRequests />
-            </MainLayout>
-          </ProtectedRoute>
-        } 
-      />
       {/* Route pour la gestion des Chefs d'Agence (admin_general) */}
       <Route
         path="/chefs-agence"
