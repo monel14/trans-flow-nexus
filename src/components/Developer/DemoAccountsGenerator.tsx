@@ -95,7 +95,22 @@ const DemoAccountsGenerator = () => {
       }
 
       if (authData.user) {
-        // 2. Attendre un moment pour que le trigger crée le profil
+        // 2. Confirmer automatiquement l'email pour les comptes de test
+        try {
+          const { data: confirmData, error: confirmError } = await supabase.functions.invoke('confirm-email', {
+            body: { email: account.email }
+          });
+          
+          if (confirmError) {
+            console.warn('Impossible de confirmer automatiquement l\'email:', confirmError);
+          } else {
+            console.log('Email confirmé automatiquement pour:', account.email);
+          }
+        } catch (confirmErr) {
+          console.warn('Fonction de confirmation d\'email non disponible:', confirmErr);
+        }
+
+        // 3. Attendre un moment pour que le trigger crée le profil
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         // 3. Récupérer l'ID du rôle
