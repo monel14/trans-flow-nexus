@@ -304,3 +304,6 @@ export function useAgencyCommissionSummary() {
     }
   );
 }
+
+// Alias for useCommissionSummary for compatibility
+export const useCommissionsStats = useCommissionSummary;
