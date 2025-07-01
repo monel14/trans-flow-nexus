@@ -95,41 +95,25 @@ const DemoAccountsGenerator = () => {
       }
 
       if (authData.user) {
-        // 2. Confirmer automatiquement l'email pour les comptes de test
-        try {
-          const { data: confirmData, error: confirmError } = await supabase.functions.invoke('confirm-email', {
-            body: { email: account.email }
-          });
-          
-          if (confirmError) {
-            console.warn('Impossible de confirmer automatiquement l\'email:', confirmError);
-          } else {
-            console.log('Email confirmé automatiquement pour:', account.email);
-          }
-        } catch (confirmErr) {
-          console.warn('Fonction de confirmation d\'email non disponible:', confirmErr);
-        }
+        // 2. SOLUTION DE CONTOURNEMENT: Assigner directement le role_id sans passer par la table roles
+        const roleIdMap = {
+          'admin_general': 3,
+          'sous_admin': 4,
+          'chef_agence': 2,
+          'agent': 1,
+          'developer': 5
+        };
+
+        const roleId = roleIdMap[account.role as keyof typeof roleIdMap] || 1;
 
         // 3. Attendre un moment pour que le trigger crée le profil
         await new Promise(resolve => setTimeout(resolve, 1000));
 
-        // 4. Récupérer l'ID du rôle
-        const { data: roleData, error: roleError } = await supabase
-          .from('roles')
-          .select('id')
-          .eq('name', account.role)
-          .single();
-
-        if (roleError) {
-          console.error('Erreur lors de la récupération du rôle:', roleError);
-          return false;
-        }
-
-        // 5. Mettre à jour le profil avec le rôle et l'agence
+        // 4. Mettre à jour le profil directement avec l'ID du rôle hardcodé
         const { error: profileError } = await supabase
           .from('profiles')
           .update({
-            role_id: roleData.id,
+            role_id: roleId,
             agency_id: account.agencyId || null,
             balance: account.role === 'agent' ? 50000 : 100000, // Solde initial pour les tests
             is_active: true
@@ -141,7 +125,7 @@ const DemoAccountsGenerator = () => {
           return false;
         }
 
-        // 6. Créer une entrée dans le ledger pour le solde initial
+        // 5. Créer une entrée dans le ledger pour le solde initial
         const initialBalance = account.role === 'agent' ? 50000 : 100000;
         const { error: ledgerError } = await supabase
           .from('transaction_ledger')
@@ -157,6 +141,8 @@ const DemoAccountsGenerator = () => {
         if (ledgerError) {
           console.error('Erreur lors de la création de l\'entrée ledger:', ledgerError);
         }
+
+        console.log(`✅ Compte ${account.email} créé avec le rôle ${account.role} (ID: ${roleId})`);
       }
 
       return true;
