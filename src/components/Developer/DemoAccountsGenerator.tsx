@@ -141,7 +141,7 @@ const DemoAccountsGenerator = () => {
           return false;
         }
 
-        // 5. Créer une entrée dans le ledger pour le solde initial
+        // 6. Créer une entrée dans le ledger pour le solde initial
         const initialBalance = account.role === 'agent' ? 50000 : 100000;
         const { error: ledgerError } = await supabase
           .from('transaction_ledger')
