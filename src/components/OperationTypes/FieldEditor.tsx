@@ -176,7 +176,7 @@ const FieldEditor: React.FC<FieldEditorProps> = ({ operationTypeId, fields }) =>
     if (!confirm(`Êtes-vous sûr de vouloir supprimer le champ "${field.label}" ?`)) return;
     
     try {
-      await deleteField.mutateAsync({ id: field.id, operation_type_id: operationTypeId });
+      await deleteField.mutateAsync(field.id);
       toast({ 
         title: "Succès", 
         description: `Champ "${field.label}" supprimé avec succès.` 
