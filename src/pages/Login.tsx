@@ -100,6 +100,8 @@ const Login = () => {
       }
     }, 100);
   };
+
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
