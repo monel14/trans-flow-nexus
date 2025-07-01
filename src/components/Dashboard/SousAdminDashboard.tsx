@@ -18,7 +18,7 @@ import TransactionTable from '../Tables/TransactionTable';
 const SousAdminDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { operations } = useOperations();
+  const { data: operations = [], isLoading: operationsLoading } = useOperations();
 
   const pendingTransactions = operations.filter(op => op.status === 'pending').length;
   const completedToday = operations.filter(op => 
