@@ -240,3 +240,72 @@ export function useDeleteOperationTypeField() {
     }
   );
 }
+
+// Alias for useOperationTypeWithFields for compatibility
+export const useOperationTypeFields = useOperationTypeWithFields;
+
+// Hook to get commission rules for an operation type
+export function useCommissionRules(operationTypeId?: string) {
+  return useSupabaseQuery(
+    ['commission-rules', operationTypeId],
+    async () => {
+      if (!operationTypeId) return [];
+      
+      const { data, error } = await supabase
+        .from('commission_rules')
+        .select('*')
+        .eq('operation_type_id', operationTypeId)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data as CommissionRule[];
+    },
+    {
+      enabled: !!operationTypeId,
+    }
+  );
+}
+
+// Hook to create commission rule (developers only)
+export function useCreateCommissionRule() {
+  return useSupabaseMutation<CommissionRule, Omit<CommissionRule, 'id' | 'created_at' | 'updated_at'>>(
+    async (ruleData) => {
+      const { data, error } = await supabase
+        .from('commission_rules')
+        .insert(ruleData)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data as CommissionRule;
+    },
+    {
+      invalidateQueries: [['commission-rules']],
+      successMessage: 'Règle de commission créée avec succès',
+      errorMessage: 'Erreur lors de la création de la règle de commission',
+    }
+  );
+}
+
+// Hook to update commission rule (developers only)
+export function useUpdateCommissionRule() {
+  return useSupabaseMutation<CommissionRule, { id: string; updates: Partial<CommissionRule> }>(
+    async ({ id, updates }) => {
+      const { data, error } = await supabase
+        .from('commission_rules')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data as CommissionRule;
+    },
+    {
+      invalidateQueries: [['commission-rules']],
+      successMessage: 'Règle de commission mise à jour avec succès',
+      errorMessage: 'Erreur lors de la mise à jour de la règle de commission',
+    }
+  );
+}
