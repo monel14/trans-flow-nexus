@@ -75,7 +75,7 @@ const FieldConfigForm: React.FC<FieldConfigFormProps> = ({
     const fieldData = {
       ...formData,
       operation_type_id: operationTypeId,
-      options: needsOptions ? options : []
+      options: needsOptions ? options.map(opt => opt.value) : []
     };
 
     onSave(fieldData);
