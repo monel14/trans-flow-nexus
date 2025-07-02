@@ -27,19 +27,14 @@ const AgentDashboard = () => {
   const navigate = useNavigate();
   const { data: operations = [], isLoading: operationsLoading } = useOperations();
   const { ledgerEntries, isLoading: ledgerLoading } = useTransactionLedger(user?.id);
+  
+  // Récupération des données dynamiques via les nouvelles fonctions RPC
+  const { data: kpis, isLoading: kpisLoading, error: kpisError } = useAgentDashboardKPIs();
 
-  // Calculs spécifiques aux agents
-  const currentBalance = ledgerEntries.length > 0 
-    ? ledgerEntries[0].balance_after 
-    : user?.balance || 0;
-
+  // Filtrer les opérations d'aujourd'hui
   const todayOperations = operations.filter(op => 
     new Date(op.created_at).toDateString() === new Date().toDateString()
   );
-
-  const thisWeekCommissions = 45000; // Exemple
-  const monthlyTarget = 500000; // Exemple
-  const monthlyProgress = (todayOperations.length * 50000 / monthlyTarget) * 100;
 
   const quickActions = [
     {
@@ -73,6 +68,37 @@ const AgentDashboard = () => {
       maximumFractionDigits: 0
     }).format(amount) + ' XOF';
   };
+
+  // Gestion des erreurs
+  if (kpisError) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-6 text-white">
+          <h1 className="text-2xl font-bold mb-2">
+            Bonjour {user?.name} ! 👋
+          </h1>
+          <p className="text-blue-100">
+            Une erreur s'est produite lors du chargement de vos données
+          </p>
+        </div>
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6">
+          <div className="flex items-center mb-4">
+            <AlertCircle className="h-5 w-5 text-red-600 mr-2" />
+            <h3 className="text-lg font-semibold text-red-800">Erreur de Chargement</h3>
+          </div>
+          <p className="text-red-700 mb-4">
+            Impossible de charger vos données personnelles. Veuillez réessayer.
+          </p>
+          <Button 
+            onClick={() => window.location.reload()} 
+            className="bg-red-600 hover:bg-red-700"
+          >
+            Réessayer
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
