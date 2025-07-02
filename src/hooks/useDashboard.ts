@@ -94,7 +94,7 @@ export function useAdminDashboardKPIs() {
       return data as AdminDashboardKPIs;
     },
     {
-      enabled: user?.role === 'admin_general',
+      enabled: user?.role === 'admin_general' || user?.role === 'developer',
       refetchInterval: 60000, // Rafraîchir toutes les minutes
       staleTime: 30000, // Les données sont considérées comme fraîches pendant 30 secondes
     }
