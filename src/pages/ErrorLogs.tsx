@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useErrorLogs, useClearErrorLogs } from '@/hooks/useErrorLogs';
+import { useErrorLogs, useClearErrorLogs, useResolveErrorLog, useErrorLogStats } from '@/hooks/useErrorLogs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { 
   AlertTriangle, 
@@ -22,7 +24,12 @@ import {
   Calendar,
   Server,
   Database,
-  Code
+  Code,
+  CheckCircle,
+  XCircle,
+  Shield,
+  Globe,
+  Laptop
 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 
