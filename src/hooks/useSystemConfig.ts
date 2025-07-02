@@ -122,31 +122,68 @@ export function useUpdateSystemConfig() {
 }
 
 // Hook to get a specific setting
-export function useSystemSetting(settingName: string) {
+export function useSystemSetting(settingName: keyof SystemConfig) {
   return useSupabaseQuery(
     ['system-setting', settingName],
     async () => {
-      // Return the specific setting from default config
-      return DEFAULT_CONFIG[settingName as keyof SystemConfig] || null;
+      const { data, error } = await supabase
+        .from('system_settings')
+        .select('config')
+        .eq('id', 1)
+        .single();
+      
+      if (error) throw error;
+      
+      const config = SystemConfigSchema.parse(data.config);
+      return config[settingName];
     }
   );
 }
 
 // Hook to update a specific setting
 export function useUpdateSystemSetting() {
+  const { user } = useAuth();
+  
   return useSupabaseMutation<any, {
-    settingName: string;
+    settingName: keyof SystemConfig;
     value: any;
   }>(
     async ({ settingName, value }) => {
-      // For now, just return the updated value
-      // This should be implemented when system_settings table is created
+      // Récupérer la configuration actuelle
+      const { data: currentData, error: fetchError } = await supabase
+        .from('system_settings')
+        .select('config')
+        .eq('id', 1)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      
+      // Mettre à jour le paramètre spécifique
+      const updatedConfig = {
+        ...currentData.config,
+        [settingName]: value
+      };
+      
+      // Valider la configuration mise à jour
+      const validatedConfig = SystemConfigSchema.parse(updatedConfig);
+      
+      // Sauvegarder
+      const { error } = await supabase
+        .from('system_settings')
+        .update({ 
+          config: validatedConfig,
+          updated_by: user?.id 
+        })
+        .eq('id', 1);
+      
+      if (error) throw error;
+      
       return { [settingName]: value };
     },
     {
       invalidateQueries: [['system-config'], ['system-setting']],
-      successMessage: 'Paramètre mis à jour',
-      errorMessage: 'Erreur lors de la mise à jour',
+      successMessage: 'Paramètre mis à jour avec succès',
+      errorMessage: 'Erreur lors de la mise à jour du paramètre',
     }
   );
 }
