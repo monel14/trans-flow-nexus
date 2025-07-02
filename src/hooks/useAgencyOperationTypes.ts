@@ -194,3 +194,57 @@ export function useToggleAgencyOperationType() {
     }
   );
 }
+
+// Hook to update agency services (bulk operation)
+export function useUpdateAgencyServices() {
+  return useSupabaseMutation<any, { agencyId: number; operationTypeIds: string[] }>(
+    async ({ agencyId, operationTypeIds }) => {
+      // First, get existing agency operation types
+      const { data: existing, error: fetchError } = await supabase
+        .from('agency_operation_types')
+        .select('id, operation_type_id')
+        .eq('agency_id', agencyId);
+      
+      if (fetchError) throw fetchError;
+      
+      const existingIds = existing?.map(item => item.operation_type_id) || [];
+      
+      // Determine which ones to add and which ones to remove
+      const toAdd = operationTypeIds.filter(id => !existingIds.includes(id));
+      const toRemove = existingIds.filter(id => !operationTypeIds.includes(id));
+      
+      // Remove unselected ones
+      if (toRemove.length > 0) {
+        const { error: deleteError } = await supabase
+          .from('agency_operation_types')
+          .delete()
+          .eq('agency_id', agencyId)
+          .in('operation_type_id', toRemove);
+        
+        if (deleteError) throw deleteError;
+      }
+      
+      // Add new ones
+      if (toAdd.length > 0) {
+        const newEntries = toAdd.map(operationTypeId => ({
+          agency_id: agencyId,
+          operation_type_id: operationTypeId,
+          is_enabled: true,
+        }));
+        
+        const { error: insertError } = await supabase
+          .from('agency_operation_types')
+          .insert(newEntries);
+        
+        if (insertError) throw insertError;
+      }
+      
+      return { added: toAdd.length, removed: toRemove.length };
+    },
+    {
+      invalidateQueries: [['agency-operation-types'], ['all-agency-operation-types'], ['current-user-agency-operation-types']],
+      successMessage: 'Services de l\'agence mis à jour avec succès',
+      errorMessage: 'Erreur lors de la mise à jour des services',
+    }
+  );
+}
