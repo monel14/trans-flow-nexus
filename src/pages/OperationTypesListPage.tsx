@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { useOperationTypes } from '@/hooks/useOperationTypes';
+import { useOperationTypes, OperationType } from '@/hooks/useOperationTypes';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const OperationTypesListPage = () => {
