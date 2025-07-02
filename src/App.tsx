@@ -185,7 +185,18 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute requiredRole={['developer']}>
             <MainLayout>
-              <OperationTypes />
+              <OperationTypesListPage />
+            </MainLayout>
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/operation-types/:id" 
+        element={
+          <ProtectedRoute requiredRole={['developer']}>
+            <MainLayout>
+              <OperationTypeFormPage />
             </MainLayout>
           </ProtectedRoute>
         } 
