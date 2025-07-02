@@ -41,15 +41,14 @@ def main():
     print("\n1️⃣ ÉTAPE 1 - CORRECTION RLS (PRIORITÉ ABSOLUE)")
     print("   ⚠️  SANS CECI, L'AUTHENTIFICATION NE FONCTIONNE PAS")
     
-    if read_and_display_sql('fix_rls_recursion_v2.sql', 'CORRECTION RLS - À APPLIQUER EN PREMIER'):
-        input("\n⏸️  Appuyez sur ENTRÉE après avoir appliqué la correction RLS...")
+    read_and_display_sql('fix_rls_recursion_v2.sql', 'CORRECTION RLS - À APPLIQUER EN PREMIER')
     
     # 2. Fonctions RPC (OPTIONNEL)
     print("\n2️⃣ ÉTAPE 2 - FONCTIONS RPC (OPTIONNEL)")
     print("   📦 Ces fonctions permettent de créer des utilisateurs via l'interface")
     
-    if read_and_display_sql('supabase_rpc_functions.sql', 'FONCTIONS RPC - CRÉATION D\'UTILISATEURS'):
-        print("\n✅ Toutes les sections ont été affichées!")
+    read_and_display_sql('supabase_rpc_functions.sql', 'FONCTIONS RPC - CRÉATION D\'UTILISATEURS')
+    print("\n✅ Toutes les sections ont été affichées!")
     
     print("\n" + "="*60)
     print("🎉 DÉPLOIEMENT TERMINÉ")
