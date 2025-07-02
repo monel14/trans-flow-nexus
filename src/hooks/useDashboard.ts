@@ -237,7 +237,7 @@ export function useOperationsByQueue(queueType: 'unassigned' | 'my_tasks' | 'all
       return data || [];
     },
     {
-      enabled: user?.role && ['admin_general', 'sous_admin'].includes(user.role),
+      enabled: user?.role && ['admin_general', 'sous_admin', 'developer'].includes(user.role),
       refetchInterval: 30000,
       staleTime: 15000,
     }
