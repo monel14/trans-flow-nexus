@@ -158,13 +158,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = async (email: string, password: string, userData?: { name?: string; role?: string }) => {
     try {
-      const redirectUrl = `${window.location.origin}/`;
-      
+      // Inscription sans confirmation email - pour développement
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: redirectUrl,
           data: {
             name: userData?.name || email.split('@')[0],
           }
