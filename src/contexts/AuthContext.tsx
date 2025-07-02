@@ -233,8 +233,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Backward compatibility methods
-  const login = async (email: string, password: string): Promise<boolean> => {
-    const { error } = await signIn(email, password);
+  const login = async (identifier: string, password: string): Promise<boolean> => {
+    const { error } = await signIn(identifier, password);
     return !error;
   };
 
