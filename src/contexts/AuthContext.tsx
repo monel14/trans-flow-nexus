@@ -175,38 +175,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (identifier: string, password: string) => {
     try {
+      console.log('🔐 Tentative de connexion avec identifiant:', identifier);
+      
+      // Utiliser l'identifiant comme "email" dans Supabase Auth
+      // L'identifiant sera stocké dans le champ email de auth.users
       const { error } = await supabase.auth.signInWithPassword({
-        email,
+        email: identifier, // On passe l'identifiant comme email
         password,
       });
 
-      // SOLUTION DE CONTOURNEMENT pour les comptes de démonstration
-      // Si l'email n'est pas confirmé, on essaie de confirmer automatiquement pour les comptes de test
-      if (error && error.message === 'Email not confirmed') {
-        const demoEmails = [
-          'admin@transflow.com',
-          'sousadmin@transflow.com', 
-          'chef@transflow.com',
-          'agent@transflow.com',
-          'dev@transflow.com'
-        ];
+      if (error) {
+        console.error('❌ Erreur de connexion:', error.message);
         
-        if (demoEmails.includes(email)) {
-          console.log('🔧 Tentative de confirmation automatique pour compte de démonstration...');
-          // Pour les comptes de démonstration, on retourne une erreur spécifique
+        // Messages d'erreur personnalisés pour les identifiants
+        if (error.message === 'Invalid login credentials') {
           return { 
             error: { 
               ...error, 
-              message: 'Email de démonstration non confirmé. Utilisez le générateur de comptes pour les créer et confirmer automatiquement.' 
+              message: 'Identifiant ou mot de passe incorrect.' 
+            } 
+          };
+        }
+        
+        if (error.message === 'Email not confirmed') {
+          return { 
+            error: { 
+              ...error, 
+              message: 'Compte non confirmé. Contactez votre administrateur.' 
             } 
           };
         }
       }
 
+      console.log('✅ Connexion réussie pour:', identifier);
       return { error };
     } catch (error) {
+      console.error('❌ Erreur lors de la connexion:', error);
       return { error };
     }
   };
