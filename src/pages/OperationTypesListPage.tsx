@@ -32,7 +32,7 @@ const OperationTypesListPage = () => {
     error 
   } = useOperationTypes();
 
-  const filteredTypes = operationTypes.filter(type =>
+  const filteredTypes = operationTypes.filter((type: OperationType) =>
     type.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     type.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -50,8 +50,8 @@ const OperationTypesListPage = () => {
     }
   };
 
-  const getBalanceImpact = (affectsBalance: boolean) => {
-    return affectsBalance ? (
+  const getBalanceImpact = (impactsBalance: boolean) => {
+    return impactsBalance ? (
       <Badge variant="outline" className="bg-blue-50 text-blue-700">
         Impacte Solde
       </Badge>
