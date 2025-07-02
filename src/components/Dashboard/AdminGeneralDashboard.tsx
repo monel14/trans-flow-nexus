@@ -3,6 +3,7 @@ import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   TrendingUp, 
   Users, 
@@ -14,11 +15,13 @@ import {
   Activity,
   Shield,
   BarChart3,
-  Globe
+  Globe,
+  Loader2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import MetricCard from './MetricCard';
 import QuickActions from './QuickActions';
+import { useAdminDashboardKPIs, useTopAgenciesPerformance } from '@/hooks/useDashboard';
 
 const AdminGeneralDashboard = () => {
   const { user } = useAuth();
