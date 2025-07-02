@@ -72,20 +72,20 @@ const Login = () => {
     }
   };
 
-  const handleQuickSignIn = async (demoEmail: string, demoPassword: string) => {
-    setEmail(demoEmail);
+  const handleQuickSignIn = async (demoIdentifier: string, demoPassword: string) => {
+    setIdentifier(demoIdentifier);
     setPassword(demoPassword);
     
     // Attendre un moment pour que les champs soient mis à jour visuellement
     setTimeout(async () => {
       setIsLoading(true);
       try {
-        const { error } = await signIn(demoEmail, demoPassword);
+        const { error } = await signIn(demoIdentifier, demoPassword);
         if (error) {
           if (error.message === 'Email not confirmed') {
             toast({
-              title: "Email non confirmé",
-              description: "Utilisation du générateur de comptes pour confirmer automatiquement...",
+              title: "Compte non confirmé",
+              description: "Contactez votre administrateur pour activer votre compte.",
               variant: "destructive",
             });
           } else {
