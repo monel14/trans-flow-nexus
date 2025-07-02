@@ -937,3 +937,136 @@ def test_operation_types_functionality():
     tester.print_summary()
     
     return tester.tests_passed == tester.tests_run
+def test_operation_types_functionality():
+    """Test operation types functionality"""
+    print("\n🔍 Testing Operation Types Functionality...")
+    tester = SupabaseAPITester()
+    
+    # Login as developer
+    print("\n🔑 Testing Authentication with developer account")
+    login_success = tester.test_login("developer.admin", "password123")
+    
+    if not login_success:
+        print("\n⚠️ Developer login failed, stopping tests")
+        tester.print_summary()
+        return False
+    
+    # Test getting operation types
+    print("\n📋 Testing Operation Types Listing")
+    success, operation_types = tester.test_get_operation_types()
+    
+    if not success:
+        print("❌ Failed to get operation types list")
+        tester.print_summary()
+        return False
+    
+    print(f"Found {len(operation_types)} operation types")
+    
+    # Create a new operation type for testing
+    timestamp = datetime.now().strftime('%H%M%S')
+    test_name = f"Test Type {timestamp}"
+    print(f"\n➕ Creating new operation type: {test_name}")
+    success, new_type = tester.test_create_operation_type(
+        name=test_name,
+        description="Created by automated test",
+        impacts_balance=True
+    )
+    
+    if not success or not new_type:
+        print("❌ Failed to create operation type")
+        tester.print_summary()
+        return False
+    
+    operation_type_id = new_type[0]['id']
+    print(f"Created operation type with ID: {operation_type_id}")
+    
+    # Create a field for the operation type
+    print("\n➕ Adding field to operation type")
+    field_data = {
+        "name": "test_field",
+        "label": "Test Field",
+        "field_type": "text",
+        "is_required": True,
+        "is_obsolete": False,
+        "display_order": 0
+    }
+    
+    success, field = tester.test_create_operation_type_field(operation_type_id, field_data)
+    if not success or not field:
+        print("❌ Failed to create field")
+        tester.print_summary()
+        return False
+    
+    field_id = field[0]['id']
+    print(f"Created field with ID: {field_id}")
+    
+    # Get the operation type with its fields to verify
+    print("\n🔍 Verifying operation type with fields")
+    success, operation_type_with_fields = tester.test_get_operation_type_with_fields(operation_type_id)
+    if not success or not operation_type_with_fields:
+        print("❌ Failed to get operation type with fields")
+        tester.print_summary()
+        return False
+    
+    # Test creating a fixed commission rule
+    print("\n💰 Adding commission rule")
+    fixed_commission_data = {
+        "fixed_amount": 100
+    }
+    
+    success, commission = tester.test_create_commission_rule(
+        operation_type_id, 
+        "fixed", 
+        fixed_commission_data
+    )
+    
+    if not success:
+        print("❌ Failed to create commission rule")
+        tester.print_summary()
+        return False
+    
+    # Test updating the operation type
+    print("\n✏️ Updating operation type")
+    update_data = {
+        "description": "Updated by automated test",
+        "status": "inactive",
+        "is_active": False
+    }
+    
+    success, _ = tester.test_update_operation_type(operation_type_id, update_data)
+    if not success:
+        print("❌ Failed to update operation type")
+        tester.print_summary()
+        return False
+    
+    # Test deleting the field
+    print("\n🗑️ Deleting field")
+    success, _ = tester.test_delete_operation_type_field(field_id)
+    if not success:
+        print("❌ Failed to delete field")
+        tester.print_summary()
+        return False
+    
+    # Print summary
+    tester.print_summary()
+    
+    return tester.tests_passed == tester.tests_run
+
+if __name__ == "__main__":
+    # Run the main test suite
+    main_result = main()
+    
+    # Test signup and login
+    signup_result = test_signup_and_login()
+    
+    # Test RPC functions directly
+    rpc_result = test_rpc_functions_direct()
+    
+    # Run the RLS fix test
+    rls_fix_result = test_rls_fix()
+    
+    # Test operation types functionality
+    operation_types_result = test_operation_types_functionality()
+    
+    # Exit with appropriate code
+    sys.exit(0 if main_result == 0 and rls_fix_result and operation_types_result else 1)
