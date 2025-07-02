@@ -37,10 +37,36 @@ const OperationTypesListPage = () => {
   } = useOperationTypes();
   const updateOperationType = useUpdateOperationType();
 
-  const filteredTypes = operationTypes.filter((type: OperationType) =>
-    type.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    type.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const toggleStatus = async (type: OperationType) => {
+    try {
+      const newStatus = type.status === 'active' ? 'inactive' : 'active';
+      await updateOperationType.mutateAsync({
+        id: type.id,
+        updates: { 
+          status: newStatus,
+          is_active: newStatus === 'active'
+        }
+      });
+    } catch (error) {
+      console.error('Erreur lors du changement de statut:', error);
+    }
+  };
+
+  const deleteOperationType = async (type: OperationType) => {
+    if (window.confirm(`Êtes-vous sûr de vouloir supprimer "${type.name}" ?`)) {
+      try {
+        await updateOperationType.mutateAsync({
+          id: type.id,
+          updates: { 
+            status: 'archived',
+            is_active: false
+          }
+        });
+      } catch (error) {
+        console.error('Erreur lors de la suppression:', error);
+      }
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
