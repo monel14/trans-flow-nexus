@@ -11,7 +11,7 @@ import CreateDeveloperAccount from '@/components/CreateDeveloperAccount';
 import DemoAccountsGenerator from '@/components/Developer/DemoAccountsGenerator';
 
 const Login = () => {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
