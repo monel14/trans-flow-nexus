@@ -28,16 +28,10 @@ const ChefAgenceDashboard = () => {
   const navigate = useNavigate();
   const { data: operations = [], isLoading: operationsLoading } = useOperations();
   const { ledgerEntries, isLoading: ledgerLoading } = useTransactionLedger(user?.id);
-
-  // Calculs spécifiques aux chefs d'agence
-  const currentBalance = ledgerEntries.length > 0 
-    ? ledgerEntries[0].balance_after 
-    : 500000;
-
-  const volumeAgenceMois = 2450000;
-  const commissionsAgence = 125000;
-  const agentsActifs = 8;
-  const agentsPerformants = 6; // Agents ayant atteint leurs objectifs
+  
+  // Récupération des données dynamiques via les nouvelles fonctions RPC
+  const { data: kpis, isLoading: kpisLoading, error: kpisError } = useChefAgenceDashboardKPIs();
+  const { data: agentsPerformance = [], isLoading: agentsLoading } = useChefAgentsPerformance(4);
 
   const quickActions = [
     {
@@ -71,6 +65,37 @@ const ChefAgenceDashboard = () => {
       maximumFractionDigits: 0
     }).format(amount) + ' XOF';
   };
+
+  // Gestion des erreurs
+  if (kpisError) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl p-6 text-white">
+          <h1 className="text-2xl font-bold mb-2">
+            Tableau de Bord - Chef d'Agence
+          </h1>
+          <p className="text-purple-100">
+            Une erreur s'est produite lors du chargement des données
+          </p>
+        </div>
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6">
+          <div className="flex items-center mb-4">
+            <AlertTriangle className="h-5 w-5 text-red-600 mr-2" />
+            <h3 className="text-lg font-semibold text-red-800">Erreur de Chargement</h3>
+          </div>
+          <p className="text-red-700 mb-4">
+            Impossible de charger les données de votre agence. Veuillez réessayer.
+          </p>
+          <Button 
+            onClick={() => window.location.reload()} 
+            className="bg-red-600 hover:bg-red-700"
+          >
+            Réessayer
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
