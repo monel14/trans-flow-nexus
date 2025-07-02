@@ -187,11 +187,11 @@ const OperationTypesListPage = () => {
                       <TableCell className="max-w-xs truncate">
                         {type.description || 'Aucune description'}
                       </TableCell>
-                      <TableCell>{getBalanceImpact(type.affects_balance)}</TableCell>
+                      <TableCell>{getBalanceImpact(type.impacts_balance)}</TableCell>
                       <TableCell>{getStatusBadge(type.status)}</TableCell>
                       <TableCell>
                         <Badge variant="outline">
-                          {type.fields_config?.length || 0} champs
+                          0 champs
                         </Badge>
                       </TableCell>
                       <TableCell>
