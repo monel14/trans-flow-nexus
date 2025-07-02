@@ -37,15 +37,15 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      const { error } = await signIn(email, password);
+      const { error } = await signIn(identifier, password);
       if (error) {
         let errorMessage = error.message;
         
         // Gestion spécifique des erreurs
         if (error.message === 'Invalid login credentials') {
-          errorMessage = "Email ou mot de passe incorrect.";
+          errorMessage = "Identifiant ou mot de passe incorrect.";
         } else if (error.message === 'Email not confirmed') {
-          errorMessage = "Votre email n'est pas encore confirmé. Pour les comptes de démonstration, utilisez le générateur de comptes pour créer et confirmer automatiquement les comptes.";
+          errorMessage = "Votre compte n'est pas encore confirmé. Contactez votre administrateur.";
         }
         
         toast({
