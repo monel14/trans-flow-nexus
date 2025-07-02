@@ -24,64 +24,65 @@ const TransactionValidation = () => {
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('unassigned');
 
-  // Données mockées
-  const unassignedTransactions = [
-    {
-      id: 'TXN001',
-      date: '2024-01-15 14:30',
-      agent: 'Ousmane Kaboré',
-      agence: 'Agence Centre-Ville',
-      type: 'Transfert Western Union',
-      amount: 75000,
-      beneficiary: '+226 70 XX XX XX',
-      proof: 'proof_001.jpg',
-      urgent: false
-    },
-    {
-      id: 'TXN002',
-      date: '2024-01-15 10:15',
-      agent: 'Aminata Traoré',
-      agence: 'Agence Ouaga 2000',
-      type: 'Paiement Facture SONABEL',
-      amount: 125000,
-      beneficiary: 'Réf: FAC123456',
-      proof: 'proof_002.pdf',
-      urgent: true
-    }
-  ];
+  // Hooks pour les données réelles
+  const { data: queueStats, isLoading: statsLoading } = useValidationQueueStats();
+  const { data: unassignedOps = [], isLoading: unassignedLoading } = useOperationsByQueue('unassigned');
+  const { data: myTasksOps = [], isLoading: myTasksLoading } = useOperationsByQueue('my_tasks');
+  const { data: allTasksOps = [], isLoading: allTasksLoading } = useOperationsByQueue('all_tasks');
+  
+  // Mutations
+  const assignOperation = useAssignOperation();
+  const releaseOperation = useReleaseOperation();
+  const validateOperation = useValidateOperation();
 
-  const myTransactions = [
-    {
-      id: 'TXN003',
-      date: '2024-01-15 09:00',
-      agent: 'Ibrahim Sawadogo',
-      agence: 'Agence Koudougou',
-      type: 'Recharge Orange Money',
-      amount: 50000,
-      beneficiary: '+226 75 XX XX XX',
-      proof: 'proof_003.jpg',
-      assignedAt: '2024-01-15 08:45',
-      urgent: false
-    }
-  ];
-
-  const handleAssignToMe = (transactionId: string) => {
-    toast({
-      title: "Transaction assignée",
-      description: `La transaction ${transactionId} vous a été assignée.`,
+  // Calculer les opérations urgentes
+  const getUrgentOperations = (operations: any[]) => {
+    return operations.filter(op => {
+      const isHighAmount = op.amount > 500000;
+      const isOld = new Date().getTime() - new Date(op.created_at).getTime() > 24 * 60 * 60 * 1000;
+      return isHighAmount || isOld;
     });
   };
 
-  const handleValidate = (transactionId: string) => {
-    toast({
-      title: "Transaction validée",
-      description: `La transaction ${transactionId} a été validée avec succès.`,
-    });
-    setSelectedTransaction(null);
+  const handleAssignToMe = async (operationId: string) => {
+    try {
+      await assignOperation.mutateAsync({ operation_id: operationId });
+      toast({
+        title: "Transaction assignée",
+        description: `La transaction ${operationId} vous a été assignée.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Erreur lors de l'assignation",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleReject = () => {
+  const handleValidate = async (operationId: string) => {
+    try {
+      await validateOperation.mutateAsync({
+        operation_id: operationId,
+        action: 'approve'
+      });
+      toast({
+        title: "Transaction validée",
+        description: `La transaction ${operationId} a été validée avec succès.`,
+      });
+      setSelectedTransaction(null);
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Erreur lors de la validation",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleReject = async () => {
     if (!rejectReason.trim()) {
       toast({
         title: "Erreur",
@@ -91,79 +92,181 @@ const TransactionValidation = () => {
       return;
     }
 
-    toast({
-      title: "Transaction rejetée",
-      description: `La transaction a été rejetée. L'agent sera notifié.`,
-    });
-    setSelectedTransaction(null);
-    setIsRejectModalOpen(false);
-    setRejectReason('');
+    if (!selectedTransaction) return;
+
+    try {
+      await validateOperation.mutateAsync({
+        operation_id: selectedTransaction.id,
+        action: 'reject',
+        notes: rejectReason
+      });
+      
+      toast({
+        title: "Transaction rejetée",
+        description: `La transaction a été rejetée. L'agent sera notifié.`,
+      });
+      setSelectedTransaction(null);
+      setIsRejectModalOpen(false);
+      setRejectReason('');
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Erreur lors du rejet",
+        variant: "destructive"
+      });
+    }
   };
 
-  const TransactionTable = ({ transactions, showAssignActions = false }: any) => (
-    <div className="overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>ID</TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead>Agent</TableHead>
-            <TableHead>Agence</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>Montant</TableHead>
-            <TableHead>Priorité</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {transactions.map((transaction: any) => (
-            <TableRow key={transaction.id}>
-              <TableCell className="font-medium">{transaction.id}</TableCell>
-              <TableCell>{transaction.date}</TableCell>
-              <TableCell>{transaction.agent}</TableCell>
-              <TableCell>{transaction.agence}</TableCell>
-              <TableCell>{transaction.type}</TableCell>
-              <TableCell className="font-medium">
-                {transaction.amount.toLocaleString()} FCFA
-              </TableCell>
-              <TableCell>
-                {transaction.urgent ? (
-                  <Badge className="bg-red-100 text-red-800">
-                    <AlertTriangle className="w-3 h-3 mr-1" />
-                    Urgent
-                  </Badge>
-                ) : (
-                  <Badge variant="secondary">Normal</Badge>
-                )}
-              </TableCell>
-              <TableCell>
-                <div className="flex space-x-1">
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => setSelectedTransaction(transaction)}
-                    title="Voir détails"
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                  {showAssignActions && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleAssignToMe(transaction.id)}
-                      title="S'assigner"
-                    >
-                      <UserPlus className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </TableCell>
-            </TableRow>
+  const handleReleaseOperation = async (operationId: string) => {
+    try {
+      await releaseOperation.mutateAsync({ operation_id: operationId });
+      toast({
+        title: "Transaction libérée",
+        description: "La transaction a été remise dans la file d'attente générale.",
+      });
+      setSelectedTransaction(null);
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Erreur lors de la libération",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const TransactionTable = ({ 
+    transactions, 
+    showAssignActions = false, 
+    isLoading = false 
+  }: { 
+    transactions: any[], 
+    showAssignActions?: boolean, 
+    isLoading?: boolean 
+  }) => {
+    if (isLoading) {
+      return (
+        <div className="space-y-4">
+          {[1, 2, 3, 4, 5].map(i => (
+            <div key={i} className="flex items-center space-x-4 p-4 border rounded-lg">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-8 w-20" />
+            </div>
           ))}
-        </TableBody>
-      </Table>
-    </div>
-  );
+        </div>
+      );
+    }
+
+    if (transactions.length === 0) {
+      return (
+        <div className="text-center py-8 text-gray-500">
+          <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-500" />
+          <p className="text-lg font-medium">Aucune transaction à traiter</p>
+          <p className="text-sm">Toutes les transactions ont été validées</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>ID</TableHead>
+              <TableHead>Date</TableHead>
+              <TableHead>Agent</TableHead>
+              <TableHead>Agence</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Montant</TableHead>
+              <TableHead>Priorité</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {transactions.map((transaction: any) => {
+              const isUrgent = transaction.amount > 500000 || 
+                new Date().getTime() - new Date(transaction.created_at).getTime() > 24 * 60 * 60 * 1000;
+              
+              return (
+                <TableRow key={transaction.id}>
+                  <TableCell className="font-medium">
+                    {transaction.reference_number || transaction.id.slice(0, 8)}
+                  </TableCell>
+                  <TableCell>
+                    {new Date(transaction.created_at).toLocaleDateString('fr-FR')} {new Date(transaction.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                  </TableCell>
+                  <TableCell>{transaction.profiles?.name || 'Inconnu'}</TableCell>
+                  <TableCell>{transaction.agencies?.name || 'Inconnue'}</TableCell>
+                  <TableCell>{transaction.operation_types?.name || 'Type inconnu'}</TableCell>
+                  <TableCell className="font-medium">
+                    {transaction.amount.toLocaleString()} XOF
+                  </TableCell>
+                  <TableCell>
+                    {isUrgent ? (
+                      <Badge className="bg-red-100 text-red-800">
+                        <AlertTriangle className="w-3 h-3 mr-1" />
+                        Urgent
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary">Normal</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex space-x-1">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => setSelectedTransaction(transaction)}
+                        title="Voir détails"
+                        disabled={validateOperation.isPending}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      {showAssignActions && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleAssignToMe(transaction.id)}
+                          title="S'assigner"
+                          disabled={assignOperation.isPending}
+                        >
+                          {assignOperation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <UserPlus className="h-4 w-4" />
+                          )}
+                        </Button>
+                      )}
+                      {!showAssignActions && transaction.status === 'pending_validation' && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleReleaseOperation(transaction.id)}
+                          title="Libérer"
+                          disabled={releaseOperation.isPending}
+                        >
+                          {releaseOperation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <XCircle className="h-4 w-4" />
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -177,9 +280,13 @@ const TransactionValidation = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">
-                {unassignedTransactions.length}
-              </div>
+              {statsLoading ? (
+                <Skeleton className="h-8 w-12 mx-auto mb-2" />
+              ) : (
+                <div className="text-2xl font-bold text-orange-600">
+                  {queueStats?.unassigned_count || 0}
+                </div>
+              )}
               <div className="text-sm text-gray-600">Non Assignées</div>
             </div>
           </CardContent>
@@ -187,9 +294,13 @@ const TransactionValidation = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
-                {myTransactions.length}
-              </div>
+              {statsLoading ? (
+                <Skeleton className="h-8 w-12 mx-auto mb-2" />
+              ) : (
+                <div className="text-2xl font-bold text-blue-600">
+                  {queueStats?.my_tasks_count || 0}
+                </div>
+              )}
               <div className="text-sm text-gray-600">Mes Transactions</div>
             </div>
           </CardContent>
@@ -197,9 +308,13 @@ const TransactionValidation = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">
-                {unassignedTransactions.filter(t => t.urgent).length}
-              </div>
+              {statsLoading ? (
+                <Skeleton className="h-8 w-12 mx-auto mb-2" />
+              ) : (
+                <div className="text-2xl font-bold text-red-600">
+                  {queueStats?.urgent_count || 0}
+                </div>
+              )}
               <div className="text-sm text-gray-600">Urgentes</div>
             </div>
           </CardContent>
@@ -207,7 +322,13 @@ const TransactionValidation = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">23</div>
+              {statsLoading ? (
+                <Skeleton className="h-8 w-12 mx-auto mb-2" />
+              ) : (
+                <div className="text-2xl font-bold text-green-600">
+                  {queueStats?.completed_today || 0}
+                </div>
+              )}
               <div className="text-sm text-gray-600">Validées Aujourd'hui</div>
             </div>
           </CardContent>
@@ -215,26 +336,33 @@ const TransactionValidation = () => {
       </div>
 
       {/* Tabs pour les différentes vues */}
-      <Tabs defaultValue="unassigned" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="unassigned" className="flex items-center space-x-2">
             <Clock className="w-4 h-4" />
-            <span>Non Assignées ({unassignedTransactions.length})</span>
+            <span>Non Assignées ({queueStats?.unassigned_count || 0})</span>
           </TabsTrigger>
           <TabsTrigger value="my-transactions" className="flex items-center space-x-2">
             <UserPlus className="w-4 h-4" />
-            <span>Mes Transactions ({myTransactions.length})</span>
+            <span>Mes Transactions ({queueStats?.my_tasks_count || 0})</span>
           </TabsTrigger>
-          <TabsTrigger value="all">Toutes</TabsTrigger>
+          <TabsTrigger value="all">Toutes ({queueStats?.all_tasks_count || 0})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="unassigned">
           <Card>
             <CardHeader>
-              <CardTitle>Transactions Non Assignées</CardTitle>
+              <CardTitle className="flex items-center justify-between">
+                <span>Transactions Non Assignées</span>
+                {unassignedLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <TransactionTable transactions={unassignedTransactions} showAssignActions={true} />
+              <TransactionTable 
+                transactions={unassignedOps} 
+                showAssignActions={true} 
+                isLoading={unassignedLoading}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -242,10 +370,17 @@ const TransactionValidation = () => {
         <TabsContent value="my-transactions">
           <Card>
             <CardHeader>
-              <CardTitle>Mes Transactions en Cours</CardTitle>
+              <CardTitle className="flex items-center justify-between">
+                <span>Mes Transactions en Cours</span>
+                {myTasksLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <TransactionTable transactions={myTransactions} showAssignActions={false} />
+              <TransactionTable 
+                transactions={myTasksOps} 
+                showAssignActions={false} 
+                isLoading={myTasksLoading}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -253,12 +388,16 @@ const TransactionValidation = () => {
         <TabsContent value="all">
           <Card>
             <CardHeader>
-              <CardTitle>Toutes les Transactions</CardTitle>
+              <CardTitle className="flex items-center justify-between">
+                <span>Toutes les Transactions</span>
+                {allTasksLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <TransactionTable 
-                transactions={[...unassignedTransactions, ...myTransactions]} 
+                transactions={allTasksOps} 
                 showAssignActions={false} 
+                isLoading={allTasksLoading}
               />
             </CardContent>
           </Card>
@@ -269,48 +408,61 @@ const TransactionValidation = () => {
       <Dialog open={!!selectedTransaction} onOpenChange={() => setSelectedTransaction(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Détail de la Transaction {selectedTransaction?.id}</DialogTitle>
+            <DialogTitle>Détail de la Transaction {selectedTransaction?.reference_number || selectedTransaction?.id?.slice(0, 8)}</DialogTitle>
           </DialogHeader>
           {selectedTransaction && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Agent</Label>
-                  <p className="font-medium">{selectedTransaction.agent}</p>
+                  <p className="font-medium">{selectedTransaction.profiles?.name || 'Inconnu'}</p>
                 </div>
                 <div>
                   <Label>Agence</Label>
-                  <p>{selectedTransaction.agence}</p>
+                  <p>{selectedTransaction.agencies?.name || 'Inconnue'}</p>
                 </div>
                 <div>
                   <Label>Type d'opération</Label>
-                  <p>{selectedTransaction.type}</p>
+                  <p>{selectedTransaction.operation_types?.name || 'Type inconnu'}</p>
                 </div>
                 <div>
                   <Label>Montant</Label>
                   <p className="font-bold text-green-600">
-                    {selectedTransaction.amount.toLocaleString()} FCFA
+                    {selectedTransaction.amount.toLocaleString()} XOF
                   </p>
                 </div>
                 <div>
-                  <Label>Bénéficiaire</Label>
-                  <p>{selectedTransaction.beneficiary}</p>
+                  <Label>Statut</Label>
+                  <p className="capitalize">{selectedTransaction.status}</p>
                 </div>
                 <div>
                   <Label>Date de soumission</Label>
-                  <p>{selectedTransaction.date}</p>
+                  <p>{new Date(selectedTransaction.created_at).toLocaleString('fr-FR')}</p>
                 </div>
               </div>
+
+              {selectedTransaction.operation_data && (
+                <div>
+                  <Label>Données de l'opération</Label>
+                  <div className="mt-2 p-4 bg-gray-50 rounded-lg">
+                    <pre className="text-sm text-gray-700 whitespace-pre-wrap">
+                      {JSON.stringify(selectedTransaction.operation_data, null, 2)}
+                    </pre>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <Label>Preuve de transaction</Label>
                 <div className="mt-2 p-4 border-2 border-dashed border-gray-300 rounded-lg text-center">
                   <p className="text-sm text-gray-600">
-                    📄 {selectedTransaction.proof}
+                    📄 {selectedTransaction.operation_data?.proof_url ? 'Preuve disponible' : 'Aucune preuve fournie'}
                   </p>
-                  <Button variant="outline" size="sm" className="mt-2">
-                    Ouvrir la preuve
-                  </Button>
+                  {selectedTransaction.operation_data?.proof_url && (
+                    <Button variant="outline" size="sm" className="mt-2">
+                      Ouvrir la preuve
+                    </Button>
+                  )}
                 </div>
               </div>
 
@@ -318,21 +470,33 @@ const TransactionValidation = () => {
                 <Button 
                   onClick={() => handleValidate(selectedTransaction.id)}
                   className="flex-1"
+                  disabled={validateOperation.isPending}
                 >
-                  <CheckCircle className="mr-2 h-4 w-4" />
+                  {validateOperation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                  )}
                   Valider
                 </Button>
                 <Button 
                   variant="destructive"
                   onClick={() => setIsRejectModalOpen(true)}
                   className="flex-1"
+                  disabled={validateOperation.isPending}
                 >
                   <XCircle className="mr-2 h-4 w-4" />
                   Rejeter
                 </Button>
-                <Button variant="outline" onClick={() => setSelectedTransaction(null)}>
-                  Libérer
-                </Button>
+                {selectedTransaction.status === 'pending_validation' && (
+                  <Button 
+                    variant="outline" 
+                    onClick={() => handleReleaseOperation(selectedTransaction.id)}
+                    disabled={releaseOperation.isPending}
+                  >
+                    Libérer
+                  </Button>
+                )}
               </div>
             </div>
           )}
@@ -357,13 +521,23 @@ const TransactionValidation = () => {
               />
             </div>
             <div className="flex space-x-2">
-              <Button onClick={handleReject} variant="destructive" className="flex-1">
-                Confirmer le Rejet
+              <Button 
+                onClick={handleReject} 
+                variant="destructive" 
+                className="flex-1"
+                disabled={validateOperation.isPending}
+              >
+                {validateOperation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  "Confirmer le Rejet"
+                )}
               </Button>
               <Button 
                 variant="outline" 
                 onClick={() => setIsRejectModalOpen(false)}
                 className="flex-1"
+                disabled={validateOperation.isPending}
               >
                 Annuler
               </Button>
