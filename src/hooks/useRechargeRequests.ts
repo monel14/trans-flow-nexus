@@ -7,7 +7,8 @@ export interface RechargeRequest {
   requester_id: string;
   assigned_to_id?: string;
   ticket_type: string;
-  subject: string;
+  title: string; // Changed from 'subject' to 'title'
+  ticket_number: string;
   description?: string;
   priority: 'low' | 'normal' | 'high' | 'urgent';
   status: 'pending' | 'approved' | 'rejected' | 'processing';
@@ -24,6 +25,7 @@ export interface RechargeRequest {
     name: string;
     email: string;
     balance?: number;
+    agency_id?: number;
   };
   assigned_profiles?: {
     id: string;
@@ -50,7 +52,7 @@ export function useRechargeRequests(userId?: string) {
         .from('request_tickets')
         .select(`
           *,
-          profiles!request_tickets_requester_id_fkey (id, name, email, balance),
+          profiles!request_tickets_requester_id_fkey (id, name, email, balance, agency_id),
           assigned_profiles:profiles!request_tickets_assigned_to_id_fkey (id, name, email)
         `)
         .eq('requester_id', userId)
@@ -58,7 +60,7 @@ export function useRechargeRequests(userId?: string) {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data as any[];
+      return data || [];
     },
     {
       enabled: !!userId,
@@ -85,10 +87,10 @@ export function useAgentRechargeRequests(agencyId?: string) {
       
       // Filter by agency (since we can't do complex joins directly)
       const filteredData = data?.filter(request => 
-        request.profiles?.agency_id === parseInt(agencyId || '0')
+        request.profiles && request.profiles.agency_id === parseInt(agencyId || '0')
       ) || [];
       
-      return filteredData as RechargeRequest[];
+      return filteredData;
     },
     {
       enabled: !!agencyId,
@@ -100,26 +102,31 @@ export function useAgentRechargeRequests(agencyId?: string) {
 export function useCreateRechargeRequest() {
   return useSupabaseMutation<RechargeRequest, CreateRechargeRequestData>(
     async (requestData) => {
+      // Generate a unique ticket number
+      const timestamp = Date.now();
+      const ticketNumber = `RCH-${timestamp}`;
+      
       const { data, error } = await supabase
         .from('request_tickets')
         .insert({
           requester_id: requestData.requester_id,
           assigned_to_id: requestData.assigned_to_id,
           ticket_type: requestData.ticket_type,
-          subject: `Demande de recharge - ${requestData.amount.toLocaleString()} FCFA`,
-          description: requestData.description,
+          title: `Demande de recharge - ${requestData.amount.toLocaleString()} FCFA`,
+          ticket_number: ticketNumber,
+          description: requestData.description || '',
           priority: requestData.priority,
           status: 'pending',
           requested_amount: requestData.amount,
         })
         .select(`
           *,
-          profiles!request_tickets_requester_id_fkey (id, name, email, balance)
+          profiles!request_tickets_requester_id_fkey (id, name, email, balance, agency_id)
         `)
         .single();
       
       if (error) throw error;
-      return data as any;
+      return data;
     },
     {
       invalidateQueries: [['recharge-requests'], ['agent-recharge-requests']],

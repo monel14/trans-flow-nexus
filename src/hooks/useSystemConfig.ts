@@ -41,57 +41,47 @@ export interface SystemConfig {
   max_recharge_amount: number;
 }
 
+// Since system_settings table doesn't exist in the current schema,
+// we'll use a simple in-memory configuration that can be extended later
+const DEFAULT_CONFIG: SystemConfig = {
+  app_name: 'TransFlow Nexus',
+  default_currency: 'XOF',
+  timezone: 'Africa/Ouagadougou',
+  max_file_size: 5242880,
+  supported_file_types: 'image/jpeg,image/png,application/pdf',
+  password_min_length: 8,
+  password_require_uppercase: true,
+  password_require_lowercase: true,
+  password_require_numbers: true,
+  password_require_symbols: false,
+  password_expiry_days: 90,
+  session_timeout_minutes: 60,
+  max_login_attempts: 5,
+  lockout_duration_minutes: 30,
+  email_notifications_enabled: true,
+  sms_notifications_enabled: false,
+  smtp_host: '',
+  smtp_port: 587,
+  smtp_username: '',
+  smtp_password: '',
+  smtp_encryption: 'tls',
+  welcome_email_template: 'Bienvenue sur TransFlow Nexus!\n\nVotre compte a été créé avec succès.',
+  operation_validated_template: 'Votre opération #{operation_id} a été validée.',
+  balance_low_template: 'Attention: Votre solde est faible ({balance}).',
+  min_operation_amount: 1000,
+  max_operation_amount: 10000000,
+  min_recharge_amount: 10000,
+  max_recharge_amount: 5000000,
+};
+
 // Hook to get system configuration
 export function useSystemConfig() {
   return useSupabaseQuery(
     ['system-config'],
     async () => {
-      const { data, error } = await supabase
-        .from('system_settings')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-      
-      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-        throw error;
-      }
-      
-      // Return default config if no settings exist
-      if (!data) {
-        return {
-          app_name: 'TransFlow Nexus',
-          default_currency: 'XOF',
-          timezone: 'Africa/Ouagadougou',
-          max_file_size: 5242880,
-          supported_file_types: 'image/jpeg,image/png,application/pdf',
-          password_min_length: 8,
-          password_require_uppercase: true,
-          password_require_lowercase: true,
-          password_require_numbers: true,
-          password_require_symbols: false,
-          password_expiry_days: 90,
-          session_timeout_minutes: 60,
-          max_login_attempts: 5,
-          lockout_duration_minutes: 30,
-          email_notifications_enabled: true,
-          sms_notifications_enabled: false,
-          smtp_host: '',
-          smtp_port: 587,
-          smtp_username: '',
-          smtp_password: '',
-          smtp_encryption: 'tls',
-          welcome_email_template: 'Bienvenue sur TransFlow Nexus!\n\nVotre compte a été créé avec succès.',
-          operation_validated_template: 'Votre opération #{operation_id} a été validée.',
-          balance_low_template: 'Attention: Votre solde est faible ({balance}).',
-          min_operation_amount: 1000,
-          max_operation_amount: 10000000,
-          min_recharge_amount: 10000,
-          max_recharge_amount: 5000000,
-        } as SystemConfig;
-      }
-      
-      return data as SystemConfig;
+      // For now, return the default configuration
+      // This can be extended later when system_settings table is created
+      return DEFAULT_CONFIG;
     }
   );
 }
@@ -100,46 +90,18 @@ export function useSystemConfig() {
 export function useUpdateSystemConfig() {
   return useSupabaseMutation<SystemConfig, Partial<SystemConfig>>(
     async (configData) => {
-      // Check if settings exist
-      const { data: existing } = await supabase
-        .from('system_settings')
-        .select('id')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+      // For now, just return the merged configuration
+      // This should be implemented when system_settings table is created
+      const updatedConfig = { ...DEFAULT_CONFIG, ...configData };
       
-      let result;
+      // TODO: Implement actual database storage when system_settings table is available
+      // const { data, error } = await supabase
+      //   .from('system_settings')
+      //   .upsert({ id: 'global', settings: updatedConfig })
+      //   .select()
+      //   .single();
       
-      if (existing) {
-        // Update existing
-        const { data, error } = await supabase
-          .from('system_settings')
-          .update({
-            settings: configData,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', existing.id)
-          .select()
-          .single();
-        
-        if (error) throw error;
-        result = data;
-      } else {
-        // Create new
-        const { data, error } = await supabase
-          .from('system_settings')
-          .insert({
-            name: 'global_config',
-            settings: configData,
-          })
-          .select()
-          .single();
-        
-        if (error) throw error;
-        result = data;
-      }
-      
-      return result.settings as SystemConfig;
+      return updatedConfig;
     },
     {
       invalidateQueries: [['system-config']],
@@ -154,17 +116,8 @@ export function useSystemSetting(settingName: string) {
   return useSupabaseQuery(
     ['system-setting', settingName],
     async () => {
-      const { data, error } = await supabase
-        .from('system_settings')
-        .select('settings')
-        .eq('name', settingName)
-        .single();
-      
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
-      
-      return data?.settings || null;
+      // Return the specific setting from default config
+      return DEFAULT_CONFIG[settingName as keyof SystemConfig] || null;
     }
   );
 }
@@ -176,45 +129,9 @@ export function useUpdateSystemSetting() {
     value: any;
   }>(
     async ({ settingName, value }) => {
-      const { data: existing } = await supabase
-        .from('system_settings')
-        .select('id, settings')
-        .eq('name', settingName)
-        .single();
-      
-      if (existing) {
-        // Update existing setting
-        const updatedSettings = {
-          ...existing.settings,
-          [settingName]: value,
-        };
-        
-        const { data, error } = await supabase
-          .from('system_settings')
-          .update({
-            settings: updatedSettings,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', existing.id)
-          .select()
-          .single();
-        
-        if (error) throw error;
-        return data.settings;
-      } else {
-        // Create new setting
-        const { data, error } = await supabase
-          .from('system_settings')
-          .insert({
-            name: settingName,
-            settings: { [settingName]: value },
-          })
-          .select()
-          .single();
-        
-        if (error) throw error;
-        return data.settings;
-      }
+      // For now, just return the updated value
+      // This should be implemented when system_settings table is created
+      return { [settingName]: value };
     },
     {
       invalidateQueries: [['system-config'], ['system-setting']],

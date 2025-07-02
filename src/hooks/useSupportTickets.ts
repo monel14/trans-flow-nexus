@@ -7,7 +7,8 @@ export interface SupportTicket {
   requester_id: string;
   assigned_to_id?: string;
   ticket_type: string;
-  subject: string;
+  title: string; // Changed from 'subject' to 'title'
+  ticket_number: string;
   description?: string;
   priority: 'low' | 'normal' | 'high' | 'urgent';
   status: 'open' | 'assigned' | 'in_progress' | 'pending_user' | 'resolved' | 'closed';
@@ -21,7 +22,7 @@ export interface SupportTicket {
     id: string;
     name: string;
     email: string;
-    role: string;
+    role_id?: number;
   };
   assigned_profiles?: {
     id: string;
@@ -47,7 +48,7 @@ export function useSupportTickets() {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data as any[];
+      return data || [];
     },
     {
       enabled: user?.role && ['admin_general', 'sous_admin'].includes(user.role),
@@ -72,7 +73,7 @@ export function useMyTickets() {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data as any[];
+      return data || [];
     },
     {
       enabled: !!user?.id,
@@ -83,22 +84,31 @@ export function useMyTickets() {
 // Hook to create a support ticket
 export function useCreateSupportTicket() {
   return useSupabaseMutation<SupportTicket, {
-    subject: string;
+    title: string; // Changed from 'subject' to 'title'
     description?: string;
     ticket_type: string;
     priority: 'low' | 'normal' | 'high' | 'urgent';
     requester_id: string;
   }>(
     async (ticketData) => {
+      // Generate a unique ticket number
+      const timestamp = Date.now();
+      const ticketNumber = `SUP-${timestamp}`;
+      
       const { data, error } = await supabase
         .from('request_tickets')
         .insert({
-          ...ticketData,
+          requester_id: ticketData.requester_id,
+          ticket_type: ticketData.ticket_type,
+          title: ticketData.title,
+          ticket_number: ticketNumber,
+          description: ticketData.description || '',
+          priority: ticketData.priority,
           status: 'open',
         })
         .select(`
           *,
-          profiles!request_tickets_requester_id_fkey (id, name, email)
+          profiles!request_tickets_requester_id_fkey (id, name, email, role_id)
         `)
         .single();
       
@@ -130,7 +140,7 @@ export function useAssignTicket() {
         .eq('id', ticketId)
         .select(`
           *,
-          profiles!request_tickets_requester_id_fkey (id, name, email),
+          profiles!request_tickets_requester_id_fkey (id, name, email, role_id),
           assigned_profiles:profiles!request_tickets_assigned_to_id_fkey (id, name, email)
         `)
         .single();
@@ -170,7 +180,7 @@ export function useResolveTicket() {
         .eq('id', ticketId)
         .select(`
           *,
-          profiles!request_tickets_requester_id_fkey (id, name, email),
+          profiles!request_tickets_requester_id_fkey (id, name, email, role_id),
           assigned_profiles:profiles!request_tickets_assigned_to_id_fkey (id, name, email)
         `)
         .single();
