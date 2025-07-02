@@ -53,12 +53,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('Fetching profile for user:', userId);
       
-      // 1. Récupérer le profil utilisateur basic
+      // 1. Récupérer le profil utilisateur avec son rôle via la jointure profiles -> roles
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select(`
           *,
-          agencies (name)
+          agencies (name),
+          roles (name, label)
         `)
         .eq('id', userId)
         .single();
@@ -70,24 +71,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       console.log('Profile data:', profile);
 
-      // 2. Récupérer le rôle depuis user_roles avec une requête séparée
-      const { data: userRoles, error: userRoleError } = await supabase
-        .from('user_roles')
-        .select(`
-          roles (name, label)
-        `)
-        .eq('user_id', userId)
-        .eq('is_active', true)
-        .single();
-      
-      console.log('User roles data:', userRoles);
-      
+      // 2. Déterminer le rôle: d'abord via profiles.roles, sinon user_roles, sinon défaut
       let userRole = 'agent'; // Par défaut
-      if (userRoles && userRoles.roles) {
-        userRole = userRoles.roles.name;
+      let roleSource = 'default';
+      
+      // Méthode 1: Rôle via profiles.role_id -> roles
+      if (profile && profile.roles && profile.roles.name) {
+        userRole = profile.roles.name;
+        roleSource = 'profiles.role_id';
+        console.log('Role found via profiles.role_id:', userRole);
+      } else {
+        // Méthode 2: Fallback vers user_roles (pour compatibilité)
+        try {
+          const { data: userRoles, error: userRoleError } = await supabase
+            .from('user_roles')
+            .select(`
+              roles (name, label)
+            `)
+            .eq('user_id', userId)
+            .eq('is_active', true)
+            .single();
+          
+          if (userRoles && userRoles.roles && userRoles.roles.name) {
+            userRole = userRoles.roles.name;
+            roleSource = 'user_roles';
+            console.log('Role found via user_roles:', userRole);
+          } else {
+            console.log('No role found in user_roles, using default:', userRole);
+          }
+        } catch (userRoleError) {
+          console.log('user_roles query failed, using default role:', userRole);
+        }
       }
 
-      console.log('User role determined:', userRole);
+      console.log(`User role determined: ${userRole} (source: ${roleSource})`);
 
       const userProfile: UserProfile = {
         id: profile.id,
