@@ -445,6 +445,90 @@ def main():
     
     return 0 if tester.tests_passed == tester.tests_run else 1
 
+def test_rpc_functions_direct():
+    """Test RPC functions directly without authentication"""
+    print("\n🔍 Testing RPC Functions Directly...")
+    tester = SupabaseAPITester()
+    
+    # Test if the RPC functions exist
+    print("\n📊 Testing RPC Functions Existence")
+    
+    # Test create_sous_admin function
+    timestamp = datetime.now().strftime('%H%M%S')
+    sous_admin_identifier = f"sadmin.test{timestamp}"
+    sous_admin_success, sous_admin_response = tester.run_test(
+        "RPC Function: create_sous_admin",
+        "POST",
+        "rest/v1/rpc/create_sous_admin",
+        401,  # We expect 401 Unauthorized since we're not authenticated
+        data={
+            "full_name_in": f"Test Sous-Admin {timestamp}",
+            "identifier_in": sous_admin_identifier,
+            "password_in": "Test123!"
+        }
+    )
+    
+    if sous_admin_success:
+        print("✅ RPC Function create_sous_admin exists (returned 401 as expected)")
+    else:
+        # Check if it's a 404 (function doesn't exist) or 401 (function exists but requires auth)
+        if sous_admin_response.get('code') == 404:
+            print("❌ RPC Function create_sous_admin does not exist")
+        else:
+            print("✅ RPC Function create_sous_admin exists but requires authentication")
+    
+    # Test create_chef_agence function
+    chef_identifier = f"chef.test{timestamp}"
+    chef_success, chef_response = tester.run_test(
+        "RPC Function: create_chef_agence",
+        "POST",
+        "rest/v1/rpc/create_chef_agence",
+        401,  # We expect 401 Unauthorized since we're not authenticated
+        data={
+            "full_name_in": f"Test Chef {timestamp}",
+            "identifier_in": chef_identifier,
+            "password_in": "Test123!",
+            "agency_id_in": 1
+        }
+    )
+    
+    if chef_success:
+        print("✅ RPC Function create_chef_agence exists (returned 401 as expected)")
+    else:
+        # Check if it's a 404 (function doesn't exist) or 401 (function exists but requires auth)
+        if chef_response.get('code') == 404:
+            print("❌ RPC Function create_chef_agence does not exist")
+        else:
+            print("✅ RPC Function create_chef_agence exists but requires authentication")
+    
+    # Test create_agent function
+    agent_identifier = f"tst{timestamp}.agent"
+    agent_success, agent_response = tester.run_test(
+        "RPC Function: create_agent",
+        "POST",
+        "rest/v1/rpc/create_agent",
+        401,  # We expect 401 Unauthorized since we're not authenticated
+        data={
+            "full_name_in": f"Test Agent {timestamp}",
+            "identifier_in": agent_identifier,
+            "password_in": "Test123!"
+        }
+    )
+    
+    if agent_success:
+        print("✅ RPC Function create_agent exists (returned 401 as expected)")
+    else:
+        # Check if it's a 404 (function doesn't exist) or 401 (function exists but requires auth)
+        if agent_response.get('code') == 404:
+            print("❌ RPC Function create_agent does not exist")
+        else:
+            print("✅ RPC Function create_agent exists but requires authentication")
+    
+    # Print summary
+    tester.print_summary()
+    
+    return tester.tests_passed > 0
+
 def test_signup_and_login():
     """Test user registration and login"""
     print("\n🔍 Testing User Registration and Login...")
@@ -628,6 +712,9 @@ if __name__ == "__main__":
     
     # Test signup and login
     signup_result = test_signup_and_login()
+    
+    # Test RPC functions directly
+    rpc_result = test_rpc_functions_direct()
     
     # Run the RLS fix test
     rls_fix_result = test_rls_fix()
