@@ -293,7 +293,7 @@ const Login = () => {
             <h4 className="text-sm font-medium text-blue-900 mb-2">🚀 Connexion rapide (exemples d'identifiants) :</h4>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
               <Button
-                onClick={() => handleQuickSignIn('admin.monel', 'admin123')}
+                onClick={() => handleQuickSignIn('admin_monel@transflownexus.demo', 'admin123')}
                 variant="outline"
                 size="sm"
                 className="text-xs"
@@ -302,7 +302,7 @@ const Login = () => {
                 admin.monel
               </Button>
               <Button
-                onClick={() => handleQuickSignIn('chef.dakar.diallo', 'chef123')}
+                onClick={() => handleQuickSignIn('chef_dakar_diallo@transflownexus.demo', 'chef123')}
                 variant="outline"
                 size="sm"
                 className="text-xs"
@@ -311,7 +311,7 @@ const Login = () => {
                 chef.dakar.diallo
               </Button>
               <Button
-                onClick={() => handleQuickSignIn('dkr01.fatou', 'agent123')}
+                onClick={() => handleQuickSignIn('dkr01_fatou@transflownexus.demo', 'agent123')}
                 variant="outline"
                 size="sm"
                 className="text-xs"
@@ -320,7 +320,7 @@ const Login = () => {
                 dkr01.fatou
               </Button>
               <Button
-                onClick={() => handleQuickSignIn('sadmin.pierre', 'sousadmin123')}
+                onClick={() => handleQuickSignIn('sadmin_pierre@transflownexus.demo', 'sadmin123')}
                 variant="outline"
                 size="sm"
                 className="text-xs"
@@ -329,13 +329,22 @@ const Login = () => {
                 sadmin.pierre
               </Button>
               <Button
-                onClick={() => handleQuickSignIn('dev.tech', 'dev123')}
+                onClick={() => handleQuickSignIn('chef_thies_fall@transflownexus.demo', 'chef123')}
                 variant="outline"
                 size="sm"
                 className="text-xs"
                 disabled={isLoading}
               >
-                dev.tech
+                chef.thies.fall
+              </Button>
+              <Button
+                onClick={() => handleQuickSignIn('ths01_amadou@transflownexus.demo', 'agent123')}
+                variant="outline"
+                size="sm"
+                className="text-xs"
+                disabled={isLoading}
+              >
+                ths01.amadou
               </Button>
             </div>
             <p className="text-xs text-blue-600 mt-2">
