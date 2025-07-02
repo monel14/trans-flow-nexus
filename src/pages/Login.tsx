@@ -348,7 +348,7 @@ const Login = () => {
               </Button>
             </div>
             <p className="text-xs text-blue-600 mt-2">
-              ⚠️ Ces identifiants seront créés via le système de création hiérarchique
+              ✅ Comptes de démonstration disponibles - Cliquez pour tester !
             </p>
           </div>
         </div>
