@@ -17,8 +17,8 @@ def create_developer_account():
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
     
     # Informations du compte développeur
-    developer_email = "dev_admin@transflownexus.demo"
-    developer_password = "dev123"
+    developer_email = "developer@example.com"
+    developer_password = "dev123456"
     developer_name = "Développeur Admin"
     
     try:
