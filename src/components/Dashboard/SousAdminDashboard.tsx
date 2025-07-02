@@ -22,13 +22,13 @@ import { useSousAdminDashboardKPIs, useRecentOperations } from '@/hooks/useDashb
 const SousAdminDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { data: operations = [], isLoading: operationsLoading } = useOperations();
+  
+  // Récupération des données dynamiques
+  const { data: kpis, isLoading: kpisLoading, error: kpisError } = useSousAdminDashboardKPIs();
+  const { data: recentOperations = [], isLoading: operationsLoading } = useRecentOperations(5);
 
-  const pendingTransactions = operations.filter(op => op.status === 'pending').length;
-  const completedToday = operations.filter(op => 
-    op.status === 'completed' && 
-    new Date(op.created_at).toDateString() === new Date().toDateString()
-  ).length;
+  // Calculer les opérations en attente à partir des données récentes pour affichage
+  const pendingTransactions = recentOperations.filter(op => op.status === 'pending' || op.status === 'pending_validation').length;
 
   const quickActions = [
     {
@@ -57,6 +57,22 @@ const SousAdminDashboard = () => {
     }
   ];
 
+  // Gestion des erreurs
+  if (kpisError) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-xl p-6 text-white">
+          <h1 className="text-2xl font-bold mb-2">
+            Bureau d'Assistance - Sous-Administrateur
+          </h1>
+          <p className="text-indigo-100">
+            Une erreur s'est produite lors du chargement des données
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* En-tête Sous-Admin */}
@@ -71,38 +87,55 @@ const SousAdminDashboard = () => {
 
       {/* Métriques d'assistance */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <MetricCard
-          title="À Valider (Urgent)"
-          value={pendingTransactions}
-          icon={AlertTriangle}
-          iconColor="text-orange-500"
-          valueColor="text-orange-600"
-          subtitle="Attente de validation"
-        />
-        <MetricCard
-          title="Validées Aujourd'hui"
-          value={completedToday}
-          icon={CheckCircle}
-          iconColor="text-green-500"
-          valueColor="text-green-600"
-          subtitle="Traitées avec succès"
-        />
-        <MetricCard
-          title="Tickets Support"
-          value="12"
-          icon={MessageSquare}
-          iconColor="text-blue-500"
-          valueColor="text-blue-600"
-          subtitle="5 nouveaux, 7 en cours"
-        />
-        <MetricCard
-          title="Temps Moyen"
-          value="3.2 min"
-          icon={Clock}
-          iconColor="text-purple-500"
-          valueColor="text-purple-600"
-          subtitle="Traitement par transaction"
-        />
+        {kpisLoading ? (
+          // Skeletons pendant le chargement
+          <>
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="bg-white rounded-lg border border-gray-200 p-6">
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-8 w-1/2" />
+                  <Skeleton className="h-3 w-full" />
+                </div>
+              </div>
+            ))}
+          </>
+        ) : (
+          <>
+            <MetricCard
+              title="À Valider (Urgent)"
+              value={kpis?.pending_urgent?.count?.toString() || '0'}
+              icon={AlertTriangle}
+              iconColor="text-orange-500"
+              valueColor="text-orange-600"
+              subtitle={kpis?.pending_urgent?.subtitle || 'Aucune donnée'}
+            />
+            <MetricCard
+              title="Validées Aujourd'hui"
+              value={kpis?.completed_today?.count?.toString() || '0'}
+              icon={CheckCircle}
+              iconColor="text-green-500"
+              valueColor="text-green-600"
+              subtitle={kpis?.completed_today?.subtitle || 'Aucune donnée'}
+            />
+            <MetricCard
+              title="Tickets Support"
+              value={kpis?.support_tickets?.open?.toString() || '0'}
+              icon={MessageSquare}
+              iconColor="text-blue-500"
+              valueColor="text-blue-600"
+              subtitle={kpis?.support_tickets?.subtitle || 'Aucune donnée'}
+            />
+            <MetricCard
+              title="Temps Moyen"
+              value={kpis?.avg_processing_time?.formatted || '0 min'}
+              icon={Clock}
+              iconColor="text-purple-500"
+              valueColor="text-purple-600"
+              subtitle={kpis?.avg_processing_time?.subtitle || 'Aucune donnée'}
+            />
+          </>
+        )}
       </div>
 
       {/* Actions rapides */}
@@ -115,37 +148,77 @@ const SousAdminDashboard = () => {
           <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
             <Zap className="h-5 w-5 mr-2 text-orange-500" />
             Validations Prioritaires
+            {operationsLoading && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
           </h3>
           <div className="space-y-3">
-            {[
-              { type: 'Transfert International', amount: '2,450,000', urgent: true },
-              { type: 'Recharge Agence', amount: '850,000', urgent: false },
-              { type: 'Paiement Facture', amount: '125,000', urgent: true },
-              { type: 'Mobile Money', amount: '75,000', urgent: false }
-            ].map((transaction, index) => (
-              <div key={index} className={`p-3 rounded-lg border ${
-                transaction.urgent 
-                  ? 'bg-red-50 border-red-200' 
-                  : 'bg-gray-50 border-gray-200'
-              }`}>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="font-medium text-gray-800">{transaction.type}</p>
-                    <p className="text-sm text-gray-500">{transaction.amount} XOF</p>
+            {operationsLoading ? (
+              // Skeletons pour les transactions
+              <>
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="p-3 rounded-lg border bg-gray-50 border-gray-200">
+                    <div className="flex justify-between items-center">
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-3 w-24" />
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Skeleton className="h-6 w-16" />
+                        <Skeleton className="h-8 w-16" />
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    {transaction.urgent && (
-                      <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full">
-                        URGENT
-                      </span>
-                    )}
-                    <button className="bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700">
-                      Valider
-                    </button>
-                  </div>
-                </div>
+                ))}
+              </>
+            ) : recentOperations.length > 0 ? (
+              recentOperations
+                .filter(op => op.status === 'pending' || op.status === 'pending_validation')
+                .slice(0, 4)
+                .map((operation, index) => {
+                  const isUrgent = operation.amount > 500000 || 
+                    new Date().getTime() - new Date(operation.created_at).getTime() > 24 * 60 * 60 * 1000;
+                  
+                  return (
+                    <div key={operation.id} className={`p-3 rounded-lg border ${
+                      isUrgent 
+                        ? 'bg-red-50 border-red-200' 
+                        : 'bg-gray-50 border-gray-200'
+                    }`}>
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="font-medium text-gray-800">
+                            {operation.operation_types?.name || 'Type inconnu'}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {operation.amount.toLocaleString()} XOF
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            Agent: {operation.profiles?.name || 'Inconnu'}
+                          </p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          {isUrgent && (
+                            <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full">
+                              URGENT
+                            </span>
+                          )}
+                          <button 
+                            onClick={() => navigate('/validation')}
+                            className="bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700"
+                          >
+                            Valider
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+            ) : (
+              <div className="text-center text-gray-500 py-8">
+                <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-500" />
+                <p>Aucune validation en attente</p>
+                <p className="text-sm">Toutes les transactions ont été traitées</p>
               </div>
-            ))}
+            )}
           </div>
           <button 
             onClick={() => navigate('/validation')}
@@ -165,16 +238,28 @@ const SousAdminDashboard = () => {
             {/* Statistiques de support */}
             <div className="grid grid-cols-2 gap-4">
               <div className="text-center p-3 bg-blue-50 rounded-lg">
-                <p className="text-2xl font-bold text-blue-600">8</p>
+                {kpisLoading ? (
+                  <Skeleton className="h-8 w-8 mx-auto mb-2" />
+                ) : (
+                  <p className="text-2xl font-bold text-blue-600">
+                    {kpis?.support_tickets?.open || 0}
+                  </p>
+                )}
                 <p className="text-sm text-blue-700">Tickets ouverts</p>
               </div>
               <div className="text-center p-3 bg-green-50 rounded-lg">
-                <p className="text-2xl font-bold text-green-600">24</p>
+                {kpisLoading ? (
+                  <Skeleton className="h-8 w-8 mx-auto mb-2" />
+                ) : (
+                  <p className="text-2xl font-bold text-green-600">
+                    {kpis?.support_tickets?.resolved_week || 0}
+                  </p>
+                )}
                 <p className="text-sm text-green-700">Résolus cette semaine</p>
               </div>
             </div>
 
-            {/* Tickets récents */}
+            {/* Tickets récents - données statiques pour l'instant */}
             <div className="space-y-2">
               <h4 className="font-medium text-gray-700">Tickets Récents</h4>
               {[
@@ -212,10 +297,12 @@ const SousAdminDashboard = () => {
       </div>
 
       {/* Transactions à valider */}
-      <TransactionTable 
-        transactions={operations.filter(op => op.status === 'pending').slice(0, 5)}
-        title="File d'Attente - Validation Requise"
-      />
+      {!operationsLoading && (
+        <TransactionTable 
+          transactions={recentOperations.filter(op => op.status === 'pending' || op.status === 'pending_validation').slice(0, 5)}
+          title="File d'Attente - Validation Requise"
+        />
+      )}
     </div>
   );
 };
