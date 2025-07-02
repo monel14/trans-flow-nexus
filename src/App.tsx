@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import MainLayout from "@/components/Layout/MainLayout";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 // Pages
 import Login from "@/pages/Login";
@@ -42,7 +43,19 @@ const ChefAgenceGestionAgents = React.lazy(() => import("@/pages/ChefAgenceGesti
 
 console.log('📱 App.tsx: App component loading...');
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error: any) => {
+        // Ne pas retry sur certaines erreurs
+        if (error?.code === 'PGRST301' || error?.code === 'PGRST116') {
+          return false;
+        }
+        return failureCount < 3;
+      },
+    },
+  },
+});
 
 const AppRoutes = () => {
   const { isAuthenticated } = useAuth();
@@ -336,17 +349,19 @@ const App = () => {
   console.log('📱 App.tsx: App component rendering...');
   
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AuthProvider>
-            <AppRoutes />
-          </AuthProvider>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AuthProvider>
+              <AppRoutes />
+            </AuthProvider>
+          </BrowserRouter>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 };
 
