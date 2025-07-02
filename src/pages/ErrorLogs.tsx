@@ -303,7 +303,7 @@ const ErrorLogs = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
             <div className="space-y-2">
               <Label htmlFor="search">Recherche</Label>
               <div className="relative">
@@ -326,6 +326,7 @@ const ErrorLogs = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tous les niveaux</SelectItem>
+                  <SelectItem value="critical">Critique</SelectItem>
                   <SelectItem value="error">Erreur</SelectItem>
                   <SelectItem value="warning">Avertissement</SelectItem>
                   <SelectItem value="info">Info</SelectItem>
@@ -346,6 +347,26 @@ const ErrorLogs = () => {
                   <SelectItem value="database">Base de données</SelectItem>
                   <SelectItem value="frontend">Frontend</SelectItem>
                   <SelectItem value="system">Système</SelectItem>
+                  <SelectItem value="external">Externe</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Statut</Label>
+              <Select 
+                value={filters.resolved === undefined ? 'all' : filters.resolved ? 'resolved' : 'unresolved'} 
+                onValueChange={(value) => updateFilter('resolved', 
+                  value === 'all' ? undefined : value === 'resolved'
+                )}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous</SelectItem>
+                  <SelectItem value="resolved">Résolus</SelectItem>
+                  <SelectItem value="unresolved">Non résolus</SelectItem>
                 </SelectContent>
               </Select>
             </div>
