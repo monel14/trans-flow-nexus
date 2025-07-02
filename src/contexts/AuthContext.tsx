@@ -23,10 +23,10 @@ interface AuthState {
 }
 
 interface AuthContextType extends AuthState {
-  signUp: (email: string, password: string, userData?: { name?: string; role?: string }) => Promise<{ error: any }>;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signUp: (identifier: string, password: string, userData?: { name?: string; role?: string }) => Promise<{ error: any }>;
+  signIn: (identifier: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
-  login: (email: string, password: string) => Promise<boolean>; // Backward compatibility
+  login: (identifier: string, password: string) => Promise<boolean>; // Backward compatibility
   logout: () => void; // Backward compatibility
 }
 
