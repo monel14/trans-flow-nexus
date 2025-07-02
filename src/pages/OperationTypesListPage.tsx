@@ -35,6 +35,7 @@ const OperationTypesListPage = () => {
     isLoading, 
     error 
   } = useOperationTypes();
+  const updateOperationType = useUpdateOperationType();
 
   const filteredTypes = operationTypes.filter((type: OperationType) =>
     type.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
