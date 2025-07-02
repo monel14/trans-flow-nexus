@@ -61,6 +61,7 @@ const ErrorLogs = () => {
 
   const getLevelBadge = (level: string) => {
     const variants = {
+      'critical': 'bg-purple-100 text-purple-800 border-purple-300',
       'error': 'bg-red-100 text-red-800 border-red-300',
       'warning': 'bg-yellow-100 text-yellow-800 border-yellow-300',
       'info': 'bg-blue-100 text-blue-800 border-blue-300',
@@ -68,6 +69,7 @@ const ErrorLogs = () => {
     };
     
     const icons = {
+      'critical': AlertTriangle,
       'error': AlertTriangle,
       'warning': AlertTriangle,
       'info': Bug,
@@ -88,8 +90,9 @@ const ErrorLogs = () => {
     const icons = {
       'api': Server,
       'database': Database,
-      'frontend': Code,
-      'system': Bug
+      'frontend': Laptop,
+      'system': Bug,
+      'external': Globe
     };
     
     const Icon = icons[source as keyof typeof icons] || Bug;
@@ -99,6 +102,34 @@ const ErrorLogs = () => {
   const handleViewDetail = (log: any) => {
     setSelectedLog(log);
     setIsDetailModalOpen(true);
+  };
+
+  const handleResolveLog = (log: any) => {
+    setSelectedLog(log);
+    setResolutionNotes('');
+    setIsResolveModalOpen(true);
+  };
+
+  const handleConfirmResolve = async () => {
+    if (!selectedLog) return;
+
+    try {
+      await resolveLog.mutateAsync({
+        logId: selectedLog.id,
+        resolutionNotes: resolutionNotes || undefined
+      });
+      setIsResolveModalOpen(false);
+      toast({
+        title: "Log résolu",
+        description: "Le log d'erreur a été marqué comme résolu",
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de la résolution du log",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleClearLogs = async () => {
