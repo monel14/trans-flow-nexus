@@ -290,56 +290,56 @@ const Login = () => {
           </div>
           
           <div className="mt-4">
-            <h4 className="text-sm font-medium text-blue-900 mb-2">🚀 Connexion rapide (comptes de test) :</h4>
+            <h4 className="text-sm font-medium text-blue-900 mb-2">🚀 Connexion rapide (exemples d'identifiants) :</h4>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
               <Button
-                onClick={() => handleQuickSignIn('admin@transflow.com', 'admin123')}
+                onClick={() => handleQuickSignIn('admin.monel', 'admin123')}
                 variant="outline"
                 size="sm"
                 className="text-xs"
                 disabled={isLoading}
               >
-                Admin
+                admin.monel
               </Button>
               <Button
-                onClick={() => handleQuickSignIn('chef@transflow.com', 'chef123')}
+                onClick={() => handleQuickSignIn('chef.dakar.diallo', 'chef123')}
                 variant="outline"
                 size="sm"
                 className="text-xs"
                 disabled={isLoading}
               >
-                Chef Agence
+                chef.dakar.diallo
               </Button>
               <Button
-                onClick={() => handleQuickSignIn('agent@transflow.com', 'agent123')}
+                onClick={() => handleQuickSignIn('dkr01.fatou', 'agent123')}
                 variant="outline"
                 size="sm"
                 className="text-xs"
                 disabled={isLoading}
               >
-                Agent
+                dkr01.fatou
               </Button>
               <Button
-                onClick={() => handleQuickSignIn('sousadmin@transflow.com', 'sousadmin123')}
+                onClick={() => handleQuickSignIn('sadmin.pierre', 'sousadmin123')}
                 variant="outline"
                 size="sm"
                 className="text-xs"
                 disabled={isLoading}
               >
-                Sous-Admin
+                sadmin.pierre
               </Button>
               <Button
-                onClick={() => handleQuickSignIn('dev@transflow.com', 'dev123')}
+                onClick={() => handleQuickSignIn('dev.tech', 'dev123')}
                 variant="outline"
                 size="sm"
                 className="text-xs"
                 disabled={isLoading}
               >
-                Développeur
+                dev.tech
               </Button>
             </div>
             <p className="text-xs text-blue-600 mt-2">
-              ⚠️ Si connexion échoue (email non confirmé), utilisez d'abord le générateur de comptes
+              ⚠️ Ces identifiants seront créés via le système de création hiérarchique
             </p>
           </div>
         </div>
