@@ -11,12 +11,16 @@ import {
   Plus, 
   History,
   AlertCircle,
-  Target
+  Target,
+  Loader2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import MetricCard from './MetricCard';
 import QuickActions from './QuickActions';
 import TransactionTable from '../Tables/TransactionTable';
+import { useAgentDashboardKPIs } from '@/hooks/useDashboard';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 
 const AgentDashboard = () => {
   const { user } = useAuth();
