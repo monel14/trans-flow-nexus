@@ -562,7 +562,7 @@ const ErrorLogs = () => {
                 <div>
                   <Label className="text-sm font-medium text-gray-500">Stack Trace</Label>
                   <div className="mt-2 p-3 bg-gray-50 border rounded-lg">
-                    <pre className="text-xs text-gray-800 whitespace-pre-wrap overflow-x-auto">
+                    <pre className="text-xs text-gray-800 whitespace-pre-wrap overflow-auto max-h-32">
                       {selectedLog.stack_trace}
                     </pre>
                   </div>
@@ -574,9 +574,27 @@ const ErrorLogs = () => {
                 <div>
                   <Label className="text-sm font-medium text-gray-500">Contexte</Label>
                   <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <pre className="text-sm text-blue-800 whitespace-pre-wrap overflow-x-auto">
+                    <pre className="text-sm text-blue-800 whitespace-pre-wrap overflow-auto max-h-32">
                       {JSON.stringify(selectedLog.context, null, 2)}
                     </pre>
+                  </div>
+                </div>
+              )}
+
+              {/* Résolution */}
+              {selectedLog.resolved && (
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Résolution</Label>
+                  <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <span className="text-sm font-medium text-green-800">
+                        Résolu le {selectedLog.resolved_at && formatDate(selectedLog.resolved_at)}
+                      </span>
+                    </div>
+                    {selectedLog.resolution_notes && (
+                      <p className="text-sm text-green-700">{selectedLog.resolution_notes}</p>
+                    )}
                   </div>
                 </div>
               )}
@@ -614,6 +632,40 @@ const ErrorLogs = () => {
               )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modale de résolution */}
+      <Dialog open={isResolveModalOpen} onOpenChange={setIsResolveModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Marquer comme résolu</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="resolution-notes">Notes de résolution (optionnel)</Label>
+              <Textarea
+                id="resolution-notes"
+                placeholder="Décrivez comment cette erreur a été résolue..."
+                value={resolutionNotes}
+                onChange={(e) => setResolutionNotes(e.target.value)}
+                className="mt-2"
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsResolveModalOpen(false)}>
+              Annuler
+            </Button>
+            <Button 
+              onClick={handleConfirmResolve}
+              disabled={resolveLog.isPending}
+            >
+              {resolveLog.isPending ? 'Résolution...' : 'Marquer comme résolu'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
