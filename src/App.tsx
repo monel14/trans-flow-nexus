@@ -317,8 +317,6 @@ const AppRoutes = () => {
   );
 };
 
-import OperationTypesListPage from "@/pages/OperationTypesListPage";
-
 const App = () => {
   console.log('📱 App.tsx: App component rendering...');
   
