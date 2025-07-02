@@ -5,7 +5,8 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface UserProfile {
   id: string;
-  email: string;
+  email: string; // Contiendra l'identifiant au lieu de l'email
+  identifier: string; // L'identifiant formaté (ex: admin.monel, chef.dakar.diallo)
   name: string;
   role: 'agent' | 'chef_agence' | 'admin_general' | 'sous_admin' | 'developer';
   agenceId?: string;
