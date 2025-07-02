@@ -223,8 +223,8 @@ def main():
         if test_success:
             print("✅ COMPTE DÉVELOPPEUR CRÉÉ AVEC SUCCÈS!")
             print("\n🔑 INFORMATIONS DE CONNEXION:")
-            print("   Email: developer@example.com")
-            print("   Mot de passe: dev123456")
+            print("   Email: dev_admin@transflownexus.demo")
+            print("   Mot de passe: dev123")
             print("   URL: http://localhost:8080/")
             print("   Dashboard: /dashboard/developer")
         else:
