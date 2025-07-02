@@ -136,7 +136,7 @@ export function useTopAgenciesPerformance(limit: number = 5) {
       return data as AgencyPerformance[];
     },
     {
-      enabled: user?.role === 'admin_general',
+      enabled: user?.role === 'admin_general' || user?.role === 'developer',
       refetchInterval: 5 * 60000, // Rafraîchir toutes les 5 minutes
       staleTime: 2 * 60000, // Données fraîches pendant 2 minutes
     }
