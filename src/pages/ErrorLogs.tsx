@@ -412,12 +412,13 @@ const ErrorLogs = () => {
                     <TableHead>Source</TableHead>
                     <TableHead>Message</TableHead>
                     <TableHead>Utilisateur</TableHead>
+                    <TableHead>Statut</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {errorLogs.map((log) => (
-                    <TableRow key={log.id}>
+                    <TableRow key={log.id} className={log.resolved ? 'opacity-60' : ''}>
                       <TableCell className="font-mono text-xs">
                         {formatDate(log.timestamp)}
                       </TableCell>
@@ -446,13 +447,50 @@ const ErrorLogs = () => {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleViewDetail(log)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                        {log.resolved ? (
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <Badge variant="default" className="bg-green-100 text-green-800">
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Résolu
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {log.resolved_at && (
+                                <p>Résolu le {formatDate(log.resolved_at)}</p>
+                              )}
+                              {log.resolution_notes && (
+                                <p className="mt-1 text-xs">{log.resolution_notes}</p>
+                              )}
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <Badge variant="outline" className="text-orange-600 border-orange-300">
+                            <XCircle className="h-3 w-3 mr-1" />
+                            Non résolu
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleViewDetail(log)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          {!log.resolved && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleResolveLog(log)}
+                              className="text-green-600 hover:text-green-700"
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
