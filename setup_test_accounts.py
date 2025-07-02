@@ -32,6 +32,7 @@ def create_user_with_role(email, password, name, role_name):
         f"{SUPABASE_URL}/auth/v1/admin/users",
         headers={
             "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+            "apikey": SUPABASE_SERVICE_KEY,
             "Content-Type": "application/json"
         },
         json=auth_data
