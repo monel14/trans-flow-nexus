@@ -34,7 +34,7 @@ const OperationTypesListPage = () => {
     data: operationTypes = [], 
     isLoading, 
     error 
-  } = useOperationTypes();
+  } = useAllOperationTypes();
   const updateOperationType = useUpdateOperationType();
 
   const toggleStatus = async (type: OperationType) => {
