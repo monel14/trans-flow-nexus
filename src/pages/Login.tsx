@@ -172,16 +172,19 @@ const Login = () => {
                 <form className="mt-8 space-y-6" onSubmit={handleSignIn}>
                   <div className="space-y-4">
                     <div>
-                      <Label htmlFor="signin-email">Email</Label>
+                      <Label htmlFor="signin-identifier">Identifiant</Label>
                       <Input
-                        id="signin-email"
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="votre@email.com"
+                        id="signin-identifier"
+                        type="text"
+                        value={identifier}
+                        onChange={(e) => setIdentifier(e.target.value)}
+                        placeholder="admin.monel ou chef.dakar.diallo"
                         required
                         className="mt-1"
                       />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Format: admin.prénom, chef.ville.nom, ou codeagence.prénom
+                      </p>
                     </div>
                     
                     <div>
