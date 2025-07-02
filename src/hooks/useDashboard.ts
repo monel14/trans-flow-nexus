@@ -156,7 +156,7 @@ export function useValidationQueueStats() {
       return data as ValidationQueueStats;
     },
     {
-      enabled: user?.role && ['admin_general', 'sous_admin'].includes(user.role),
+      enabled: user?.role && ['admin_general', 'sous_admin', 'developer'].includes(user.role),
       refetchInterval: 30000, // Rafraîchir toutes les 30 secondes
       staleTime: 15000, // Données fraîches pendant 15 secondes
     }
