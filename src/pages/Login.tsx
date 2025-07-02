@@ -120,7 +120,7 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      const { error } = await signUp(email, password, { name });
+      const { error } = await signUp(identifier, password, { name });
       if (error) {
         toast({
           title: "Erreur d'inscription",
