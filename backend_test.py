@@ -445,5 +445,147 @@ def main():
     
     return 0 if tester.tests_passed == tester.tests_run else 1
 
+def test_rls_fix():
+    """Test if the RLS fix has been applied successfully"""
+    print("\n🔍 Testing RLS Fix...")
+    tester = SupabaseAPITester()
+    
+    # Test database structure to see if we can access tables without RLS errors
+    print("\n📊 Testing Database Structure after RLS Fix")
+    db_structure_success = tester.test_database_structure()
+    
+    if db_structure_success:
+        print("✅ RLS Fix has been successfully applied - No infinite recursion detected")
+    else:
+        print("❌ RLS Fix has not been applied or is not working correctly")
+    
+    # Test authentication with different user types
+    print("\n🔑 Testing Authentication with Different User Types")
+    
+    # Try admin login
+    admin_login = tester.test_login("admin.monel", "admin123")
+    if admin_login:
+        print("✅ Admin login successful")
+        # Test profile access
+        tester.test_get_profile()
+        # Test roles access
+        tester.test_get_roles()
+        # Test agencies access
+        tester.test_get_agencies()
+    else:
+        print("❌ Admin login failed")
+    
+    # Reset token for next test
+    tester.token = None
+    tester.user_data = None
+    
+    # Try chef d'agence login
+    chef_login = tester.test_login("chef.dakar.diallo", "Test123!")
+    if chef_login:
+        print("✅ Chef d'agence login successful")
+        # Test profile access
+        tester.test_get_profile()
+        # Test agencies access (should only see their own)
+        tester.test_get_agencies()
+    else:
+        print("❌ Chef d'agence login failed")
+    
+    # Reset token for next test
+    tester.token = None
+    tester.user_data = None
+    
+    # Try agent login
+    agent_login = tester.test_login("dkr01.fatou", "Test123!")
+    if agent_login:
+        print("✅ Agent login successful")
+        # Test profile access
+        tester.test_get_profile()
+    else:
+        print("❌ Agent login failed")
+    
+    # Test RPC functions
+    print("\n🔧 Testing RPC Functions")
+    
+    # Login as admin to test RPC functions
+    admin_login = tester.test_login("admin.monel", "admin123")
+    if admin_login:
+        # Test creating a sous-admin
+        timestamp = datetime.now().strftime('%H%M%S')
+        sous_admin_identifier = f"sadmin.test{timestamp}"
+        sous_admin_success, sous_admin_response = tester.test_create_sous_admin(
+            f"Test Sous-Admin {timestamp}",
+            sous_admin_identifier,
+            "Test123!"
+        )
+        
+        if sous_admin_success:
+            print(f"✅ RPC Function create_sous_admin working correctly")
+            print(f"  - Created sous-admin: {sous_admin_identifier}")
+        else:
+            print(f"❌ RPC Function create_sous_admin failed")
+            print(f"  - Error: {sous_admin_response.get('message', 'Unknown error')}")
+        
+        # Get agencies to use for chef d'agence creation
+        success, agencies = tester.run_test(
+            "Get Agencies for Test",
+            "GET",
+            "rest/v1/agencies?select=id&limit=1",
+            200
+        )
+        
+        if success and agencies and len(agencies) > 0:
+            agency_id = agencies[0].get('id')
+            
+            # Test creating a chef d'agence
+            chef_identifier = f"chef.test{timestamp}"
+            chef_success, chef_response = tester.test_create_chef_agence(
+                f"Test Chef {timestamp}",
+                chef_identifier,
+                "Test123!",
+                agency_id
+            )
+            
+            if chef_success:
+                print(f"✅ RPC Function create_chef_agence working correctly")
+                print(f"  - Created chef d'agence: {chef_identifier}")
+                
+                # Now login as the chef to test creating an agent
+                if tester.test_login(chef_identifier, "Test123!"):
+                    print(f"✅ New chef d'agence login successful")
+                    
+                    # Test creating an agent
+                    agent_identifier = f"tst{timestamp}.agent"
+                    agent_success, agent_response = tester.test_create_agent(
+                        f"Test Agent {timestamp}",
+                        agent_identifier,
+                        "Test123!"
+                    )
+                    
+                    if agent_success:
+                        print(f"✅ RPC Function create_agent working correctly")
+                        print(f"  - Created agent: {agent_identifier}")
+                    else:
+                        print(f"❌ RPC Function create_agent failed")
+                        print(f"  - Error: {agent_response.get('message', 'Unknown error')}")
+                else:
+                    print(f"❌ New chef d'agence login failed")
+            else:
+                print(f"❌ RPC Function create_chef_agence failed")
+                print(f"  - Error: {chef_response.get('message', 'Unknown error')}")
+        else:
+            print("❌ Could not get agencies for testing chef d'agence creation")
+    
+    # Print summary
+    tester.print_summary()
+    
+    return tester.tests_passed == tester.tests_run
+
 if __name__ == "__main__":
-    sys.exit(main())
+    # Run the main test suite
+    main_result = main()
+    
+    # Run the RLS fix test
+    rls_fix_result = test_rls_fix()
+    
+    # Exit with appropriate code
+    sys.exit(0 if main_result == 0 and rls_fix_result else 1)
