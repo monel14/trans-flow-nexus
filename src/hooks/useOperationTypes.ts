@@ -50,6 +50,25 @@ export interface OperationTypeWithFields extends OperationType {
   operation_type_fields: OperationTypeField[];
 }
 
+// Hook to get all operation types (for admin/developer views)
+export function useAllOperationTypes() {
+  return useSupabaseQuery(
+    ['operation-types-all'],
+    async () => {
+      const { data, error } = await supabase
+        .from('operation_types')
+        .select(`
+          *,
+          operation_type_fields (count)
+        `)
+        .order('name');
+      
+      if (error) throw error;
+      return data as OperationType[];
+    }
+  );
+}
+
 // Hook to get all active operation types
 export function useOperationTypes() {
   return useSupabaseQuery(
