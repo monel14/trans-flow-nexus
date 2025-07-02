@@ -227,7 +227,7 @@ const OperationTypesListPage = () => {
                       <TableCell>{getStatusBadge(type.status)}</TableCell>
                       <TableCell>
                         <Badge variant="outline">
-                          0 champs
+                          {(type as any).operation_type_fields?.length || 0} champs
                         </Badge>
                       </TableCell>
                       <TableCell>
