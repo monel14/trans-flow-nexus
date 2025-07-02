@@ -1,21 +1,33 @@
 import { useSupabaseQuery, useSupabaseMutation } from './useSupabase';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { z } from 'zod';
 
-export interface ErrorLog {
-  id: string;
-  timestamp: string;
-  level: 'error' | 'warning' | 'info' | 'debug';
-  source: 'api' | 'database' | 'frontend' | 'system';
-  message: string;
-  stack_trace?: string;
-  context?: any;
-  user_id?: string;
-  user_name?: string;
-  request_url?: string;
-  request_method?: string;
-  response_status?: number;
-  created_at: string;
-}
+// Schéma Zod pour la validation des logs d'erreurs
+export const ErrorLogSchema = z.object({
+  id: z.number(),
+  timestamp: z.string(),
+  level: z.enum(['error', 'warning', 'info', 'debug', 'critical']),
+  source: z.enum(['api', 'database', 'frontend', 'system', 'external']),
+  message: z.string(),
+  stack_trace: z.string().optional(),
+  context: z.any().optional(),
+  user_id: z.string().optional(),
+  user_name: z.string().optional(),
+  request_url: z.string().optional(),
+  request_method: z.enum(['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD']).optional(),
+  response_status: z.number().min(100).max(599).optional(),
+  session_id: z.string().optional(),
+  ip_address: z.string().optional(),
+  user_agent: z.string().optional(),
+  resolved: z.boolean(),
+  resolved_at: z.string().optional(),
+  resolved_by: z.string().optional(),
+  resolution_notes: z.string().optional(),
+  created_at: z.string(),
+});
+
+export type ErrorLog = z.infer<typeof ErrorLogSchema>;
 
 export interface ErrorLogFilters {
   level?: string;
@@ -24,7 +36,22 @@ export interface ErrorLogFilters {
   dateFrom?: string;
   dateTo?: string;
   userId?: string;
+  resolved?: boolean;
   limit?: number;
+}
+
+export interface CreateErrorLogData {
+  level: 'error' | 'warning' | 'info' | 'debug' | 'critical';
+  source: 'api' | 'database' | 'frontend' | 'system' | 'external';
+  message: string;
+  stack_trace?: string;
+  context?: any;
+  request_url?: string;
+  request_method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'OPTIONS' | 'HEAD';
+  response_status?: number;
+  session_id?: string;
+  ip_address?: string;
+  user_agent?: string;
 }
 
 // Hook to get error logs with filters
@@ -33,33 +60,37 @@ export function useErrorLogs(filters?: ErrorLogFilters) {
     ['error-logs', JSON.stringify(filters)],
     async () => {
       let query = supabase
-        .from('app_audit_log')
+        .from('error_logs')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('timestamp', { ascending: false });
 
       // Apply filters
       if (filters?.level && filters.level !== 'all') {
-        query = query.eq('action', filters.level); // Assuming 'action' field stores log level
+        query = query.eq('level', filters.level);
       }
       
       if (filters?.source && filters.source !== 'all') {
-        query = query.eq('resource_type', filters.source);
+        query = query.eq('source', filters.source);
       }
       
       if (filters?.search) {
-        query = query.ilike('resource_type', `%${filters.search}%`);
+        query = query.ilike('message', `%${filters.search}%`);
       }
       
       if (filters?.dateFrom) {
-        query = query.gte('created_at', filters.dateFrom);
+        query = query.gte('timestamp', filters.dateFrom);
       }
       
       if (filters?.dateTo) {
-        query = query.lte('created_at', filters.dateTo);
+        query = query.lte('timestamp', filters.dateTo);
       }
       
       if (filters?.userId) {
         query = query.eq('user_id', filters.userId);
+      }
+      
+      if (filters?.resolved !== undefined) {
+        query = query.eq('resolved', filters.resolved);
       }
       
       if (filters?.limit) {
@@ -70,87 +101,53 @@ export function useErrorLogs(filters?: ErrorLogFilters) {
 
       const { data, error } = await query;
       
-      if (error) throw error;
+      if (error) {
+        console.error('Erreur lors du chargement des logs:', error);
+        throw error;
+      }
       
-      // Transform audit log data to error log format
-      const errorLogs: ErrorLog[] = (data || []).map(log => ({
-        id: log.id,
-        timestamp: log.created_at,
-        level: log.action === 'error' ? 'error' : 
-               log.action === 'warning' ? 'warning' : 
-               log.action === 'info' ? 'info' : 'debug',
-        source: log.resource_type === 'api' ? 'api' :
-                log.resource_type === 'database' ? 'database' :
-                log.resource_type === 'frontend' ? 'frontend' : 'system',
-        message: log.resource_type || 'No message',
-        stack_trace: typeof log.new_values === 'object' ? (log.new_values as any)?.stack_trace : undefined,
-        context: log.new_values,
-        user_id: log.user_id,
-        user_name: typeof log.old_values === 'object' ? (log.old_values as any)?.user_name : undefined,
-        request_url: typeof log.new_values === 'object' ? (log.new_values as any)?.request_url : undefined,
-        request_method: typeof log.new_values === 'object' ? (log.new_values as any)?.request_method : undefined,
-        response_status: typeof log.new_values === 'object' ? (log.new_values as any)?.response_status : undefined,
-        created_at: log.created_at,
-      }));
-      
-      return errorLogs;
+      // Valider et retourner les logs
+      return (data || []).map(log => ErrorLogSchema.parse(log));
     }
   );
 }
 
 // Hook to create an error log entry
 export function useCreateErrorLog() {
-  return useSupabaseMutation<ErrorLog, {
-    level: 'error' | 'warning' | 'info' | 'debug';
-    source: 'api' | 'database' | 'frontend' | 'system';
-    message: string;
-    stack_trace?: string;
-    context?: any;
-    request_url?: string;
-    request_method?: string;
-    response_status?: number;
-  }>(
+  const { user } = useAuth();
+  
+  return useSupabaseMutation<ErrorLog, CreateErrorLogData>(
     async (logData) => {
       const { data, error } = await supabase
-        .from('app_audit_log')
+        .from('error_logs')
         .insert({
-          resource_type: logData.source,
-          action: logData.level,
-          resource_id: logData.message,
-          new_values: {
-            stack_trace: logData.stack_trace,
-            context: logData.context,
-            request_url: logData.request_url,
-            request_method: logData.request_method,
-            response_status: logData.response_status,
-          },
+          level: logData.level,
+          source: logData.source,
+          message: logData.message,
+          stack_trace: logData.stack_trace,
+          context: logData.context || {},
+          request_url: logData.request_url,
+          request_method: logData.request_method,
+          response_status: logData.response_status,
+          session_id: logData.session_id,
+          ip_address: logData.ip_address,
+          user_agent: logData.user_agent,
+          user_id: user?.id,
+          user_name: user?.user_metadata?.name || user?.email,
         })
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Erreur lors de la création du log:', error);
+        throw error;
+      }
       
-      // Transform back to ErrorLog format
-      const errorLog: ErrorLog = {
-        id: data.id,
-        timestamp: data.created_at,
-        level: logData.level,
-        source: logData.source,
-        message: logData.message,
-        stack_trace: logData.stack_trace,
-        context: logData.context,
-        user_id: data.user_id,
-        request_url: logData.request_url,
-        request_method: logData.request_method,
-        response_status: logData.response_status,
-        created_at: data.created_at,
-      };
-      
-      return errorLog;
+      return ErrorLogSchema.parse(data);
     },
     {
       invalidateQueries: [['error-logs']],
-      successMessage: 'Log d\'erreur créé',
+      successMessage: 'Log d\'erreur créé avec succès',
       errorMessage: 'Erreur lors de la création du log',
     }
   );
@@ -162,10 +159,11 @@ export function useClearErrorLogs() {
     beforeDate?: string;
     level?: string;
     source?: string;
+    resolved?: boolean;
   }>(
     async (clearOptions) => {
       let query = supabase
-        .from('app_audit_log')
+        .from('error_logs')
         .delete();
       
       if (clearOptions.beforeDate) {
@@ -173,23 +171,66 @@ export function useClearErrorLogs() {
       }
       
       if (clearOptions.level) {
-        query = query.eq('action', clearOptions.level);
+        query = query.eq('level', clearOptions.level);
       }
       
       if (clearOptions.source) {
-        query = query.eq('resource_type', clearOptions.source);
+        query = query.eq('source', clearOptions.source);
+      }
+      
+      if (clearOptions.resolved !== undefined) {
+        query = query.eq('resolved', clearOptions.resolved);
       }
       
       const { error } = await query;
       
-      if (error) throw error;
+      if (error) {
+        console.error('Erreur lors de la suppression des logs:', error);
+        throw error;
+      }
       
       return { success: true };
     },
     {
       invalidateQueries: [['error-logs']],
-      successMessage: 'Logs supprimés',
-      errorMessage: 'Erreur lors de la suppression',
+      successMessage: 'Logs supprimés avec succès',
+      errorMessage: 'Erreur lors de la suppression des logs',
+    }
+  );
+}
+
+// Hook to resolve an error log
+export function useResolveErrorLog() {
+  const { user } = useAuth();
+  
+  return useSupabaseMutation<ErrorLog, {
+    logId: number;
+    resolutionNotes?: string;
+  }>(
+    async ({ logId, resolutionNotes }) => {
+      const { data, error } = await supabase
+        .from('error_logs')
+        .update({
+          resolved: true,
+          resolved_at: new Date().toISOString(),
+          resolved_by: user?.id,
+          resolution_notes: resolutionNotes,
+        })
+        .eq('id', logId)
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Erreur lors de la résolution du log:', error);
+        throw error;
+      }
+      
+      return ErrorLogSchema.parse(data);
+    },
+    {
+      invalidateQueries: [['error-logs']],
+      successMessage: 'Log marqué comme résolu',
+      errorMessage: 'Erreur lors de la résolution du log',
     }
   );
 }
@@ -200,10 +241,13 @@ export function useErrorLogStats() {
     ['error-log-stats'],
     async () => {
       const { data, error } = await supabase
-        .from('app_audit_log')
-        .select('action, created_at');
+        .from('error_logs')
+        .select('level, created_at, resolved');
       
-      if (error) throw error;
+      if (error) {
+        console.error('Erreur lors du chargement des statistiques:', error);
+        throw error;
+      }
       
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -212,8 +256,10 @@ export function useErrorLogStats() {
       
       const stats = {
         total: data?.length || 0,
-        errors: data?.filter(log => log.action === 'error').length || 0,
-        warnings: data?.filter(log => log.action === 'warning').length || 0,
+        errors: data?.filter(log => log.level === 'error').length || 0,
+        warnings: data?.filter(log => log.level === 'warning').length || 0,
+        critical: data?.filter(log => log.level === 'critical').length || 0,
+        unresolved: data?.filter(log => !log.resolved).length || 0,
         today: data?.filter(log => new Date(log.created_at) >= today).length || 0,
         thisWeek: data?.filter(log => new Date(log.created_at) >= thisWeek).length || 0,
         thisMonth: data?.filter(log => new Date(log.created_at) >= thisMonth).length || 0,
@@ -229,11 +275,11 @@ export function logError(
   message: string,
   error?: Error,
   context?: any,
-  source: 'api' | 'database' | 'frontend' | 'system' = 'frontend'
+  source: 'api' | 'database' | 'frontend' | 'system' | 'external' = 'frontend'
 ) {
-  // This would typically be called from error boundaries or catch blocks
-  const errorData = {
-    level: 'error' as const,
+  // Pour le développement, on peut utiliser directement le client Supabase
+  const errorData: CreateErrorLogData = {
+    level: 'error',
     source,
     message,
     stack_trace: error?.stack,
@@ -241,15 +287,65 @@ export function logError(
       ...context,
       error_name: error?.name,
       timestamp: new Date().toISOString(),
-      user_agent: navigator.userAgent,
-      url: window.location.href,
+      user_agent: typeof window !== 'undefined' ? navigator.userAgent : undefined,
+      url: typeof window !== 'undefined' ? window.location.href : undefined,
     },
-    request_url: window.location.href,
-    request_method: 'GET', // Default, would be detected in actual implementation
+    request_url: typeof window !== 'undefined' ? window.location.href : undefined,
+    request_method: 'GET', // Default, could be detected in actual implementation
+    user_agent: typeof window !== 'undefined' ? navigator.userAgent : undefined,
   };
   
-  // In a real implementation, this would send the log to the server
+  // Log immédiatement à la console pour le développement
   console.error('Error logged:', errorData);
   
-  // Could also send to external logging service like Sentry
+  // Envoyer à Supabase (async, sans attendre)
+  supabase
+    .from('error_logs')
+    .insert(errorData)
+    .then(({ error: insertError }) => {
+      if (insertError) {
+        console.error('Failed to log error to database:', insertError);
+      }
+    });
+}
+
+// Helper function pour logger des erreurs de différents niveaux
+export function logWarning(message: string, context?: any, source: 'api' | 'database' | 'frontend' | 'system' | 'external' = 'frontend') {
+  const warningData: CreateErrorLogData = {
+    level: 'warning',
+    source,
+    message,
+    context,
+    request_url: typeof window !== 'undefined' ? window.location.href : undefined,
+    user_agent: typeof window !== 'undefined' ? navigator.userAgent : undefined,
+  };
+  
+  console.warn('Warning logged:', warningData);
+  
+  supabase
+    .from('error_logs')
+    .insert(warningData)
+    .then(({ error }) => {
+      if (error) console.error('Failed to log warning:', error);
+    });
+}
+
+export function logInfo(message: string, context?: any, source: 'api' | 'database' | 'frontend' | 'system' | 'external' = 'system') {
+  const infoData: CreateErrorLogData = {
+    level: 'info',
+    source,
+    message,
+    context,
+    request_url: typeof window !== 'undefined' ? window.location.href : undefined,
+    user_agent: typeof window !== 'undefined' ? navigator.userAgent : undefined,
+  };
+  
+  console.info('Info logged:', infoData);
+  
+  supabase
+    .from('error_logs')
+    .insert(infoData)
+    .then(({ error }) => {
+      if (error) console.error('Failed to log info:', error);
+    });
 }
