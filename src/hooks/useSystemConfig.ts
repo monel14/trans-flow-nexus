@@ -1,112 +1,122 @@
 import { useSupabaseQuery, useSupabaseMutation } from './useSupabase';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { z } from 'zod';
 
-export interface SystemConfig {
+// Schéma Zod pour la validation de la configuration système
+export const SystemConfigSchema = z.object({
   // Paramètres généraux
-  app_name: string;
-  default_currency: string;
-  timezone: string;
-  max_file_size: number;
-  supported_file_types: string;
+  app_name: z.string().min(1, 'Le nom de l\'application est requis'),
+  default_currency: z.string().length(3, 'La devise doit faire 3 caractères'),
+  timezone: z.string().min(1, 'Le fuseau horaire est requis'),
+  max_file_size: z.number().min(1024, 'Taille minimale: 1KB').max(52428800, 'Taille maximale: 50MB'),
+  supported_file_types: z.string().min(1, 'Au moins un type de fichier requis'),
   
   // Paramètres de sécurité
-  password_min_length: number;
-  password_require_uppercase: boolean;
-  password_require_lowercase: boolean;
-  password_require_numbers: boolean;
-  password_require_symbols: boolean;
-  password_expiry_days: number;
-  session_timeout_minutes: number;
-  max_login_attempts: number;
-  lockout_duration_minutes: number;
+  password_min_length: z.number().min(6, 'Minimum 6 caractères').max(32, 'Maximum 32 caractères'),
+  password_require_uppercase: z.boolean(),
+  password_require_lowercase: z.boolean(),
+  password_require_numbers: z.boolean(),
+  password_require_symbols: z.boolean(),
+  password_expiry_days: z.number().min(30, 'Minimum 30 jours').max(365, 'Maximum 365 jours'),
+  session_timeout_minutes: z.number().min(15, 'Minimum 15 minutes').max(480, 'Maximum 8 heures'),
+  max_login_attempts: z.number().min(3, 'Minimum 3 tentatives').max(10, 'Maximum 10 tentatives'),
+  lockout_duration_minutes: z.number().min(5, 'Minimum 5 minutes').max(1440, 'Maximum 24 heures'),
   
   // Notifications
-  email_notifications_enabled: boolean;
-  sms_notifications_enabled: boolean;
-  smtp_host: string;
-  smtp_port: number;
-  smtp_username: string;
-  smtp_password: string;
-  smtp_encryption: string;
+  email_notifications_enabled: z.boolean(),
+  sms_notifications_enabled: z.boolean(),
+  smtp_host: z.string().optional(),
+  smtp_port: z.number().min(1).max(65535).optional(),
+  smtp_username: z.string().optional(),
+  smtp_password: z.string().optional(),
+  smtp_encryption: z.enum(['tls', 'ssl', 'none']),
   
   // Templates d'email
-  welcome_email_template: string;
-  operation_validated_template: string;
-  balance_low_template: string;
+  welcome_email_template: z.string().min(1, 'Template requis'),
+  operation_validated_template: z.string().min(1, 'Template requis'),
+  balance_low_template: z.string().min(1, 'Template requis'),
   
   // Limites
-  min_operation_amount: number;
-  max_operation_amount: number;
-  min_recharge_amount: number;
-  max_recharge_amount: number;
-}
+  min_operation_amount: z.number().min(100, 'Minimum 100 FCFA'),
+  max_operation_amount: z.number().min(1000, 'Minimum 1000 FCFA'),
+  min_recharge_amount: z.number().min(1000, 'Minimum 1000 FCFA'),
+  max_recharge_amount: z.number().min(10000, 'Minimum 10000 FCFA'),
+});
 
-// Since system_settings table doesn't exist in the current schema,
-// we'll use a simple in-memory configuration that can be extended later
-const DEFAULT_CONFIG: SystemConfig = {
-  app_name: 'TransFlow Nexus',
-  default_currency: 'XOF',
-  timezone: 'Africa/Ouagadougou',
-  max_file_size: 5242880,
-  supported_file_types: 'image/jpeg,image/png,application/pdf',
-  password_min_length: 8,
-  password_require_uppercase: true,
-  password_require_lowercase: true,
-  password_require_numbers: true,
-  password_require_symbols: false,
-  password_expiry_days: 90,
-  session_timeout_minutes: 60,
-  max_login_attempts: 5,
-  lockout_duration_minutes: 30,
-  email_notifications_enabled: true,
-  sms_notifications_enabled: false,
-  smtp_host: '',
-  smtp_port: 587,
-  smtp_username: '',
-  smtp_password: '',
-  smtp_encryption: 'tls',
-  welcome_email_template: 'Bienvenue sur TransFlow Nexus!\n\nVotre compte a été créé avec succès.',
-  operation_validated_template: 'Votre opération #{operation_id} a été validée.',
-  balance_low_template: 'Attention: Votre solde est faible ({balance}).',
-  min_operation_amount: 1000,
-  max_operation_amount: 10000000,
-  min_recharge_amount: 10000,
-  max_recharge_amount: 5000000,
-};
+export type SystemConfig = z.infer<typeof SystemConfigSchema>;
 
 // Hook to get system configuration
 export function useSystemConfig() {
   return useSupabaseQuery(
     ['system-config'],
     async () => {
-      // For now, return the default configuration
-      // This can be extended later when system_settings table is created
-      return DEFAULT_CONFIG;
+      const { data, error } = await supabase
+        .from('system_settings')
+        .select('config')
+        .eq('id', 1)
+        .single();
+      
+      if (error) {
+        console.error('Erreur lors du chargement de la configuration:', error);
+        throw error;
+      }
+      
+      // Valider et retourner la configuration
+      try {
+        return SystemConfigSchema.parse(data.config);
+      } catch (validationError) {
+        console.error('Erreur de validation de la configuration:', validationError);
+        throw new Error('Configuration système invalide');
+      }
     }
   );
 }
 
 // Hook to update system configuration
 export function useUpdateSystemConfig() {
+  const { user } = useAuth();
+  
   return useSupabaseMutation<SystemConfig, Partial<SystemConfig>>(
     async (configData) => {
-      // For now, just return the merged configuration
-      // This should be implemented when system_settings table is created
-      const updatedConfig = { ...DEFAULT_CONFIG, ...configData };
+      // Récupérer la configuration actuelle
+      const { data: currentData, error: fetchError } = await supabase
+        .from('system_settings')
+        .select('config')
+        .eq('id', 1)
+        .single();
       
-      // TODO: Implement actual database storage when system_settings table is available
-      // const { data, error } = await supabase
-      //   .from('system_settings')
-      //   .upsert({ id: 'global', settings: updatedConfig })
-      //   .select()
-      //   .single();
+      if (fetchError) {
+        throw new Error('Impossible de récupérer la configuration actuelle');
+      }
       
-      return updatedConfig;
+      // Fusionner avec les nouvelles données
+      const mergedConfig = { ...currentData.config, ...configData };
+      
+      // Valider la configuration fusionnée
+      const validatedConfig = SystemConfigSchema.parse(mergedConfig);
+      
+      // Mettre à jour dans la base de données
+      const { data, error } = await supabase
+        .from('system_settings')
+        .update({ 
+          config: validatedConfig,
+          updated_by: user?.id
+        })
+        .eq('id', 1)
+        .select('config')
+        .single();
+      
+      if (error) {
+        throw error;
+      }
+      
+      return SystemConfigSchema.parse(data.config);
     },
     {
       invalidateQueries: [['system-config']],
-      successMessage: 'Configuration mise à jour',
-      errorMessage: 'Erreur lors de la mise à jour',
+      successMessage: 'Configuration mise à jour avec succès',
+      errorMessage: 'Erreur lors de la mise à jour de la configuration',
     }
   );
 }
