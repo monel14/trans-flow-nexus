@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useOperations } from '@/hooks/useOperations';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   CheckCircle, 
   FileText, 
@@ -10,12 +10,14 @@ import {
   Users,
   MessageSquare,
   Zap,
-  Headphones
+  Headphones,
+  Loader2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import MetricCard from './MetricCard';
 import QuickActions from './QuickActions';
 import TransactionTable from '../Tables/TransactionTable';
+import { useSousAdminDashboardKPIs, useRecentOperations } from '@/hooks/useDashboard';
 
 const SousAdminDashboard = () => {
   const { user } = useAuth();
