@@ -228,16 +228,19 @@ const Login = () => {
                     </div>
 
                     <div>
-                      <Label htmlFor="signup-email">Email</Label>
+                      <Label htmlFor="signup-identifier">Identifiant</Label>
                       <Input
-                        id="signup-email"
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="votre@email.com"
+                        id="signup-identifier"
+                        type="text"
+                        value={identifier}
+                        onChange={(e) => setIdentifier(e.target.value)}
+                        placeholder="ex: admin.jean, chef.paris.martin"
                         required
                         className="mt-1"
                       />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Utilisez le format approprié selon votre rôle
+                      </p>
                     </div>
                     
                     <div>
