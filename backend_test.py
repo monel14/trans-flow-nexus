@@ -445,6 +445,48 @@ def main():
     
     return 0 if tester.tests_passed == tester.tests_run else 1
 
+def test_signup_and_login():
+    """Test user registration and login"""
+    print("\n🔍 Testing User Registration and Login...")
+    tester = SupabaseAPITester()
+    
+    # Generate a unique email
+    timestamp = datetime.now().strftime('%H%M%S')
+    test_email = f"test.user{timestamp}@example.com"
+    test_password = "TestPassword123!"
+    
+    # Test signup
+    success, response = tester.run_test(
+        "User Registration",
+        "POST",
+        "auth/v1/signup",
+        200,
+        data={
+            "email": test_email,
+            "password": test_password,
+            "data": {
+                "name": f"Test User {timestamp}"
+            }
+        }
+    )
+    
+    if success:
+        print(f"✅ Successfully registered user with email: {test_email}")
+        user_id = response.get('user', {}).get('id')
+        
+        # Try to login with the new user
+        login_success = tester.test_login(test_email, test_password)
+        if login_success:
+            print(f"✅ Successfully logged in with new user")
+            return True
+        else:
+            print(f"❌ Failed to login with new user")
+    else:
+        print(f"❌ Failed to register new user")
+        print(f"Response: {response}")
+    
+    return False
+
 def test_rls_fix():
     """Test if the RLS fix has been applied successfully"""
     print("\n🔍 Testing RLS Fix...")
@@ -583,6 +625,9 @@ def test_rls_fix():
 if __name__ == "__main__":
     # Run the main test suite
     main_result = main()
+    
+    # Test signup and login
+    signup_result = test_signup_and_login()
     
     # Run the RLS fix test
     rls_fix_result = test_rls_fix()
