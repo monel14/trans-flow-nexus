@@ -132,6 +132,96 @@ export type Database = {
         }
         Relationships: []
       }
+      error_logs: {
+        Row: {
+          context: Json | null
+          created_at: string
+          id: number
+          ip_address: unknown | null
+          level: string
+          message: string
+          request_method: string | null
+          request_url: string | null
+          resolved: boolean | null
+          resolved_at: string | null
+          resolved_by: string | null
+          resolution_notes: string | null
+          response_status: number | null
+          session_id: string | null
+          source: string
+          stack_trace: string | null
+          timestamp: string
+          user_agent: string | null
+          user_id: string | null
+          user_name: string | null
+        }
+        Insert: {
+          context?: Json | null
+          created_at?: string
+          id?: number
+          ip_address?: unknown | null
+          level: string
+          message: string
+          request_method?: string | null
+          request_url?: string | null
+          resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolution_notes?: string | null
+          response_status?: number | null
+          session_id?: string | null
+          source: string
+          stack_trace?: string | null
+          timestamp?: string
+          user_agent?: string | null
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          context?: Json | null
+          created_at?: string
+          id?: number
+          ip_address?: unknown | null
+          level?: string
+          message?: string
+          request_method?: string | null
+          request_url?: string | null
+          resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolution_notes?: string | null
+          response_status?: number | null
+          session_id?: string | null
+          source?: string
+          stack_trace?: string | null
+          timestamp?: string
+          user_agent?: string | null
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Relationships: []
+      }
+      system_settings: {
+        Row: {
+          config: Json
+          id: number
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          config?: Json
+          id?: number
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          config?: Json
+          id?: number
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       commission_records: {
         Row: {
           agent_commission: number
