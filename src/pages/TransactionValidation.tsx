@@ -3,13 +3,21 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle, XCircle, Eye, UserPlus, Clock, AlertTriangle } from 'lucide-react';
+import { CheckCircle, XCircle, Eye, UserPlus, Clock, AlertTriangle, Loader2 } from 'lucide-react';
+import { 
+  useValidationQueueStats, 
+  useOperationsByQueue, 
+  useAssignOperation,
+  useReleaseOperation
+} from '@/hooks/useDashboard';
+import { useValidateOperation } from '@/hooks/useOperations';
 
 const TransactionValidation = () => {
   const { toast } = useToast();
