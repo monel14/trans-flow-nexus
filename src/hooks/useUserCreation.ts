@@ -204,6 +204,8 @@ export const useCreateSousAdmin = () => {
 };
 
 // Hook pour récupérer la liste des agences (pour les selects)
+import { useQuery } from '@tanstack/react-query';
+
 export const useAgencies = () => {
   return useQuery({
     queryKey: ['agencies'],
