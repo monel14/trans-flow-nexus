@@ -249,10 +249,7 @@ const OperationTypesListPage = () => {
                               Éditer
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => {
-                                // TODO: Implémenter toggle status
-                                console.log('Toggle status', type.id);
-                              }}
+                              onClick={() => toggleStatus(type)}
                             >
                               {type.status === 'active' ? (
                                 <>
@@ -268,10 +265,7 @@ const OperationTypesListPage = () => {
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-red-600"
-                              onClick={() => {
-                                // TODO: Implémenter suppression
-                                console.log('Delete', type.id);
-                              }}
+                              onClick={() => deleteOperationType(type)}
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
                               Supprimer
