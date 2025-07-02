@@ -156,21 +156,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, userData?: { name?: string; role?: string }) => {
+  const signUp = async (identifier: string, password: string, userData?: { name?: string; role?: string }) => {
     try {
-      // Inscription sans confirmation email - pour développement
+      console.log('📝 Création de compte avec identifiant:', identifier);
+      
+      // Inscription sans confirmation email pour développement
+      // L'identifiant sera stocké dans le champ email de auth.users
       const { error } = await supabase.auth.signUp({
-        email,
+        email: identifier, // On passe l'identifiant comme email
         password,
         options: {
           data: {
-            name: userData?.name || email.split('@')[0],
+            name: userData?.name || identifier.split('.')[1] || identifier, // Extraire le nom de l'identifiant
+            identifier: identifier // Stocker aussi l'identifiant original dans user_metadata
           }
         }
       });
 
+      if (error) {
+        console.error('❌ Erreur lors de la création de compte:', error.message);
+      } else {
+        console.log('✅ Compte créé avec succès pour:', identifier);
+      }
+
       return { error };
     } catch (error) {
+      console.error('❌ Erreur lors de la création de compte:', error);
       return { error };
     }
   };
