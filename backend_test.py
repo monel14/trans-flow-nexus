@@ -373,65 +373,73 @@ class SupabaseAPITester:
 def main():
     # Setup
     tester = SupabaseAPITester()
+    timestamp = datetime.now().strftime('%H%M%S')
     
-    # Test credentials - these would need to be replaced with valid credentials
-    test_email = "admin@transflownexus.com"
-    test_password = "Admin123!"
-
     # Run tests
-    print("\n🔒 Testing Supabase API Integration for TransFlow Nexus")
-    print("=======================================================")
+    print("\n🔒 Testing TransFlow Nexus User Creation API")
+    print("===========================================")
     
-    # Test database structure first (doesn't require authentication)
-    print("\n📊 Testing Database Structure")
-    tester.test_database_structure()
-    
-    # Test roles and permissions (doesn't require authentication)
-    print("\n👥 Testing Roles and Permissions")
-    tester.test_get_roles()
-    tester.test_get_permissions()
-    tester.test_get_role_permissions()
-    
-    # Test agencies (doesn't require authentication)
-    print("\n🏢 Testing Agencies")
-    tester.test_get_agencies()
-    
-    # Test operation types (doesn't require authentication)
-    print("\n🔄 Testing Operation Types")
-    tester.test_get_operation_types()
-    
-    # Try to login with provided credentials
-    print("\n🔑 Testing Authentication")
-    login_success = tester.test_login(test_email, test_password)
+    # Test login with admin account
+    print("\n🔑 Testing Authentication with admin account")
+    login_success = tester.test_login("admin.monel", "admin123")
     
     if not login_success:
-        print("\n⚠️ Login failed with provided credentials.")
-        print("Attempting to register a new test user...")
+        print("\n⚠️ Admin login failed, stopping tests")
+        tester.print_summary()
+        return 1
+    
+    # Test getting agencies
+    print("\n🏢 Testing Agencies")
+    agencies_success, agencies = tester.test_get_agencies()
+    
+    if not agencies_success or not agencies:
+        print("❌ Failed to get agencies list or no agencies found")
+        tester.print_summary()
+        return 1
+    
+    # Test creating a sous-admin
+    print("\n👤 Testing Sous-Admin Creation")
+    sous_admin_identifier = f"sadmin.test{timestamp}"
+    sous_admin_success, sous_admin_response = tester.test_create_sous_admin(
+        f"Test Sous-Admin {timestamp}",
+        sous_admin_identifier,
+        "Test123!"
+    )
+    
+    if sous_admin_success:
+        print(f"✅ Successfully created sous-admin: {sous_admin_identifier}")
+        print(f"Response: {sous_admin_response}")
+    
+    # Test creating a chef d'agence
+    print("\n👨‍💼 Testing Chef d'Agence Creation")
+    agency_id = agencies[0].get('id')
+    chef_identifier = f"chef.test{timestamp}.user"
+    chef_success, chef_response = tester.test_create_chef_agence(
+        f"Test Chef {timestamp}",
+        chef_identifier,
+        "Test123!",
+        agency_id
+    )
+    
+    if chef_success:
+        print(f"✅ Successfully created chef d'agence: {chef_identifier}")
+        print(f"Response: {chef_response}")
         
-        # Try to register a new user
-        signup_success = tester.test_signup(
-            f"test_{uuid.uuid4().hex[:8]}@example.com", 
-            "TestPassword123!"
-        )
-        
-        if not signup_success:
-            print("\n⚠️ Both login and registration failed.")
-            print("To fully test authenticated endpoints, valid credentials are required.")
-        else:
-            print("\n✅ Registration successful! Testing authenticated endpoints...")
-            # If signup succeeds, run the authenticated tests
-            tester.test_get_profile()
-            tester.test_get_commissions()
-            tester.test_get_recharge_requests()
-            tester.test_get_support_tickets()
-    else:
-        # If login succeeds, run the authenticated tests
-        print("\n✅ Login successful! Testing authenticated endpoints...")
-        tester.test_get_profile()
-        tester.test_get_commissions()
-        tester.test_get_recharge_requests()
-        tester.test_get_support_tickets()
-
+        # Now login as the chef to test creating an agent
+        print(f"\n🔄 Switching to Chef d'Agence account: {chef_identifier}")
+        if tester.test_login(chef_identifier, "Test123!"):
+            print("\n👷 Testing Agent Creation")
+            agent_identifier = f"tst{timestamp}.agent"
+            agent_success, agent_response = tester.test_create_agent(
+                f"Test Agent {timestamp}",
+                agent_identifier,
+                "Test123!"
+            )
+            
+            if agent_success:
+                print(f"✅ Successfully created agent: {agent_identifier}")
+                print(f"Response: {agent_response}")
+    
     # Print summary of all tests
     tester.print_summary()
     
