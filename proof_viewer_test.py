@@ -214,8 +214,8 @@ def main():
     tester = SupabaseAPITester()
     
     # Test credentials - these would need to be replaced with valid credentials
-    test_email = "admin@transflow.com"  # Updated to match the demo account
-    test_password = "TransflowAdmin123!"
+    test_email = "admin@transflownexus.com"  # Updated to match the demo account
+    test_password = "Admin123!"
     
     # Run tests
     print("\n🔒 Testing Supabase API Integration for TransFlow Nexus")
