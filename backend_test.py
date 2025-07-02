@@ -300,6 +300,51 @@ class SupabaseAPITester:
         )
         return success
 
+    def test_create_sous_admin(self, full_name, identifier, password):
+        """Test creating a sous-admin"""
+        success, response = self.run_test(
+            "Create Sous-Admin",
+            "POST",
+            "rest/v1/rpc/create_sous_admin",
+            200,
+            data={
+                "full_name_in": full_name,
+                "identifier_in": identifier,
+                "password_in": password
+            }
+        )
+        return success, response
+
+    def test_create_chef_agence(self, full_name, identifier, password, agency_id):
+        """Test creating a chef d'agence"""
+        success, response = self.run_test(
+            "Create Chef d'Agence",
+            "POST",
+            "rest/v1/rpc/create_chef_agence",
+            200,
+            data={
+                "full_name_in": full_name,
+                "identifier_in": identifier,
+                "password_in": password,
+                "agency_id_in": agency_id
+            }
+        )
+        return success, response
+
+    def test_create_agent(self, full_name, identifier, password):
+        """Test creating an agent"""
+        success, response = self.run_test(
+            "Create Agent",
+            "POST",
+            "rest/v1/rpc/create_agent",
+            200,
+            data={
+                "full_name_in": full_name,
+                "identifier_in": identifier,
+                "password_in": password
+            }
+        )
+        return success, response
     def test_get_support_tickets(self):
         """Test getting support tickets"""
         success, response = self.run_test(
