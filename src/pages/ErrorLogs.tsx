@@ -153,14 +153,15 @@ const ErrorLogs = () => {
   };
 
   const exportLogs = () => {
-    // TODO: Implémenter l'export des logs
     const csvContent = [
-      ['Timestamp', 'Level', 'Source', 'Message', 'Context'].join(','),
+      ['Timestamp', 'Level', 'Source', 'Message', 'User', 'Resolved', 'Context'].join(','),
       ...errorLogs.map(log => [
         log.timestamp,
         log.level,
         log.source,
         `"${log.message.replace(/"/g, '""')}"`,
+        log.user_name || 'Système',
+        log.resolved ? 'Oui' : 'Non',
         `"${JSON.stringify(log.context || {}).replace(/"/g, '""')}"`
       ].join(','))
     ].join('\n');
@@ -176,7 +177,7 @@ const ErrorLogs = () => {
     window.URL.revokeObjectURL(url);
   };
 
-  const updateFilter = (key: string, value: string) => {
+  const updateFilter = (key: string, value: string | boolean | undefined) => {
     setFilters(prev => ({ ...prev, [key]: value }));
   };
 
