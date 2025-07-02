@@ -284,9 +284,9 @@ const Login = () => {
         <div className="mt-6 p-4 bg-blue-50 rounded-lg text-center">
           <h3 className="text-sm font-medium text-blue-900 mb-2">Instructions pour les tests :</h3>
           <div className="text-xs text-blue-700 space-y-1">
-            <p><strong>Option 1 :</strong> Générez des comptes de démonstration pour tester tous les rôles</p>
-            <p><strong>Option 2 :</strong> Créez un compte développeur pour accéder aux outils de développement</p>
-            <p><strong>Option 3 :</strong> Inscrivez-vous normalement et demandez à un administrateur d'assigner votre rôle</p>
+            <p><strong>Nouveau système :</strong> Connexion par identifiant unique (plus d'emails)</p>
+            <p><strong>Création hiérarchique :</strong> Seuls les administrateurs peuvent créer des utilisateurs</p>
+            <p><strong>Formats d'identifiants :</strong> admin.prénom, chef.ville.nom, codeagence.prénom</p>
           </div>
           
           <div className="mt-4">
