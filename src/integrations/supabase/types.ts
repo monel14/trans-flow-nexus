@@ -1085,15 +1085,23 @@ export type Database = {
       }
     }
     Functions: {
-      get_user_agency_id: {
-        Args: Record<PropertyKey, never>
+      get_user_agency_id_secure: {
+        Args: { user_uuid: string }
         Returns: number
       }
-      get_user_role: {
-        Args: Record<PropertyKey, never>
+      get_user_role_name: {
+        Args: { user_uuid: string }
         Returns: string
       }
+      is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       is_admin_general: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_chef_agence: {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
@@ -1118,6 +1126,10 @@ export type Database = {
           p_notes?: string
         }
         Returns: Json
+      }
+      user_has_role_secure: {
+        Args: { user_uuid: string; role_names: string[] }
+        Returns: boolean
       }
       validate_operation_atomic: {
         Args: {
