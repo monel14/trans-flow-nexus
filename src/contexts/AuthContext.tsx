@@ -91,7 +91,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const userProfile: UserProfile = {
         id: profile.id,
-        email: profile.email,
+        email: profile.email, // Contiendra l'identifiant
+        identifier: profile.email, // Dans notre cas, c'est la même chose
         name: profile.name,
         role: userRole as UserProfile['role'],
         agenceId: profile.agency_id?.toString(),
