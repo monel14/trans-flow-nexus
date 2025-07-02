@@ -234,7 +234,124 @@ class SupabaseAPITester:
         if success and response:
             print(f"✅ Retrieved {len(response)} operation types")
         
-        return success
+        return success, response
+        
+    def test_get_operation_type_with_fields(self, operation_type_id):
+        """Get operation type with its fields"""
+        success, response = self.run_test(
+            "Get Operation Type with Fields",
+            "GET",
+            f"rest/v1/operation_types?id=eq.{operation_type_id}&select=*,operation_type_fields(*)",
+            200
+        )
+        
+        if success and response:
+            print(f"✅ Retrieved operation type with fields")
+            if len(response) > 0:
+                fields = response[0].get('operation_type_fields', [])
+                print(f"  - Fields count: {len(fields)}")
+        
+        return success, response
+        
+    def test_create_operation_type(self, name, description="", impacts_balance=False, status="active"):
+        """Create a new operation type"""
+        data = {
+            "name": name,
+            "description": description,
+            "impacts_balance": impacts_balance,
+            "status": status,
+            "is_active": status == "active"
+        }
+        
+        success, response = self.run_test(
+            "Create Operation Type",
+            "POST",
+            "rest/v1/operation_types",
+            201,
+            data=data,
+            headers={"Prefer": "return=representation"}
+        )
+        
+        if success and response:
+            print(f"✅ Created operation type: {name}")
+        
+        return success, response
+        
+    def test_update_operation_type(self, operation_type_id, updates):
+        """Update an operation type"""
+        success, response = self.run_test(
+            "Update Operation Type",
+            "PATCH",
+            f"rest/v1/operation_types?id=eq.{operation_type_id}",
+            204,
+            data=updates,
+            headers={"Prefer": "return=minimal"}
+        )
+        
+        if success:
+            print(f"✅ Updated operation type")
+        
+        return success, response
+        
+    def test_create_operation_type_field(self, operation_type_id, field_data):
+        """Create a field for an operation type"""
+        data = {
+            "operation_type_id": operation_type_id,
+            **field_data
+        }
+        
+        success, response = self.run_test(
+            "Create Operation Type Field",
+            "POST",
+            "rest/v1/operation_type_fields",
+            201,
+            data=data,
+            headers={"Prefer": "return=representation"}
+        )
+        
+        if success and response:
+            print(f"✅ Created field: {field_data.get('name')}")
+        
+        return success, response
+        
+    def test_delete_operation_type_field(self, field_id):
+        """Delete an operation type field"""
+        success, response = self.run_test(
+            "Delete Operation Type Field",
+            "DELETE",
+            f"rest/v1/operation_type_fields?id=eq.{field_id}",
+            204
+        )
+        
+        if success:
+            print(f"✅ Deleted field")
+        
+        return success, response
+        
+    def test_create_commission_rule(self, operation_type_id, commission_type, data=None):
+        """Create a commission rule for an operation type"""
+        rule_data = {
+            "operation_type_id": operation_type_id,
+            "commission_type": commission_type,
+            "is_active": True
+        }
+        
+        if data:
+            rule_data.update(data)
+            
+        success, response = self.run_test(
+            f"Create {commission_type} Commission Rule",
+            "POST",
+            "rest/v1/commission_rules",
+            201,
+            data=rule_data,
+            headers={"Prefer": "return=representation"}
+        )
+        
+        if success and response:
+            print(f"✅ Created {commission_type} commission rule")
+        
+        return success, response
 
     def test_database_structure(self):
         """Test database structure by checking key tables"""
