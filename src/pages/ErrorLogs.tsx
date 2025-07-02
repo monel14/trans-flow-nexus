@@ -192,14 +192,6 @@ const ErrorLogs = () => {
     );
   }
 
-  const errorCount = errorLogs.filter(log => log.level === 'error').length;
-  const warningCount = errorLogs.filter(log => log.level === 'warning').length;
-  const todayCount = errorLogs.filter(log => {
-    const logDate = new Date(log.timestamp);
-    const today = new Date();
-    return logDate.toDateString() === today.toDateString();
-  }).length;
-
   return (
     <div className="space-y-6">
       {/* En-tête */}
@@ -230,12 +222,26 @@ const ErrorLogs = () => {
       </div>
 
       {/* Statistiques rapides */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-purple-600">
+                {stats?.critical || 0}
+              </div>
+              <div className="text-sm text-gray-600 flex items-center justify-center gap-1">
+                <Shield className="h-4 w-4" />
+                Critiques
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
               <div className="text-2xl font-bold text-red-600">
-                {errorCount}
+                {stats?.errors || 0}
               </div>
               <div className="text-sm text-gray-600 flex items-center justify-center gap-1">
                 <AlertTriangle className="h-4 w-4" />
@@ -249,7 +255,7 @@ const ErrorLogs = () => {
           <CardContent className="pt-6">
             <div className="text-center">
               <div className="text-2xl font-bold text-yellow-600">
-                {warningCount}
+                {stats?.warnings || 0}
               </div>
               <div className="text-sm text-gray-600 flex items-center justify-center gap-1">
                 <AlertTriangle className="h-4 w-4" />
@@ -262,12 +268,12 @@ const ErrorLogs = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
-                {todayCount}
+              <div className="text-2xl font-bold text-orange-600">
+                {stats?.unresolved || 0}
               </div>
               <div className="text-sm text-gray-600 flex items-center justify-center gap-1">
-                <Calendar className="h-4 w-4" />
-                Aujourd'hui
+                <XCircle className="h-4 w-4" />
+                Non résolus
               </div>
             </div>
           </CardContent>
@@ -276,12 +282,12 @@ const ErrorLogs = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-600">
-                {errorLogs.length}
+              <div className="text-2xl font-bold text-blue-600">
+                {stats?.today || 0}
               </div>
               <div className="text-sm text-gray-600 flex items-center justify-center gap-1">
-                <Bug className="h-4 w-4" />
-                Total
+                <Calendar className="h-4 w-4" />
+                Aujourd'hui
               </div>
             </div>
           </CardContent>
