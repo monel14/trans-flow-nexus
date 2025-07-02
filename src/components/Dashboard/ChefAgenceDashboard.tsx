@@ -12,12 +12,16 @@ import {
   AlertTriangle, 
   UserCheck,
   BarChart3,
-  Award
+  Award,
+  Loader2
 } from 'lucide-react';
 import MetricCard from './MetricCard';
 import QuickActions from './QuickActions';
 import TransactionTable from '../Tables/TransactionTable';
 import { useNavigate } from 'react-router-dom';
+import { useChefAgenceDashboardKPIs, useChefAgentsPerformance } from '@/hooks/useDashboard';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 
 const ChefAgenceDashboard = () => {
   const { user } = useAuth();
