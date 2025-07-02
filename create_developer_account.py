@@ -162,8 +162,8 @@ def test_developer_account():
     
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
     
-    developer_email = "dev_admin@transflownexus.demo"
-    developer_password = "dev123"
+    developer_email = "developer@example.com"
+    developer_password = "dev123456"
     
     try:
         # Connexion
