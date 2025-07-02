@@ -68,6 +68,11 @@ const OperationTypesListPage = () => {
     }
   };
 
+  const filteredTypes = operationTypes.filter((type: OperationType) =>
+    type.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    type.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'active':
