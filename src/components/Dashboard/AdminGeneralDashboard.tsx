@@ -26,6 +26,10 @@ import { useAdminDashboardKPIs, useTopAgenciesPerformance } from '@/hooks/useDas
 const AdminGeneralDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  
+  // Récupération des données dynamiques
+  const { data: kpis, isLoading: kpisLoading, error: kpisError } = useAdminDashboardKPIs();
+  const { data: topAgencies, isLoading: agenciesLoading } = useTopAgenciesPerformance(3);
 
   const formatAmount = (amount: number) => {
     return new Intl.NumberFormat('fr-FR', {
@@ -60,6 +64,37 @@ const AdminGeneralDashboard = () => {
     }
   ];
 
+  // Gestion des erreurs
+  if (kpisError) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-xl p-6 text-white">
+          <h1 className="text-2xl font-bold mb-2">
+            Centre de Contrôle - Administrateur Général
+          </h1>
+          <p className="text-red-100">
+            Une erreur s'est produite lors du chargement des données
+          </p>
+        </div>
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center text-red-600">
+              <AlertTriangle className="h-8 w-8 mx-auto mb-2" />
+              <p>Erreur lors du chargement des KPIs</p>
+              <Button 
+                onClick={() => window.location.reload()} 
+                className="mt-4"
+                variant="outline"
+              >
+                Réessayer
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* En-tête Admin */}
@@ -68,44 +103,63 @@ const AdminGeneralDashboard = () => {
           Centre de Contrôle - Administrateur Général
         </h1>
         <p className="text-red-100">
-          Supervision complète du système TransFlow Nexus - 15 agences actives
+          Supervision complète du système TransFlow Nexus - {kpis?.network_stats?.active_agencies || 0} agences actives
         </p>
       </div>
 
       {/* Indicateurs globaux */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <MetricCard
-          title="Volume Total (Aujourd'hui)"
-          value={formatAmount(8750000)}
-          icon={TrendingUp}
-          iconColor="text-green-500"
-          valueColor="text-green-600"
-          subtitle="+12% vs hier"
-        />
-        <MetricCard
-          title="Opérations Système"
-          value="347"
-          icon={Activity}
-          iconColor="text-blue-500"
-          valueColor="text-blue-600"
-          subtitle="156 validées, 12 urgentes"
-        />
-        <MetricCard
-          title="Réseau TransFlow"
-          value="15 Agences"
-          icon={Building}
-          iconColor="text-purple-500"
-          valueColor="text-purple-600"
-          subtitle="89 agents, 12 chefs"
-        />
-        <MetricCard
-          title="Revenus Système"
-          value={formatAmount(450000)}
-          icon={DollarSign}
-          iconColor="text-orange-500"
-          valueColor="text-orange-600"
-          subtitle="Commissions ce mois"
-        />
+        {kpisLoading ? (
+          // Skeletons pendant le chargement
+          <>
+            {[1, 2, 3, 4].map(i => (
+              <Card key={i}>
+                <CardContent className="pt-6">
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-8 w-1/2" />
+                    <Skeleton className="h-3 w-full" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </>
+        ) : (
+          <>
+            <MetricCard
+              title="Volume Total (Aujourd'hui)"
+              value={kpis?.volume_today?.formatted || '0 XOF'}
+              icon={TrendingUp}
+              iconColor="text-green-500"
+              valueColor="text-green-600"
+              subtitle={kpis?.volume_today?.growth_formatted || '0%'}
+            />
+            <MetricCard
+              title="Opérations Système"
+              value={kpis?.operations_system?.total_today?.toString() || '0'}
+              icon={Activity}
+              iconColor="text-blue-500"
+              valueColor="text-blue-600"
+              subtitle={kpis?.operations_system?.subtitle || 'Aucune donnée'}
+            />
+            <MetricCard
+              title="Réseau TransFlow"
+              value={`${kpis?.network_stats?.active_agencies || 0} Agences`}
+              icon={Building}
+              iconColor="text-purple-500"
+              valueColor="text-purple-600"
+              subtitle={kpis?.network_stats?.subtitle || 'Aucune donnée'}
+            />
+            <MetricCard
+              title="Revenus Système"
+              value={kpis?.monthly_revenue?.formatted || '0 XOF'}
+              icon={DollarSign}
+              iconColor="text-orange-500"
+              valueColor="text-orange-600"
+              subtitle={kpis?.monthly_revenue?.subtitle || 'Aucune donnée'}
+            />
+          </>
+        )}
       </div>
 
       {/* Actions rapides */}
@@ -162,6 +216,7 @@ const AdminGeneralDashboard = () => {
             <CardTitle className="flex items-center text-purple-600">
               <BarChart3 className="mr-2 h-5 w-5" />
               Performance Réseau
+              {agenciesLoading && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -170,25 +225,53 @@ const AdminGeneralDashboard = () => {
                 <span className="text-sm font-medium">Top 3 Agences (Volume)</span>
               </div>
               
-              {['Agence Abidjan Centre', 'Agence Yamoussoukro', 'Agence San Pedro'].map((agence, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center">
-                    <span className="bg-purple-100 text-purple-600 text-xs font-bold px-2 py-1 rounded-full mr-3">
-                      #{index + 1}
-                    </span>
-                    <span className="font-medium">{agence}</span>
-                  </div>
-                  <span className="text-sm font-semibold text-purple-600">
-                    {formatAmount(Math.floor(Math.random() * 500000) + 800000)}
-                  </span>
+              {agenciesLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center">
+                        <Skeleton className="w-8 h-6 rounded-full mr-3" />
+                        <Skeleton className="h-4 w-32" />
+                      </div>
+                      <Skeleton className="h-4 w-20" />
+                    </div>
+                  ))}
                 </div>
-              ))}
+              ) : topAgencies && topAgencies.length > 0 ? (
+                topAgencies.map((agence, index) => (
+                  <div key={agence.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center">
+                      <span className="bg-purple-100 text-purple-600 text-xs font-bold px-2 py-1 rounded-full mr-3">
+                        #{index + 1}
+                      </span>
+                      <div>
+                        <span className="font-medium">{agence.name}</span>
+                        {agence.city && <span className="text-sm text-gray-500 block">{agence.city}</span>}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-sm font-semibold text-purple-600">
+                        {formatAmount(agence.volume_month)}
+                      </span>
+                      <div className="text-xs text-gray-500">
+                        {agence.operations_count} ops
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center text-gray-500 py-4">
+                  <p>Aucune donnée d'agence disponible</p>
+                </div>
+              )}
 
               <div className="pt-4 border-t border-gray-200">
                 <div className="text-center">
                   <p className="text-sm text-gray-600 mb-2">Croissance réseau</p>
-                  <p className="text-2xl font-bold text-green-600">+18.5%</p>
-                  <p className="text-xs text-gray-500">vs mois dernier</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {kpis?.volume_today?.growth_formatted || '+0%'}
+                  </p>
+                  <p className="text-xs text-gray-500">vs hier</p>
                 </div>
               </div>
             </div>
@@ -212,7 +295,7 @@ const AdminGeneralDashboard = () => {
                   Transactions Bloquées
                 </span>
                 <span className="bg-red-600 text-white text-sm px-2 py-1 rounded-full">
-                  12
+                  {kpisLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : (kpis?.critical_alerts?.blocked_transactions || 0)}
                 </span>
               </div>
               <p className="text-xs text-red-700 mb-3">Nécessite validation immédiate</p>
@@ -232,7 +315,7 @@ const AdminGeneralDashboard = () => {
                   Requêtes Support Critiques
                 </span>
                 <span className="bg-orange-600 text-white text-sm px-2 py-1 rounded-full">
-                  7
+                  {kpisLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : (kpis?.critical_alerts?.support_requests || 0)}
                 </span>
               </div>
               <p className="text-xs text-orange-700 mb-3">Incidents système signalés</p>
@@ -253,7 +336,7 @@ const AdminGeneralDashboard = () => {
                   Agences Sous-Performance
                 </span>
                 <span className="bg-yellow-600 text-white text-sm px-2 py-1 rounded-full">
-                  3
+                  {kpisLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : (kpis?.critical_alerts?.underperforming_agencies || 0)}
                 </span>
               </div>
               <p className="text-xs text-yellow-700 mb-3">Volume en baisse significative</p>
