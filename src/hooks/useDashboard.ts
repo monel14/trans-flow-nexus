@@ -303,3 +303,154 @@ export function useReleaseOperation() {
     }
   );
 }
+
+// Types pour les nouveaux KPIs
+export interface ChefAgenceDashboardKPIs {
+  chef_balance: {
+    amount: number;
+    formatted: string;
+    status: 'critical' | 'low' | 'medium' | 'good';
+    subtitle: string;
+  };
+  agency_volume_month: {
+    amount: number;
+    formatted: string;
+    growth_percentage: number;
+    growth_formatted: string;
+    subtitle: string;
+  };
+  agency_commissions: {
+    amount: number;
+    formatted: string;
+    subtitle: string;
+  };
+  agents_performance: {
+    total_agents: number;
+    active_week: number;
+    performants: number;
+    performance_rate: number;
+    subtitle: string;
+  };
+  pending_actions: {
+    recharge_requests: number;
+    inactive_agents: number;
+    subtitle: string;
+  };
+  agency_id: number;
+}
+
+export interface AgentDashboardKPIs {
+  agent_balance: {
+    amount: number;
+    formatted: string;
+    status: 'critical' | 'low' | 'medium' | 'good';
+    subtitle: string;
+  };
+  operations_today: {
+    total: number;
+    completed: number;
+    pending: number;
+    success_rate: number;
+    subtitle: string;
+  };
+  commissions_week: {
+    amount: number;
+    formatted: string;
+    subtitle: string;
+  };
+  monthly_objective: {
+    target: number;
+    target_formatted: string;
+    current_volume: number;
+    current_formatted: string;
+    progress_percentage: number;
+    progress_formatted: string;
+    remaining: number;
+    remaining_formatted: string;
+    subtitle: string;
+  };
+  performance_summary: {
+    volume_month: number;
+    commissions_month: number;
+    operations_avg_day: number;
+  };
+}
+
+export interface AgentPerformance {
+  id: string;
+  name: string;
+  email: string;
+  balance: number;
+  balance_formatted: string;
+  operations_week: number;
+  volume_week: number;
+  volume_week_formatted: string;
+  commissions_week: number;
+  commissions_week_formatted: string;
+  success_rate: number;
+  performance_level: 'excellent' | 'good' | 'average' | 'needs_attention';
+  last_activity: string;
+  is_active_week: boolean;
+}
+
+// Hook pour les KPIs du tableau de bord Chef d'Agence
+export function useChefAgenceDashboardKPIs() {
+  const { user } = useAuth();
+  
+  return useSupabaseQuery<ChefAgenceDashboardKPIs>(
+    ['chef-agence-dashboard-kpis', user?.id],
+    async () => {
+      const { data, error } = await supabase.rpc('get_chef_agence_dashboard_kpis');
+      
+      if (error) throw error;
+      return data as ChefAgenceDashboardKPIs;
+    },
+    {
+      enabled: user?.role === 'chef_agence',
+      refetchInterval: 60000, // Rafraîchir toutes les minutes
+      staleTime: 30000, // Les données sont considérées comme fraîches pendant 30 secondes
+    }
+  );
+}
+
+// Hook pour les KPIs du tableau de bord Agent
+export function useAgentDashboardKPIs() {
+  const { user } = useAuth();
+  
+  return useSupabaseQuery<AgentDashboardKPIs>(
+    ['agent-dashboard-kpis', user?.id],
+    async () => {
+      const { data, error } = await supabase.rpc('get_agent_dashboard_kpis');
+      
+      if (error) throw error;
+      return data as AgentDashboardKPIs;
+    },
+    {
+      enabled: user?.role === 'agent',
+      refetchInterval: 60000, // Rafraîchir toutes les minutes
+      staleTime: 30000, // Les données sont considérées comme fraîches pendant 30 secondes
+    }
+  );
+}
+
+// Hook pour les performances des agents de l'agence (Chef d'Agence)
+export function useChefAgentsPerformance(limit: number = 10) {
+  const { user } = useAuth();
+  
+  return useSupabaseQuery<AgentPerformance[]>(
+    ['chef-agents-performance', limit, user?.id],
+    async () => {
+      const { data, error } = await supabase.rpc('get_chef_agents_performance', {
+        p_limit: limit
+      });
+      
+      if (error) throw error;
+      return data as AgentPerformance[];
+    },
+    {
+      enabled: user?.role === 'chef_agence',
+      refetchInterval: 5 * 60000, // Rafraîchir toutes les 5 minutes
+      staleTime: 2 * 60000, // Données fraîches pendant 2 minutes
+    }
+  );
+}
