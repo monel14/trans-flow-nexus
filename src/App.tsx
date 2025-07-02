@@ -16,6 +16,8 @@ import OperationHistory from "@/pages/OperationHistory";
 import AgentManagement from "@/pages/AgentManagement";
 import TransactionValidation from "@/pages/TransactionValidation";
 import OperationTypes from "@/pages/OperationTypes";
+import OperationTypesListPage from "@/pages/OperationTypesListPage";
+import OperationTypeFormPage from "@/pages/OperationTypeFormPage";
 import NotFound from "@/pages/NotFound";
 import SystemConfig from "@/pages/SystemConfig";
 import ErrorLogs from "@/pages/ErrorLogs";
