@@ -192,12 +192,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('🔐 Tentative de connexion avec identifiant:', identifier);
       
-      // Utiliser l'identifiant comme "email" dans Supabase Auth
-      // L'identifiant sera stocké dans le champ email de auth.users
-      const { error } = await supabase.auth.signInWithPassword({
-        email: identifier, // On passe l'identifiant comme email
+      // Essayer d'abord avec l'identifiant directement
+      let { error } = await supabase.auth.signInWithPassword({
+        email: identifier,
         password,
       });
+
+      // Si ça échoue, essayer avec l'email formaté pour les nouveaux comptes
+      if (error && error.message === 'Invalid login credentials') {
+        console.log('🔄 Tentative avec email formaté...');
+        const formattedEmail = `${identifier.replace('.', '_')}@transflownexus.demo`;
+        
+        const { error: emailError } = await supabase.auth.signInWithPassword({
+          email: formattedEmail,
+          password,
+        });
+        
+        if (!emailError) {
+          console.log('✅ Connexion réussie avec email formaté');
+          error = null;
+        } else {
+          error = emailError;
+        }
+      }
 
       if (error) {
         console.error('❌ Erreur de connexion:', error.message);
