@@ -43,16 +43,21 @@ const ErrorLogs = () => {
     source: 'all',
     search: '',
     dateFrom: '',
-    dateTo: ''
+    dateTo: '',
+    resolved: undefined as boolean | undefined
   });
   
   // État des modales
   const [selectedLog, setSelectedLog] = useState<any>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isResolveModalOpen, setIsResolveModalOpen] = useState(false);
+  const [resolutionNotes, setResolutionNotes] = useState('');
 
   // Hooks
   const { data: errorLogs = [], isLoading, refetch } = useErrorLogs(filters);
+  const { data: stats } = useErrorLogStats();
   const clearLogs = useClearErrorLogs();
+  const resolveLog = useResolveErrorLog();
 
   const getLevelBadge = (level: string) => {
     const variants = {
