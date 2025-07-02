@@ -30,7 +30,7 @@ export interface ErrorLogFilters {
 // Hook to get error logs with filters
 export function useErrorLogs(filters?: ErrorLogFilters) {
   return useSupabaseQuery(
-    ['error-logs', filters],
+    ['error-logs', JSON.stringify(filters)],
     async () => {
       let query = supabase
         .from('app_audit_log')
@@ -43,11 +43,11 @@ export function useErrorLogs(filters?: ErrorLogFilters) {
       }
       
       if (filters?.source && filters.source !== 'all') {
-        query = query.eq('table_name', filters.source); // Assuming 'table_name' stores source
+        query = query.eq('resource_type', filters.source);
       }
       
       if (filters?.search) {
-        query = query.ilike('details', `%${filters.search}%`);
+        query = query.ilike('resource_type', `%${filters.search}%`);
       }
       
       if (filters?.dateFrom) {
@@ -79,17 +79,17 @@ export function useErrorLogs(filters?: ErrorLogFilters) {
         level: log.action === 'error' ? 'error' : 
                log.action === 'warning' ? 'warning' : 
                log.action === 'info' ? 'info' : 'debug',
-        source: log.table_name === 'api' ? 'api' :
-                log.table_name === 'database' ? 'database' :
-                log.table_name === 'frontend' ? 'frontend' : 'system',
-        message: log.details || 'No message',
-        stack_trace: log.new_values?.stack_trace,
+        source: log.resource_type === 'api' ? 'api' :
+                log.resource_type === 'database' ? 'database' :
+                log.resource_type === 'frontend' ? 'frontend' : 'system',
+        message: log.resource_type || 'No message',
+        stack_trace: typeof log.new_values === 'object' ? (log.new_values as any)?.stack_trace : undefined,
         context: log.new_values,
         user_id: log.user_id,
-        user_name: log.old_values?.user_name,
-        request_url: log.new_values?.request_url,
-        request_method: log.new_values?.request_method,
-        response_status: log.new_values?.response_status,
+        user_name: typeof log.old_values === 'object' ? (log.old_values as any)?.user_name : undefined,
+        request_url: typeof log.new_values === 'object' ? (log.new_values as any)?.request_url : undefined,
+        request_method: typeof log.new_values === 'object' ? (log.new_values as any)?.request_method : undefined,
+        response_status: typeof log.new_values === 'object' ? (log.new_values as any)?.response_status : undefined,
         created_at: log.created_at,
       }));
       
@@ -114,9 +114,9 @@ export function useCreateErrorLog() {
       const { data, error } = await supabase
         .from('app_audit_log')
         .insert({
-          table_name: logData.source,
+          resource_type: logData.source,
           action: logData.level,
-          details: logData.message,
+          resource_id: logData.message,
           new_values: {
             stack_trace: logData.stack_trace,
             context: logData.context,
@@ -177,7 +177,7 @@ export function useClearErrorLogs() {
       }
       
       if (clearOptions.source) {
-        query = query.eq('table_name', clearOptions.source);
+        query = query.eq('resource_type', clearOptions.source);
       }
       
       const { error } = await query;

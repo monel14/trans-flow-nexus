@@ -47,7 +47,7 @@ export function useSupportTickets() {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data as SupportTicket[];
+      return data as any[];
     },
     {
       enabled: user?.role && ['admin_general', 'sous_admin'].includes(user.role),
@@ -72,7 +72,7 @@ export function useMyTickets() {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data as SupportTicket[];
+      return data as any[];
     },
     {
       enabled: !!user?.id,

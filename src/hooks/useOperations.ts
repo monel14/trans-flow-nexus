@@ -57,7 +57,7 @@ export function useOperations(filters?: {
   const { user } = useAuth();
   
   return useSupabaseQuery(
-    ['operations', user?.id, filters],
+    ['operations', user?.id, JSON.stringify(filters)],
     async () => {
       let query = supabase
         .from('operations')
@@ -97,7 +97,7 @@ export function useOperations(filters?: {
       const { data, error } = await query;
       
       if (error) throw error;
-      return data as Operation[];
+      return data as any[];
     },
     {
       enabled: !!user?.id,
@@ -129,7 +129,7 @@ export function useOperation(operationId: string) {
         .single();
       
       if (error) throw error;
-      return data as Operation;
+      return data as any;
     },
     {
       enabled: !!operationId,
@@ -214,7 +214,7 @@ export function usePendingOperations() {
         .order('created_at', { ascending: true });
       
       if (error) throw error;
-      return data as Operation[];
+      return data as any[];
     },
     {
       enabled: user?.role && ['admin_general', 'sous_admin'].includes(user.role),

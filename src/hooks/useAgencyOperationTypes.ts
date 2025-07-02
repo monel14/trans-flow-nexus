@@ -1,45 +1,49 @@
 import { useSupabaseQuery, useSupabaseMutation } from './useSupabase';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface AgencyOperationType {
   id: string;
   agency_id: number;
   operation_type_id: string;
-  is_active: boolean;
+  is_enabled: boolean;
+  daily_limit?: number;
+  monthly_limit?: number;
   created_at: string;
-  
-  // Relations
+  updated_at: string;
   operation_types?: {
     id: string;
     name: string;
     description: string;
-    affects_balance: boolean;
+    impacts_balance: boolean;
+    is_active: boolean;
+    status: string;
   };
   agencies?: {
     id: number;
     name: string;
-    city: string;
   };
 }
 
-// Hook to get operation types for a specific agency
-export function useAgencyOperationTypes(agencyId?: string | number) {
+// Hook to get agency operation types
+export function useAgencyOperationTypes(agencyId?: number) {
   return useSupabaseQuery(
-    ['agency-operation-types', agencyId],
+    ['agency-operation-types', agencyId?.toString()],
     async () => {
+      if (!agencyId) return [];
+      
       const { data, error } = await supabase
         .from('agency_operation_types')
         .select(`
           *,
-          operation_types (id, name, description, affects_balance),
-          agencies (id, name, city)
+          operation_types (*),
+          agencies (id, name)
         `)
         .eq('agency_id', agencyId)
-        .eq('is_active', true)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data as AgencyOperationType[];
+      return data || [];
     },
     {
       enabled: !!agencyId,
@@ -47,7 +51,7 @@ export function useAgencyOperationTypes(agencyId?: string | number) {
   );
 }
 
-// Hook to get all agency-operation type mappings (for admin)
+// Hook to get all agency operation types
 export function useAllAgencyOperationTypes() {
   return useSupabaseQuery(
     ['all-agency-operation-types'],
@@ -56,151 +60,56 @@ export function useAllAgencyOperationTypes() {
         .from('agency_operation_types')
         .select(`
           *,
-          operation_types (id, name, description, affects_balance),
-          agencies (id, name, city)
+          operation_types (*),
+          agencies (id, name)
         `)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data as AgencyOperationType[];
+      return data || [];
     }
   );
 }
 
-// Hook to update agency services (assign/revoke operation types)
-export function useUpdateAgencyServices() {
-  return useSupabaseMutation<any, {
-    agencyId: string | number;
-    operationTypeIds: string[];
-  }>(
-    async ({ agencyId, operationTypeIds }) => {
-      // First, deactivate all current services for this agency
-      const { error: deactivateError } = await supabase
+// Hook to create agency operation type
+export function useCreateAgencyOperationType() {
+  return useSupabaseMutation<any, any>(
+    async (data) => {
+      const { data: result, error } = await supabase
         .from('agency_operation_types')
-        .update({ is_active: false })
-        .eq('agency_id', agencyId);
-      
-      if (deactivateError) throw deactivateError;
-      
-      // Then, activate/create the selected services
-      if (operationTypeIds.length > 0) {
-        // Check which ones already exist
-        const { data: existing } = await supabase
-          .from('agency_operation_types')
-          .select('operation_type_id')
-          .eq('agency_id', agencyId)
-          .in('operation_type_id', operationTypeIds);
-        
-        const existingIds = existing?.map(e => e.operation_type_id) || [];
-        
-        // Update existing ones to active
-        if (existingIds.length > 0) {
-          const { error: updateError } = await supabase
-            .from('agency_operation_types')
-            .update({ is_active: true })
-            .eq('agency_id', agencyId)
-            .in('operation_type_id', existingIds);
-          
-          if (updateError) throw updateError;
-        }
-        
-        // Create new ones
-        const newIds = operationTypeIds.filter(id => !existingIds.includes(id));
-        if (newIds.length > 0) {
-          const newRecords = newIds.map(operationTypeId => ({
-            agency_id: parseInt(agencyId.toString()),
-            operation_type_id: operationTypeId,
-            is_active: true,
-          }));
-          
-          const { error: insertError } = await supabase
-            .from('agency_operation_types')
-            .insert(newRecords);
-          
-          if (insertError) throw insertError;
-        }
-      }
-      
-      return { success: true };
-    },
-    {
-      invalidateQueries: [['agency-operation-types'], ['all-agency-operation-types'], ['operation-types']],
-      successMessage: 'Services de l\'agence mis à jour',
-      errorMessage: 'Erreur lors de la mise à jour des services',
-    }
-  );
-}
-
-// Hook to assign a single operation type to an agency
-export function useAssignOperationTypeToAgency() {
-  return useSupabaseMutation<AgencyOperationType, {
-    agencyId: number;
-    operationTypeId: string;
-  }>(
-    async ({ agencyId, operationTypeId }) => {
-      // Check if the assignment already exists
-      const { data: existing } = await supabase
-        .from('agency_operation_types')
-        .select('*')
-        .eq('agency_id', agencyId)
-        .eq('operation_type_id', operationTypeId)
+        .insert({
+          agency_id: data.agency_id,
+          operation_type_id: data.operation_type_id,
+          is_enabled: data.is_enabled ?? true,
+          daily_limit: data.daily_limit,
+          monthly_limit: data.monthly_limit,
+        })
+        .select()
         .single();
       
-      if (existing) {
-        // If it exists but is inactive, reactivate it
-        if (!existing.is_active) {
-          const { data, error } = await supabase
-            .from('agency_operation_types')
-            .update({ is_active: true })
-            .eq('id', existing.id)
-            .select()
-            .single();
-          
-          if (error) throw error;
-          return data as AgencyOperationType;
-        }
-        
-        return existing as AgencyOperationType;
-      } else {
-        // Create new assignment
-        const { data, error } = await supabase
-          .from('agency_operation_types')
-          .insert({
-            agency_id: agencyId,
-            operation_type_id: operationTypeId,
-            is_active: true,
-          })
-          .select(`
-            *,
-            operation_types (id, name, description, affects_balance),
-            agencies (id, name, city)
-          `)
-          .single();
-        
-        if (error) throw error;
-        return data as AgencyOperationType;
-      }
+      if (error) throw error;
+      return result;
     },
     {
       invalidateQueries: [['agency-operation-types'], ['all-agency-operation-types']],
-      successMessage: 'Service assigné à l\'agence',
-      errorMessage: 'Erreur lors de l\'assignation',
+      successMessage: 'Type d\'opération assigné à l\'agence avec succès',
+      errorMessage: 'Erreur lors de l\'assignation du type d\'opération',
     }
   );
 }
 
-// Hook to revoke an operation type from an agency
-export function useRevokeOperationTypeFromAgency() {
-  return useSupabaseMutation<any, {
-    agencyId: number;
-    operationTypeId: string;
-  }>(
-    async ({ agencyId, operationTypeId }) => {
+// Hook to update agency operation type
+export function useUpdateAgencyOperationType() {
+  return useSupabaseMutation<any, { id: string; updates: any }>(
+    async ({ id, updates }) => {
       const { data, error } = await supabase
         .from('agency_operation_types')
-        .update({ is_active: false })
-        .eq('agency_id', agencyId)
-        .eq('operation_type_id', operationTypeId)
+        .update({
+          is_enabled: updates.is_enabled,
+          daily_limit: updates.daily_limit,
+          monthly_limit: updates.monthly_limit,
+        })
+        .eq('id', id)
         .select()
         .single();
       
@@ -209,8 +118,79 @@ export function useRevokeOperationTypeFromAgency() {
     },
     {
       invalidateQueries: [['agency-operation-types'], ['all-agency-operation-types']],
-      successMessage: 'Service retiré de l\'agence',
-      errorMessage: 'Erreur lors du retrait',
+      successMessage: 'Configuration mise à jour avec succès',
+      errorMessage: 'Erreur lors de la mise à jour de la configuration',
+    }
+  );
+}
+
+// Hook to delete agency operation type
+export function useDeleteAgencyOperationType() {
+  return useSupabaseMutation<void, string>(
+    async (id) => {
+      const { error } = await supabase
+        .from('agency_operation_types')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    {
+      invalidateQueries: [['agency-operation-types'], ['all-agency-operation-types']],
+      successMessage: 'Type d\'opération retiré de l\'agence avec succès',
+      errorMessage: 'Erreur lors de la suppression',
+    }
+  );
+}
+
+// Hook for current user's agency operation types
+export function useCurrentUserAgencyOperationTypes() {
+  const { user } = useAuth();
+  
+  return useSupabaseQuery(
+    ['current-user-agency-operation-types', user?.agenceId],
+    async () => {
+      if (!user?.agenceId) return [];
+      
+      const agencyId = typeof user.agenceId === 'string' ? parseInt(user.agenceId) : user.agenceId;
+      
+      const { data, error } = await supabase
+        .from('agency_operation_types')
+        .select(`
+          *,
+          operation_types (*)
+        `)
+        .eq('agency_id', agencyId)
+        .eq('is_enabled', true)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    },
+    {
+      enabled: !!user?.agenceId,
+    }
+  );
+}
+
+// Hook to toggle operation type for agency
+export function useToggleAgencyOperationType() {
+  return useSupabaseMutation<any, { id: string; enabled: boolean }>(
+    async ({ id, enabled }) => {
+      const { data, error } = await supabase
+        .from('agency_operation_types')
+        .update({ is_enabled: enabled })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    {
+      invalidateQueries: [['agency-operation-types'], ['all-agency-operation-types'], ['current-user-agency-operation-types']],
+      successMessage: 'Statut modifié avec succès',
+      errorMessage: 'Erreur lors de la modification du statut',
     }
   );
 }

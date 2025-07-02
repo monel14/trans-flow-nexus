@@ -60,7 +60,8 @@ const OperationTypeModalForm: React.FC<Props> = ({ isOpen, onClose, operationTyp
 
   const createOperationType = useCreateOperationType();
   const updateOperationType = useUpdateOperationType();
-  const { data: fields = [] } = useOperationTypeFields(operationType?.id);
+  const { data: operationTypeWithFields } = useOperationTypeFields(operationType?.id);
+  const fields = Array.isArray(operationTypeWithFields) ? operationTypeWithFields : operationTypeWithFields?.operation_type_fields || [];
   const { data: commissionRules = [] } = useCommissionRules(operationType?.id);
   
   const createField = useCreateOperationTypeField();
@@ -203,8 +204,7 @@ const OperationTypeModalForm: React.FC<Props> = ({ isOpen, onClose, operationTyp
       if (editingCommission) {
         await updateCommission.mutateAsync({
           id: editingCommission.id,
-          operation_type_id: operationType!.id,
-          ...commissionData,
+          updates: commissionData,
         });
         toast({ title: "Succès", description: "Règle de commission modifiée avec succès." });
       } else {
@@ -411,7 +411,7 @@ const OperationTypeModalForm: React.FC<Props> = ({ isOpen, onClose, operationTyp
                     </div>
                   </CardHeader>
                   <CardContent>
-                    {fields.length === 0 ? (
+                    {fields?.length === 0 ? (
                       <div className="text-center py-8">
                         <Settings className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                         <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun champ configuré</h3>
@@ -439,8 +439,8 @@ const OperationTypeModalForm: React.FC<Props> = ({ isOpen, onClose, operationTyp
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {fields
-                            .sort((a, b) => a.display_order - b.display_order)
+                           {(Array.isArray(fields) ? fields : [])
+                            .sort((a: any, b: any) => a.display_order - b.display_order)
                             .map((field) => (
                             <TableRow key={field.id} className={field.is_obsolete ? "opacity-60" : ""}>
                               <TableCell className="font-medium">

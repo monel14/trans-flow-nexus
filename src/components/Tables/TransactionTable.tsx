@@ -6,7 +6,7 @@ interface Transaction {
   id: string;
   reference_number: string;
   amount: number;
-  currency: string;
+  currency?: string;
   status: string;
   operation_type?: {
     name: string;

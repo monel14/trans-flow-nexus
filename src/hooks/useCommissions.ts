@@ -51,7 +51,7 @@ export function useCommissions(userId?: string, filters?: {
   limit?: number;
 }) {
   return useSupabaseQuery(
-    ['commissions', userId, filters],
+    ['commissions', userId, JSON.stringify(filters)],
     async () => {
       let query = supabase
         .from('commission_records')
@@ -112,7 +112,7 @@ export function useCommissions(userId?: string, filters?: {
       const { data, error } = await query;
       
       if (error) throw error;
-      return data as Commission[];
+      return data as any[];
     },
     {
       enabled: !!userId,

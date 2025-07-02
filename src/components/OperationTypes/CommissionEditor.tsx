@@ -115,8 +115,7 @@ const CommissionEditor: React.FC<CommissionEditorProps> = ({ operationTypeId, ru
       if (editRule) {
         await updateRule.mutateAsync({
           id: editRule.id,
-          operation_type_id: operationTypeId,
-          ...ruleData,
+          updates: ruleData,
         });
         toast({ title: "Succès", description: "Règle de commission modifiée." });
       } else {

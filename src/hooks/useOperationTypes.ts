@@ -35,11 +35,12 @@ export interface OperationTypeField {
 export interface CommissionRule {
   id: string;
   operation_type_id: string;
-  rule_type: 'percentage' | 'fixed';
-  agent_percentage?: number;
-  chef_percentage?: number;
-  fixed_amount?: number;
-  threshold_amount?: number;
+  commission_type: 'fixed' | 'percentage' | 'tiered';
+  fixed_amount?: number | null;
+  percentage_rate?: number | null;
+  min_amount?: number | null;
+  max_amount?: number | null;
+  tiered_rules?: any;
   is_active: boolean;
   created_at: string;
   updated_at: string;

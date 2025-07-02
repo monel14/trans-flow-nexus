@@ -58,7 +58,7 @@ export function useRechargeRequests(userId?: string) {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data as RechargeRequest[];
+      return data as any[];
     },
     {
       enabled: !!userId,
@@ -119,7 +119,7 @@ export function useCreateRechargeRequest() {
         .single();
       
       if (error) throw error;
-      return data as RechargeRequest;
+      return data as any;
     },
     {
       invalidateQueries: [['recharge-requests'], ['agent-recharge-requests']],
