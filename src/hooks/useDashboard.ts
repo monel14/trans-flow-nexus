@@ -1,0 +1,305 @@
+import { useSupabaseQuery, useSupabaseMutation } from './useSupabase';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+
+// Types pour les KPIs
+export interface AdminDashboardKPIs {
+  volume_today: {
+    amount: number;
+    formatted: string;
+    growth_percentage: number;
+    growth_formatted: string;
+  };
+  operations_system: {
+    total_today: number;
+    completed_today: number;
+    pending: number;
+    urgent: number;
+    subtitle: string;
+  };
+  network_stats: {
+    total_agencies: number;
+    active_agencies: number;
+    total_agents: number;
+    total_chefs: number;
+    subtitle: string;
+  };
+  monthly_revenue: {
+    amount: number;
+    formatted: string;
+    subtitle: string;
+  };
+  critical_alerts: {
+    blocked_transactions: number;
+    support_requests: number;
+    underperforming_agencies: number;
+  };
+}
+
+export interface SousAdminDashboardKPIs {
+  pending_urgent: {
+    count: number;
+    subtitle: string;
+  };
+  completed_today: {
+    count: number;
+    subtitle: string;
+  };
+  support_tickets: {
+    open: number;
+    resolved_week: number;
+    subtitle: string;
+  };
+  avg_processing_time: {
+    minutes: number;
+    formatted: string;
+    subtitle: string;
+  };
+  my_assignments: {
+    count: number;
+    subtitle: string;
+  };
+}
+
+export interface AgencyPerformance {
+  id: number;
+  name: string;
+  city: string;
+  volume_today: number;
+  volume_month: number;
+  operations_count: number;
+  rank: number;
+}
+
+export interface ValidationQueueStats {
+  unassigned_count: number;
+  my_tasks_count: number;
+  all_tasks_count: number;
+  urgent_count: number;
+  completed_today: number;
+  user_role: string;
+  user_agency_id?: number;
+}
+
+// Hook pour les KPIs du tableau de bord Admin Général
+export function useAdminDashboardKPIs() {
+  const { user } = useAuth();
+  
+  return useSupabaseQuery<AdminDashboardKPIs>(
+    ['admin-dashboard-kpis', user?.id],
+    async () => {
+      const { data, error } = await supabase.rpc('get_admin_dashboard_kpis');
+      
+      if (error) throw error;
+      return data as AdminDashboardKPIs;
+    },
+    {
+      enabled: user?.role === 'admin_general',
+      refetchInterval: 60000, // Rafraîchir toutes les minutes
+      staleTime: 30000, // Les données sont considérées comme fraîches pendant 30 secondes
+    }
+  );
+}
+
+// Hook pour les KPIs du tableau de bord Sous-Admin
+export function useSousAdminDashboardKPIs() {
+  const { user } = useAuth();
+  
+  return useSupabaseQuery<SousAdminDashboardKPIs>(
+    ['sous-admin-dashboard-kpis', user?.id],
+    async () => {
+      const { data, error } = await supabase.rpc('get_sous_admin_dashboard_kpis');
+      
+      if (error) throw error;
+      return data as SousAdminDashboardKPIs;
+    },
+    {
+      enabled: user?.role === 'sous_admin',
+      refetchInterval: 60000,
+      staleTime: 30000,
+    }
+  );
+}
+
+// Hook pour les performances des agences (Admin)
+export function useTopAgenciesPerformance(limit: number = 5) {
+  const { user } = useAuth();
+  
+  return useSupabaseQuery<AgencyPerformance[]>(
+    ['top-agencies-performance', limit, user?.id],
+    async () => {
+      const { data, error } = await supabase.rpc('get_top_agencies_performance', {
+        p_limit: limit
+      });
+      
+      if (error) throw error;
+      return data as AgencyPerformance[];
+    },
+    {
+      enabled: user?.role === 'admin_general',
+      refetchInterval: 5 * 60000, // Rafraîchir toutes les 5 minutes
+      staleTime: 2 * 60000, // Données fraîches pendant 2 minutes
+    }
+  );
+}
+
+// Hook pour les statistiques des files d'attente de validation
+export function useValidationQueueStats() {
+  const { user } = useAuth();
+  
+  return useSupabaseQuery<ValidationQueueStats>(
+    ['validation-queue-stats', user?.id],
+    async () => {
+      const { data, error } = await supabase.rpc('get_validation_queue_stats');
+      
+      if (error) throw error;
+      return data as ValidationQueueStats;
+    },
+    {
+      enabled: user?.role && ['admin_general', 'sous_admin'].includes(user.role),
+      refetchInterval: 30000, // Rafraîchir toutes les 30 secondes
+      staleTime: 15000, // Données fraîches pendant 15 secondes
+    }
+  );
+}
+
+// Hook pour assigner une opération à l'utilisateur courant
+export function useAssignOperation() {
+  const { user } = useAuth();
+  
+  return useSupabaseMutation<any, { operation_id: string }>(
+    async ({ operation_id }) => {
+      const { data, error } = await supabase.rpc('assign_operation_to_user', {
+        p_operation_id: operation_id
+      });
+      
+      if (error) throw error;
+      
+      if (data && !data.success) {
+        throw new Error(data.error || 'Erreur lors de l\'assignation');
+      }
+      
+      return data;
+    },
+    {
+      invalidateQueries: [
+        ['validation-queue-stats'],
+        ['operations'],
+        ['pending-operations'],
+        ['admin-dashboard-kpis'],
+        ['sous-admin-dashboard-kpis']
+      ],
+      successMessage: 'Opération assignée avec succès',
+      errorMessage: 'Erreur lors de l\'assignation de l\'opération',
+    }
+  );
+}
+
+// Hook pour récupérer les opérations par file d'attente
+export function useOperationsByQueue(queueType: 'unassigned' | 'my_tasks' | 'all_tasks') {
+  const { user } = useAuth();
+  
+  return useSupabaseQuery(
+    ['operations-by-queue', queueType, user?.id],
+    async () => {
+      let query = supabase
+        .from('operations')
+        .select(`
+          *,
+          operation_types (id, name, description),
+          profiles!operations_initiator_id_fkey (id, name, email),
+          agencies (id, name, city)
+        `)
+        .order('created_at', { ascending: true }); // Les plus anciennes en premier pour validation
+
+      // Filtrer selon le type de file d'attente
+      switch (queueType) {
+        case 'unassigned':
+          query = query
+            .eq('status', 'pending')
+            .is('validator_id', null);
+          break;
+          
+        case 'my_tasks':
+          query = query
+            .eq('status', 'pending_validation')
+            .eq('validator_id', user?.id);
+          break;
+          
+        case 'all_tasks':
+          query = query.in('status', ['pending', 'pending_validation']);
+          break;
+      }
+
+      const { data, error } = await query;
+      
+      if (error) throw error;
+      return data || [];
+    },
+    {
+      enabled: user?.role && ['admin_general', 'sous_admin'].includes(user.role),
+      refetchInterval: 30000,
+      staleTime: 15000,
+    }
+  );
+}
+
+// Hook pour obtenir les opérations récentes (pour les tableaux de bord)
+export function useRecentOperations(limit: number = 10) {
+  const { user } = useAuth();
+  
+  return useSupabaseQuery(
+    ['recent-operations', limit, user?.id],
+    async () => {
+      const { data, error } = await supabase
+        .from('operations')
+        .select(`
+          *,
+          operation_types (id, name, description),
+          profiles!operations_initiator_id_fkey (id, name, email),
+          agencies (id, name, city)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      
+      if (error) throw error;
+      return data || [];
+    },
+    {
+      enabled: !!user?.id,
+      refetchInterval: 60000,
+      staleTime: 30000,
+    }
+  );
+}
+
+// Hook pour libérer une opération (annuler l'assignation)
+export function useReleaseOperation() {
+  return useSupabaseMutation<any, { operation_id: string }>(
+    async ({ operation_id }) => {
+      const { data, error } = await supabase
+        .from('operations')
+        .update({
+          validator_id: null,
+          status: 'pending',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', operation_id)
+        .eq('status', 'pending_validation'); // Seulement si c'est en attente de validation
+      
+      if (error) throw error;
+      return data;
+    },
+    {
+      invalidateQueries: [
+        ['validation-queue-stats'],
+        ['operations'],
+        ['operations-by-queue'],
+        ['admin-dashboard-kpis'],
+        ['sous-admin-dashboard-kpis']
+      ],
+      successMessage: 'Opération libérée avec succès',
+      errorMessage: 'Erreur lors de la libération de l\'opération',
+    }
+  );
+}
