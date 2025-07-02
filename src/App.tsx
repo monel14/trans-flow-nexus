@@ -158,6 +158,20 @@ const AppRoutes = () => {
         } 
       />
 
+      {/* Nouvelle route pour la gestion moderne des agents */}
+      <Route 
+        path="/chef-agence/agents" 
+        element={
+          <ProtectedRoute requiredRole={['chef_agence']}>
+            <MainLayout>
+              <React.Suspense fallback={<div>Chargement...</div>}>
+                <ChefAgenceGestionAgents />
+              </React.Suspense>
+            </MainLayout>
+          </ProtectedRoute>
+        } 
+      />
+
       {/* Route pour la validation des transactions (admins) */}
       <Route 
         path="/validation" 
