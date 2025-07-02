@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle, XCircle, Eye, UserPlus, Clock, AlertTriangle, Loader2 } from 'lucide-react';
+import { CheckCircle, XCircle, Eye, UserPlus, Clock, AlertTriangle, Loader2, Image, FileText } from 'lucide-react';
 import { 
   useValidationQueueStats, 
   useOperationsByQueue, 
@@ -18,6 +17,7 @@ import {
   useReleaseOperation
 } from '@/hooks/useDashboard';
 import { useValidateOperation } from '@/hooks/useOperations';
+import ProofViewer from '@/components/ProofViewer';
 
 const TransactionValidation = () => {
   const { toast } = useToast();
@@ -36,15 +36,6 @@ const TransactionValidation = () => {
   const assignOperation = useAssignOperation();
   const releaseOperation = useReleaseOperation();
   const validateOperation = useValidateOperation();
-
-  // Calculer les opérations urgentes
-  const getUrgentOperations = (operations: any[]) => {
-    return operations.filter(op => {
-      const isHighAmount = op.amount > 500000;
-      const isOld = new Date().getTime() - new Date(op.created_at).getTime() > 24 * 60 * 60 * 1000;
-      return isHighAmount || isOld;
-    });
-  };
 
   const handleAssignToMe = async (operationId: string) => {
     try {
@@ -134,6 +125,20 @@ const TransactionValidation = () => {
     }
   };
 
+  const getProofIcon = (transaction: any) => {
+    const proofUrl = transaction.operation_data?.proof_url;
+    if (!proofUrl) {
+      return <FileText className="h-4 w-4 text-gray-400" />;
+    }
+    
+    const ext = proofUrl.split('.').pop()?.toLowerCase();
+    const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(ext || '');
+    
+    return isImage ? 
+      <Image className="h-4 w-4 text-green-600" /> : 
+      <FileText className="h-4 w-4 text-blue-600" />;
+  };
+
   const TransactionTable = ({ 
     transactions, 
     showAssignActions = false, 
@@ -153,6 +158,7 @@ const TransactionValidation = () => {
               <Skeleton className="h-4 w-24" />
               <Skeleton className="h-4 w-32" />
               <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-16" />
               <Skeleton className="h-4 w-16" />
               <Skeleton className="h-4 w-16" />
               <Skeleton className="h-8 w-20" />
@@ -183,6 +189,7 @@ const TransactionValidation = () => {
               <TableHead>Agence</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Montant</TableHead>
+              <TableHead>Preuve</TableHead>
               <TableHead>Priorité</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
@@ -191,6 +198,7 @@ const TransactionValidation = () => {
             {transactions.map((transaction: any) => {
               const isUrgent = transaction.amount > 500000 || 
                 new Date().getTime() - new Date(transaction.created_at).getTime() > 24 * 60 * 60 * 1000;
+              const hasProof = transaction.operation_data?.proof_url;
               
               return (
                 <TableRow key={transaction.id}>
@@ -205,6 +213,20 @@ const TransactionValidation = () => {
                   <TableCell>{transaction.operation_types?.name || 'Type inconnu'}</TableCell>
                   <TableCell className="font-medium">
                     {transaction.amount.toLocaleString()} XOF
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center space-x-2">
+                      {getProofIcon(transaction)}
+                      {hasProof ? (
+                        <Badge variant="secondary" className="bg-green-100 text-green-800">
+                          Disponible
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="bg-red-100 text-red-800">
+                          Manquante
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     {isUrgent ? (
@@ -404,14 +426,17 @@ const TransactionValidation = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Modal de détail de transaction */}
+      {/* Modal de détail de transaction - VERSION AMÉLIORÉE */}
       <Dialog open={!!selectedTransaction} onOpenChange={() => setSelectedTransaction(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Détail de la Transaction {selectedTransaction?.reference_number || selectedTransaction?.id?.slice(0, 8)}</DialogTitle>
+            <DialogTitle>
+              Détail de la Transaction {selectedTransaction?.reference_number || selectedTransaction?.id?.slice(0, 8)}
+            </DialogTitle>
           </DialogHeader>
           {selectedTransaction && (
-            <div className="space-y-4">
+            <div className="space-y-6">
+              {/* Informations principales */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Agent</Label>
@@ -441,32 +466,38 @@ const TransactionValidation = () => {
                 </div>
               </div>
 
-              {selectedTransaction.operation_data && (
+              {/* Données de l'opération */}
+              {selectedTransaction.operation_data && Object.keys(selectedTransaction.operation_data).filter(key => key !== 'proof_url').length > 0 && (
                 <div>
                   <Label>Données de l'opération</Label>
                   <div className="mt-2 p-4 bg-gray-50 rounded-lg">
                     <pre className="text-sm text-gray-700 whitespace-pre-wrap">
-                      {JSON.stringify(selectedTransaction.operation_data, null, 2)}
+                      {JSON.stringify(
+                        Object.fromEntries(
+                          Object.entries(selectedTransaction.operation_data).filter(([key]) => key !== 'proof_url')
+                        ), 
+                        null, 
+                        2
+                      )}
                     </pre>
                   </div>
                 </div>
               )}
 
+              {/* Section preuve améliorée */}
               <div>
-                <Label>Preuve de transaction</Label>
-                <div className="mt-2 p-4 border-2 border-dashed border-gray-300 rounded-lg text-center">
-                  <p className="text-sm text-gray-600">
-                    📄 {selectedTransaction.operation_data?.proof_url ? 'Preuve disponible' : 'Aucune preuve fournie'}
-                  </p>
-                  {selectedTransaction.operation_data?.proof_url && (
-                    <Button variant="outline" size="sm" className="mt-2">
-                      Ouvrir la preuve
-                    </Button>
-                  )}
+                <Label className="text-base font-semibold">Preuve de transaction</Label>
+                <div className="mt-3">
+                  <ProofViewer 
+                    proofUrl={selectedTransaction.operation_data?.proof_url}
+                    transactionId={selectedTransaction.id}
+                    transactionReference={selectedTransaction.reference_number}
+                  />
                 </div>
               </div>
 
-              <div className="flex space-x-2">
+              {/* Actions */}
+              <div className="flex space-x-2 pt-4 border-t">
                 <Button 
                   onClick={() => handleValidate(selectedTransaction.id)}
                   className="flex-1"
