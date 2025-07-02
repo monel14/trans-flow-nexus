@@ -50,13 +50,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchUserProfile = async (userId: string): Promise<UserProfile | null> => {
     try {
-      // Récupérer le profil avec le rôle et l'agence
+      console.log('Fetching profile for user:', userId);
+      
+      // Récupérer le profil avec le rôle et l'agence en utilisant la vue user_roles_view
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select(`
           *,
-          roles (name, label),
-          agencies (name)
+          agencies (name),
+          user_roles (
+            roles (name, label)
+          )
         `)
         .eq('id', userId)
         .single();
@@ -66,11 +70,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return null;
       }
 
+      console.log('Profile data:', profile);
+
+      // Récupérer le rôle depuis user_roles si pas disponible dans profiles
+      let userRole = 'agent'; // Par défaut
+      
+      if (profile.user_roles && profile.user_roles.length > 0) {
+        userRole = profile.user_roles[0].roles?.name || 'agent';
+      } else {
+        // Fallback: chercher dans user_roles directement
+        const { data: userRoles } = await supabase
+          .from('user_roles')
+          .select(`
+            roles (name, label)
+          `)
+          .eq('user_id', userId)
+          .eq('is_active', true)
+          .single();
+        
+        if (userRoles && userRoles.roles) {
+          userRole = userRoles.roles.name;
+        }
+      }
+
+      console.log('User role determined:', userRole);
+
       const userProfile: UserProfile = {
         id: profile.id,
         email: profile.email,
         name: profile.name,
-        role: profile.roles?.name as UserProfile['role'] || 'agent',
+        role: userRole as UserProfile['role'],
         agenceId: profile.agency_id?.toString(),
         agenceName: profile.agencies?.name,
         isActive: profile.is_active ?? true,
@@ -78,6 +107,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         commissions: 0, // À calculer si nécessaire
       };
 
+      console.log('Final user profile:', userProfile);
       return userProfile;
     } catch (error) {
       console.error('Error in fetchUserProfile:', error);
