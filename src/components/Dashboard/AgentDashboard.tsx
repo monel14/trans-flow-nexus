@@ -108,58 +108,77 @@ const AgentDashboard = () => {
           Bonjour {user?.name} ! 👋
         </h1>
         <p className="text-blue-100">
-          Prêt à traiter vos opérations aujourd'hui ? Vous avez {todayOperations.length} opérations en cours.
+          Prêt à traiter vos opérations aujourd'hui ? Vous avez {kpis?.operations_today?.total || todayOperations.length} opérations en cours.
         </p>
       </div>
 
       {/* Métriques agent */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <MetricCard
-          title="Mon Solde Actuel"
-          value={formatAmount(currentBalance)}
-          icon={Wallet}
-          iconColor="text-green-500"
-          valueColor="text-green-600"
-          subtitle={currentBalance < 100000 ? "⚠️ Solde faible" : "✅ Solde suffisant"}
-        />
-        <MetricCard
-          title="Opérations Aujourd'hui"
-          value={todayOperations.length}
-          icon={Clock}
-          iconColor="text-blue-500"
-          valueColor="text-blue-600"
-          subtitle={`+${todayOperations.filter(op => op.status === 'completed').length} complétées`}
-        />
-        <MetricCard
-          title="Commissions Cette Semaine"
-          value={formatAmount(thisWeekCommissions)}
-          icon={DollarSign}
-          iconColor="text-orange-500"
-          valueColor="text-orange-600"
-          subtitle="Prochaine paie: Vendredi"
-        />
-        <MetricCard
-          title="Objectif Mensuel"
-          value={`${Math.round(monthlyProgress)}%`}
-          icon={Target}
-          iconColor="text-purple-500"
-          valueColor="text-purple-600"
-          subtitle={`${formatAmount(monthlyTarget - (monthlyProgress * monthlyTarget / 100))} restant`}
-        />
+        {kpisLoading ? (
+          // Skeletons pendant le chargement
+          <>
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-8 w-1/2" />
+                  <Skeleton className="h-3 w-full" />
+                </div>
+              </div>
+            ))}
+          </>
+        ) : (
+          <>
+            <MetricCard
+              title="Mon Solde Actuel"
+              value={kpis?.agent_balance?.formatted || '0 XOF'}
+              icon={Wallet}
+              iconColor={kpis?.agent_balance?.status === 'good' ? "text-green-500" : 
+                       kpis?.agent_balance?.status === 'medium' ? "text-orange-500" : "text-red-500"}
+              valueColor={kpis?.agent_balance?.status === 'good' ? "text-green-600" : 
+                        kpis?.agent_balance?.status === 'medium' ? "text-orange-600" : "text-red-600"}
+              subtitle={kpis?.agent_balance?.subtitle || 'Solde disponible'}
+            />
+            <MetricCard
+              title="Opérations Aujourd'hui"
+              value={kpis?.operations_today?.total?.toString() || '0'}
+              icon={Clock}
+              iconColor="text-blue-500"
+              valueColor="text-blue-600"
+              subtitle={kpis?.operations_today?.subtitle || 'Activité du jour'}
+            />
+            <MetricCard
+              title="Commissions Cette Semaine"
+              value={kpis?.commissions_week?.formatted || '0 XOF'}
+              icon={DollarSign}
+              iconColor="text-orange-500"
+              valueColor="text-orange-600"
+              subtitle={kpis?.commissions_week?.subtitle || 'Gains de la semaine'}
+            />
+            <MetricCard
+              title="Objectif Mensuel"
+              value={kpis?.monthly_objective?.progress_formatted || '0%'}
+              icon={Target}
+              iconColor="text-purple-500"
+              valueColor="text-purple-600"
+              subtitle={kpis?.monthly_objective?.remaining_formatted || 'Objectif en cours'}
+            />
+          </>
+        )}
       </div>
 
       {/* Actions rapides */}
       <QuickActions actions={quickActions} title="Que souhaitez-vous faire ?" />
 
       {/* Alerte solde faible */}
-      {currentBalance < 100000 && (
+      {!kpisLoading && kpis?.agent_balance?.status && ['critical', 'low'].includes(kpis.agent_balance.status) && (
         <div className="bg-orange-50 border border-orange-200 rounded-xl p-6">
           <div className="flex items-center mb-4">
             <AlertCircle className="h-5 w-5 text-orange-600 mr-2" />
             <h3 className="text-lg font-semibold text-orange-800">Attention - Solde Faible</h3>
           </div>
           <p className="text-orange-700 mb-4">
-            Votre solde actuel est de {formatAmount(currentBalance)}. 
+            Votre solde actuel est de {kpis.agent_balance.formatted}. 
             Il est recommandé de faire une demande de recharge pour continuer vos opérations.
           </p>
           <button 
@@ -174,32 +193,50 @@ const AgentDashboard = () => {
       {/* Progression de l'objectif */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">Progression de l'Objectif Mensuel</h3>
-        <div className="space-y-4">
-          <div className="flex justify-between text-sm text-gray-600">
-            <span>Objectif: {formatAmount(monthlyTarget)}</span>
-            <span>{Math.round(monthlyProgress)}% atteint</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-3">
-            <div 
-              className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-300"
-              style={{ width: `${Math.min(monthlyProgress, 100)}%` }}
-            ></div>
-          </div>
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <p className="text-2xl font-bold text-green-600">{todayOperations.filter(op => op.status === 'completed').length}</p>
-              <p className="text-sm text-gray-600">Réussies aujourd'hui</p>
+        {kpisLoading ? (
+          <div className="space-y-4">
+            <div className="flex justify-between">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-4 w-20" />
             </div>
-            <div>
-              <p className="text-2xl font-bold text-orange-600">{todayOperations.filter(op => op.status === 'pending').length}</p>
-              <p className="text-sm text-gray-600">En attente</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-blue-600">{formatAmount(thisWeekCommissions)}</p>
-              <p className="text-sm text-gray-600">Commissions semaine</p>
+            <Skeleton className="h-3 w-full" />
+            <div className="grid grid-cols-3 gap-4">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="text-center">
+                  <Skeleton className="h-8 w-16 mx-auto mb-2" />
+                  <Skeleton className="h-3 w-20 mx-auto" />
+                </div>
+              ))}
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex justify-between text-sm text-gray-600">
+              <span>Objectif: {kpis?.monthly_objective?.target_formatted || '500 000 XOF'}</span>
+              <span>{kpis?.monthly_objective?.progress_formatted || '0%'} atteint</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-3">
+              <div 
+                className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-300"
+                style={{ width: `${Math.min(kpis?.monthly_objective?.progress_percentage || 0, 100)}%` }}
+              ></div>
+            </div>
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div>
+                <p className="text-2xl font-bold text-green-600">{kpis?.operations_today?.completed || 0}</p>
+                <p className="text-sm text-gray-600">Réussies aujourd'hui</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-orange-600">{kpis?.operations_today?.pending || 0}</p>
+                <p className="text-sm text-gray-600">En attente</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-blue-600">{kpis?.commissions_week?.formatted || '0 XOF'}</p>
+                <p className="text-sm text-gray-600">Commissions semaine</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Mes dernières opérations */}
