@@ -52,15 +52,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('Fetching profile for user:', userId);
       
-      // Récupérer le profil avec le rôle et l'agence en utilisant la vue user_roles_view
+      // 1. Récupérer le profil utilisateur basic
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select(`
           *,
-          agencies (name),
-          user_roles (
-            roles (name, label)
-          )
+          agencies (name)
         `)
         .eq('id', userId)
         .single();
@@ -72,25 +69,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       console.log('Profile data:', profile);
 
-      // Récupérer le rôle depuis user_roles si pas disponible dans profiles
-      let userRole = 'agent'; // Par défaut
+      // 2. Récupérer le rôle depuis user_roles avec une requête séparée
+      const { data: userRoles, error: userRoleError } = await supabase
+        .from('user_roles')
+        .select(`
+          roles (name, label)
+        `)
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .single();
       
-      if (profile.user_roles && profile.user_roles.length > 0) {
-        userRole = profile.user_roles[0].roles?.name || 'agent';
-      } else {
-        // Fallback: chercher dans user_roles directement
-        const { data: userRoles } = await supabase
-          .from('user_roles')
-          .select(`
-            roles (name, label)
-          `)
-          .eq('user_id', userId)
-          .eq('is_active', true)
-          .single();
-        
-        if (userRoles && userRoles.roles) {
-          userRole = userRoles.roles.name;
-        }
+      console.log('User roles data:', userRoles);
+      
+      let userRole = 'agent'; // Par défaut
+      if (userRoles && userRoles.roles) {
+        userRole = userRoles.roles.name;
       }
 
       console.log('User role determined:', userRole);
