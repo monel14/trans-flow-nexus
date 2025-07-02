@@ -38,6 +38,7 @@ import DeveloperDashboard from "@/components/Dashboard/DeveloperDashboard";
 // Lazy-load special pages
 const AdminGestionChefsAgence = React.lazy(() => import("@/pages/AdminGestionChefsAgence"));
 const AdminGestionSousAdmins = React.lazy(() => import("@/pages/AdminGestionSousAdmins"));
+const ChefAgenceGestionAgents = React.lazy(() => import("@/pages/ChefAgenceGestionAgents"));
 
 console.log('📱 App.tsx: App component loading...');
 
