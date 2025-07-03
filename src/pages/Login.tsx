@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -6,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { supabase } from '@/integrations/supabase/client';
 import CreateDeveloperAccount from '@/components/CreateDeveloperAccount';
 import DemoAccountsGenerator from '@/components/Developer/DemoAccountsGenerator';
 
@@ -15,22 +15,9 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isConfirmingEmail, setIsConfirmingEmail] = useState(false);
-  const { signIn, signUp, user } = useAuth();
+  const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-
-  // Fonction pour obtenir la route spécifique selon le rôle
-  const getDashboardRoute = (userRole: string) => {
-    const roleRoutes = {
-      'agent': '/dashboard/agent',
-      'chef_agence': '/dashboard/chef-agence',
-      'admin_general': '/dashboard/admin',
-      'sous_admin': '/dashboard/sous-admin',
-      'developer': '/dashboard/developer'
-    };
-    return roleRoutes[userRole] || '/dashboard';
-  };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,7 +45,6 @@ const Login = () => {
           title: "Connexion réussie",
           description: "Bienvenue dans TransFlow Nexus!",
         });
-        // Redirection vers le dashboard spécifique sera gérée par useEffect dans AuthContext
         navigate('/dashboard');
       }
     } catch (error) {
@@ -72,38 +58,34 @@ const Login = () => {
     }
   };
 
-  const handleQuickSignIn = async (demoIdentifier: string, demoPassword: string) => {
-    setIdentifier(demoIdentifier);
+  const handleQuickSignIn = async (demoEmail: string, demoPassword: string) => {
+    console.log('🚀 Connexion rapide avec:', demoEmail);
+    setIdentifier(demoEmail);
     setPassword(demoPassword);
     
     // Attendre un moment pour que les champs soient mis à jour visuellement
     setTimeout(async () => {
       setIsLoading(true);
       try {
-        const { error } = await signIn(demoIdentifier, demoPassword);
+        const { error } = await signIn(demoEmail, demoPassword);
         if (error) {
-          if (error.message === 'Email not confirmed') {
-            toast({
-              title: "Compte non confirmé",
-              description: "Contactez votre administrateur pour activer votre compte.",
-              variant: "destructive",
-            });
-          } else {
-            toast({
-              title: "Erreur de connexion",
-              description: error.message,
-              variant: "destructive",
-            });
-          }
+          console.error('Erreur connexion rapide:', error);
+          toast({
+            title: "Erreur de connexion",
+            description: error.message === 'Invalid login credentials' 
+              ? "Compte de démonstration non trouvé. Veuillez générer les comptes d'abord."  
+              : error.message,
+            variant: "destructive",
+          });
         } else {
           toast({
             title: "Connexion réussie",
             description: "Bienvenue dans TransFlow Nexus!",
           });
-          // Redirection vers le dashboard spécifique sera gérée par useEffect dans AuthContext
           navigate('/dashboard');
         }
       } catch (error) {
+        console.error('Erreur connexion rapide:', error);
         toast({
           title: "Erreur",
           description: "Une erreur est survenue lors de la connexion.",
@@ -130,7 +112,7 @@ const Login = () => {
       } else {
         toast({
           title: "Inscription réussie",
-          description: "Vérifiez votre email pour confirmer votre compte.",
+          description: "Votre compte a été créé avec succès.",
         });
       }
     } catch (error) {
@@ -290,7 +272,7 @@ const Login = () => {
           </div>
           
           <div className="mt-4">
-            <h4 className="text-sm font-medium text-blue-900 mb-2">🚀 Connexion rapide (exemples d'identifiants) :</h4>
+            <h4 className="text-sm font-medium text-blue-900 mb-2">🚀 Connexion rapide (comptes de démonstration) :</h4>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
               <Button
                 onClick={() => handleQuickSignIn('admin_monel@transflownexus.demo', 'admin123')}
