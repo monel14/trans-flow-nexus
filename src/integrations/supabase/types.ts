@@ -132,96 +132,6 @@ export type Database = {
         }
         Relationships: []
       }
-      error_logs: {
-        Row: {
-          context: Json | null
-          created_at: string
-          id: number
-          ip_address: unknown | null
-          level: string
-          message: string
-          request_method: string | null
-          request_url: string | null
-          resolved: boolean | null
-          resolved_at: string | null
-          resolved_by: string | null
-          resolution_notes: string | null
-          response_status: number | null
-          session_id: string | null
-          source: string
-          stack_trace: string | null
-          timestamp: string
-          user_agent: string | null
-          user_id: string | null
-          user_name: string | null
-        }
-        Insert: {
-          context?: Json | null
-          created_at?: string
-          id?: number
-          ip_address?: unknown | null
-          level: string
-          message: string
-          request_method?: string | null
-          request_url?: string | null
-          resolved?: boolean | null
-          resolved_at?: string | null
-          resolved_by?: string | null
-          resolution_notes?: string | null
-          response_status?: number | null
-          session_id?: string | null
-          source: string
-          stack_trace?: string | null
-          timestamp?: string
-          user_agent?: string | null
-          user_id?: string | null
-          user_name?: string | null
-        }
-        Update: {
-          context?: Json | null
-          created_at?: string
-          id?: number
-          ip_address?: unknown | null
-          level?: string
-          message?: string
-          request_method?: string | null
-          request_url?: string | null
-          resolved?: boolean | null
-          resolved_at?: string | null
-          resolved_by?: string | null
-          resolution_notes?: string | null
-          response_status?: number | null
-          session_id?: string | null
-          source?: string
-          stack_trace?: string | null
-          timestamp?: string
-          user_agent?: string | null
-          user_id?: string | null
-          user_name?: string | null
-        }
-        Relationships: []
-      }
-      system_settings: {
-        Row: {
-          config: Json
-          id: number
-          updated_at: string | null
-          updated_by: string | null
-        }
-        Insert: {
-          config?: Json
-          id?: number
-          updated_at?: string | null
-          updated_by?: string | null
-        }
-        Update: {
-          config?: Json
-          id?: number
-          updated_at?: string | null
-          updated_by?: string | null
-        }
-        Relationships: []
-      }
       commission_records: {
         Row: {
           agent_commission: number
@@ -405,6 +315,75 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
+      }
+      error_logs: {
+        Row: {
+          context: Json | null
+          created_at: string | null
+          id: number
+          ip_address: unknown | null
+          level: string
+          message: string
+          request_method: string | null
+          request_url: string | null
+          resolution_notes: string | null
+          resolved: boolean | null
+          resolved_at: string | null
+          resolved_by: string | null
+          response_status: number | null
+          session_id: string | null
+          source: string
+          stack_trace: string | null
+          timestamp: string
+          user_agent: string | null
+          user_id: string | null
+          user_name: string | null
+        }
+        Insert: {
+          context?: Json | null
+          created_at?: string | null
+          id?: number
+          ip_address?: unknown | null
+          level: string
+          message: string
+          request_method?: string | null
+          request_url?: string | null
+          resolution_notes?: string | null
+          resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          response_status?: number | null
+          session_id?: string | null
+          source: string
+          stack_trace?: string | null
+          timestamp?: string
+          user_agent?: string | null
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          context?: Json | null
+          created_at?: string | null
+          id?: number
+          ip_address?: unknown | null
+          level?: string
+          message?: string
+          request_method?: string | null
+          request_url?: string | null
+          resolution_notes?: string | null
+          resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          response_status?: number | null
+          session_id?: string | null
+          source?: string
+          stack_trace?: string | null
+          timestamp?: string
+          user_agent?: string | null
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Relationships: []
       }
       notifications: {
         Row: {
@@ -1031,6 +1010,27 @@ export type Database = {
         }
         Relationships: []
       }
+      system_settings: {
+        Row: {
+          config: Json
+          id: number
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          config?: Json
+          id?: number
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          config?: Json
+          id?: number
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       transaction_ledger: {
         Row: {
           amount: number
@@ -1175,6 +1175,48 @@ export type Database = {
       }
     }
     Functions: {
+      cleanup_old_error_logs: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      create_admin_user: {
+        Args: { user_name: string; user_email: string; user_password: string }
+        Returns: string
+      }
+      create_agent: {
+        Args: {
+          user_name: string
+          user_email: string
+          user_password: string
+          agency_id: number
+        }
+        Returns: string
+      }
+      create_chef_agence: {
+        Args: {
+          user_name: string
+          user_email: string
+          user_password: string
+          agency_id: number
+        }
+        Returns: string
+      }
+      create_sous_admin: {
+        Args: { user_name: string; user_email: string; user_password: string }
+        Returns: string
+      }
+      get_agent_dashboard_kpis: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      get_chef_agence_dashboard_kpis: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      get_chef_agents_performance: {
+        Args: { p_limit?: number }
+        Returns: Json
+      }
       get_user_agency_id_secure: {
         Args: { user_uuid: string }
         Returns: number
@@ -1198,6 +1240,19 @@ export type Database = {
       is_developer: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      log_error: {
+        Args: {
+          p_level: string
+          p_source: string
+          p_message: string
+          p_stack_trace?: string
+          p_context?: Json
+          p_request_url?: string
+          p_request_method?: string
+          p_response_status?: number
+        }
+        Returns: number
       }
       process_commission_transfer_atomic: {
         Args: {
