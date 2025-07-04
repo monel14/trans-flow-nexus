@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Fix bugs in TransFlow Nexus application - primarily Supabase RLS infinite recursion and React Query hook issues"
+user_problem_statement: "Génération complète de données mock et comptes de démonstration pour TransFlow Nexus selon spécifications détaillées : 2 agences (Douala/Yaoundé), utilisateurs tous rôles, opérations réalistes ouest-africaines, scénarios de test complets"
 
 backend:
   - task: "MongoDB basic functionality"
