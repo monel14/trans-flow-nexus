@@ -1,3 +1,4 @@
+
 import React, { Component, ReactNode } from 'react';
 import { logError } from '@/hooks/useErrorLogs';
 
@@ -30,14 +31,15 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     // Log l'erreur dans notre système de logs
     logError(
+      'critical',
+      'frontend',
       `React Error Boundary: ${error.message}`,
       error,
       {
         componentStack: errorInfo.componentStack,
         errorBoundary: true,
         timestamp: new Date().toISOString(),
-      },
-      'frontend'
+      }
     );
 
     // Mettre à jour le state avec les infos de l'erreur
@@ -121,7 +123,7 @@ export function useErrorHandler() {
     context?: any,
     source: 'api' | 'database' | 'frontend' | 'system' | 'external' = 'frontend'
   ) => {
-    logError(error.message, error, context, source);
+    logError('error', source, error.message, error, context);
   }, []);
 
   /**

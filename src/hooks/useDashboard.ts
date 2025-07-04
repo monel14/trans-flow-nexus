@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -9,6 +8,8 @@ export interface AdminDashboardKPIs {
     amount: number;
     growth_percentage: number;
     subtitle: string;
+    formatted?: string;
+    growth_formatted?: string;
   };
   operations_system: {
     total_today: number;
@@ -21,18 +22,23 @@ export interface AdminDashboardKPIs {
     active_users: number;
     total_agents: number;
     subtitle: string;
+    active_agencies?: number;
   };
   monthly_revenue: {
     amount: number;
     target: number;
     progress_percentage: number;
     subtitle: string;
+    formatted?: string;
   };
   critical_alerts: {
     low_balance_agents: number;
     pending_validations: number;
     urgent_tickets: number;
     subtitle: string;
+    blocked_transactions?: number;
+    support_requests?: number;
+    underperforming_agencies?: number;
   };
 }
 
@@ -136,6 +142,7 @@ export interface AgencyPerformance {
   name: string;
   city: string;
   volume_today: number;
+  volume_month?: number;
   operations_count: number;
   agents_count: number;
   performance_score: number;
@@ -172,9 +179,9 @@ export const useAdminDashboardKPIs = () => {
   return useQuery({
     queryKey: ['admin-dashboard-kpis'],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_admin_dashboard_kpis');
+      const { data, error } = await supabase.rpc('get_admin_dashboard_kpis' as any);
       if (error) throw error;
-      return data as AdminDashboardKPIs;
+      return data as unknown as AdminDashboardKPIs;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false
@@ -186,9 +193,9 @@ export const useSousAdminDashboardKPIs = () => {
   return useQuery({
     queryKey: ['sous-admin-dashboard-kpis'],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_sous_admin_dashboard_kpis');
+      const { data, error } = await supabase.rpc('get_sous_admin_dashboard_kpis' as any);
       if (error) throw error;
-      return data as SousAdminDashboardKPIs;
+      return data as unknown as SousAdminDashboardKPIs;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false
@@ -200,11 +207,11 @@ export const useTopAgenciesPerformance = (limit: number = 5) => {
   return useQuery({
     queryKey: ['top-agencies-performance', limit.toString()],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_top_agencies_performance', {
+      const { data, error } = await supabase.rpc('get_top_agencies_performance' as any, {
         p_limit: limit
       });
       if (error) throw error;
-      return (data as AgencyPerformance[]) || [];
+      return (data as unknown as AgencyPerformance[]) || [];
     },
     staleTime: 5 * 60 * 1000
   });
@@ -215,9 +222,9 @@ export const useValidationQueueStats = () => {
   return useQuery({
     queryKey: ['validation-queue-stats'],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_validation_queue_stats');
+      const { data, error } = await supabase.rpc('get_validation_queue_stats' as any);
       if (error) throw error;
-      return data as ValidationQueueStats;
+      return data as unknown as ValidationQueueStats;
     },
     staleTime: 30 * 1000, // 30 seconds
     refetchOnWindowFocus: false
@@ -236,7 +243,7 @@ export const useAssignOperation = () => {
       operationId: string;
       validatorId: string;
     }) => {
-      const { data, error } = await supabase.rpc('assign_operation_to_user', {
+      const { data, error } = await supabase.rpc('assign_operation_to_user' as any, {
         p_operation_id: operationId,
         p_validator_id: validatorId
       });
@@ -308,7 +315,7 @@ export const useSupportTickets = (limit: number = 10) => {
       
       if (error) throw error;
       return data || [];
-    },
+    },  
     staleTime: 60 * 1000
   });
 };
@@ -344,7 +351,7 @@ export const useChefAgenceDashboardKPIs = () => {
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_chef_agence_dashboard_kpis');
       if (error) throw error;
-      return data as ChefAgenceDashboardKPIs;
+      return data as unknown as ChefAgenceDashboardKPIs;
     },
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false
@@ -358,7 +365,7 @@ export const useAgentDashboardKPIs = () => {
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_agent_dashboard_kpis');
       if (error) throw error;
-      return data as AgentDashboardKPIs;
+      return data as unknown as AgentDashboardKPIs;
     },
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false
@@ -374,7 +381,7 @@ export const useChefAgentsPerformance = (limit: number = 10) => {
         p_limit: limit
       });
       if (error) throw error;
-      return (data as AgentPerformance[]) || [];
+      return (data as unknown as AgentPerformance[]) || [];
     },
     staleTime: 5 * 60 * 1000
   });

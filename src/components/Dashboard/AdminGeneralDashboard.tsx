@@ -103,7 +103,7 @@ const AdminGeneralDashboard = () => {
           Centre de Contrôle - Administrateur Général
         </h1>
         <p className="text-red-100">
-          Supervision complète du système TransFlow Nexus - {kpis?.network_stats?.active_agencies || 0} agences actives
+          Supervision complète du système TransFlow Nexus - {kpis?.network_stats?.total_agencies || 0} agences actives
         </p>
       </div>
 
@@ -128,11 +128,11 @@ const AdminGeneralDashboard = () => {
           <>
             <MetricCard
               title="Volume Total (Aujourd'hui)"
-              value={kpis?.volume_today?.formatted || '0 XOF'}
+              value={kpis?.volume_today?.formatted || formatAmount(kpis?.volume_today?.amount || 0)}
               icon={TrendingUp}
               iconColor="text-green-500"
               valueColor="text-green-600"
-              subtitle={kpis?.volume_today?.growth_formatted || '0%'}
+              subtitle={`+${kpis?.volume_today?.growth_percentage || 0}% vs hier`}
             />
             <MetricCard
               title="Opérations Système"
@@ -144,7 +144,7 @@ const AdminGeneralDashboard = () => {
             />
             <MetricCard
               title="Réseau TransFlow"
-              value={`${kpis?.network_stats?.active_agencies || 0} Agences`}
+              value={`${kpis?.network_stats?.total_agencies || 0} Agences`}
               icon={Building}
               iconColor="text-purple-500"
               valueColor="text-purple-600"
@@ -152,7 +152,7 @@ const AdminGeneralDashboard = () => {
             />
             <MetricCard
               title="Revenus Système"
-              value={kpis?.monthly_revenue?.formatted || '0 XOF'}
+              value={kpis?.monthly_revenue?.formatted || formatAmount(kpis?.monthly_revenue?.amount || 0)}
               icon={DollarSign}
               iconColor="text-orange-500"
               valueColor="text-orange-600"
@@ -251,7 +251,7 @@ const AdminGeneralDashboard = () => {
                     </div>
                     <div className="text-right">
                       <span className="text-sm font-semibold text-purple-600">
-                        {formatAmount(agence.volume_month)}
+                        {formatAmount(agence.volume_today)}
                       </span>
                       <div className="text-xs text-gray-500">
                         {agence.operations_count} ops
@@ -269,7 +269,7 @@ const AdminGeneralDashboard = () => {
                 <div className="text-center">
                   <p className="text-sm text-gray-600 mb-2">Croissance réseau</p>
                   <p className="text-2xl font-bold text-green-600">
-                    {kpis?.volume_today?.growth_formatted || '+0%'}
+                    +{kpis?.volume_today?.growth_percentage || 0}%
                   </p>
                   <p className="text-xs text-gray-500">vs hier</p>
                 </div>
@@ -295,7 +295,7 @@ const AdminGeneralDashboard = () => {
                   Transactions Bloquées
                 </span>
                 <span className="bg-red-600 text-white text-sm px-2 py-1 rounded-full">
-                  {kpisLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : (kpis?.critical_alerts?.blocked_transactions || 0)}
+                  {kpisLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : (kpis?.critical_alerts?.pending_validations || 0)}
                 </span>
               </div>
               <p className="text-xs text-red-700 mb-3">Nécessite validation immédiate</p>
@@ -315,7 +315,7 @@ const AdminGeneralDashboard = () => {
                   Requêtes Support Critiques
                 </span>
                 <span className="bg-orange-600 text-white text-sm px-2 py-1 rounded-full">
-                  {kpisLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : (kpis?.critical_alerts?.support_requests || 0)}
+                  {kpisLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : (kpis?.critical_alerts?.urgent_tickets || 0)}
                 </span>
               </div>
               <p className="text-xs text-orange-700 mb-3">Incidents système signalés</p>
@@ -333,13 +333,13 @@ const AdminGeneralDashboard = () => {
             <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm font-medium text-yellow-900">
-                  Agences Sous-Performance
+                  Agents Solde Faible
                 </span>
                 <span className="bg-yellow-600 text-white text-sm px-2 py-1 rounded-full">
-                  {kpisLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : (kpis?.critical_alerts?.underperforming_agencies || 0)}
+                  {kpisLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : (kpis?.critical_alerts?.low_balance_agents || 0)}
                 </span>
               </div>
-              <p className="text-xs text-yellow-700 mb-3">Volume en baisse significative</p>
+              <p className="text-xs text-yellow-700 mb-3">Agents nécessitant une recharge</p>
               <Button 
                 size="sm" 
                 variant="outline"

@@ -79,7 +79,11 @@ export const useErrorLogs = (filters: ErrorLogFilters = {}, limit: number = 50) 
 
       const { data, error } = await query;
       if (error) throw error;
-      return (data as ErrorLog[]) || [];
+      return (data?.map(log => ({
+        ...log,
+        id: log.id.toString(),
+        timestamp: log.created_at,
+      })) as ErrorLog[]) || [] ;
     },
     staleTime: 30 * 1000, // 30 seconds
   });
