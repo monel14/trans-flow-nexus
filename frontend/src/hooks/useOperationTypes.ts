@@ -383,5 +383,5 @@ export function useUpdateCommissionRule() {
   });
 }
 
-// Alias pour compatibilité avec les composants existants
-export const useOperationTypeFields = useOperationTypeWithFields;
+// Alias supprimé pour éviter le conflit de noms
+// La fonction useOperationTypeFields existe déjà ligne 76
