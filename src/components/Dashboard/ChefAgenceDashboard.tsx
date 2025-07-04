@@ -197,7 +197,7 @@ const ChefAgenceDashboard = () => {
                 </div>
               ))}
             </>
-          ) : agentsPerformance && agentsPerformance.length > 0 ? (
+          ) : agentsPerformance && Array.isArray(agentsPerformance) && agentsPerformance.length > 0 ? (
             agentsPerformance.map((agent, index) => (
               <div key={agent.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                 <div className="flex items-center">
@@ -287,7 +287,7 @@ const ChefAgenceDashboard = () => {
 
       {/* Transactions récentes de l'agence */}
       <TransactionTable 
-        transactions={operations.slice(0, 5)}
+        transactions={(operations || []).slice(0, 5)}
         title="Dernières Transactions de l'Agence"
       />
     </div>

@@ -1,18 +1,19 @@
-import { useSupabaseQuery, useSupabaseMutation } from './useSupabase';
+
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 
 export interface OperationType {
   id: string;
   name: string;
   description: string;
-  impacts_balance: boolean;
   is_active: boolean;
-  status: 'active' | 'inactive' | 'archived';
+  impacts_balance: boolean;
+  status: string;
   created_at: string;
   updated_at: string;
   created_by?: string;
   updated_by?: string;
+  operation_type_fields?: OperationTypeField[];
 }
 
 export interface OperationTypeField {
@@ -20,106 +21,50 @@ export interface OperationTypeField {
   operation_type_id: string;
   name: string;
   label: string;
-  field_type: 'text' | 'number' | 'email' | 'tel' | 'select' | 'textarea' | 'file' | 'date' | 'checkbox' | 'radio';
+  field_type: string;
   is_required: boolean;
   is_obsolete: boolean;
   display_order: number;
-  validation_rules?: any;
-  options?: string[];
   placeholder?: string;
   help_text?: string;
+  options?: any[];
+  validation_rules?: any;
   created_at: string;
   updated_at: string;
 }
 
-export interface CommissionRule {
-  id: string;
-  operation_type_id: string;
-  commission_type: 'fixed' | 'percentage' | 'tiered';
-  fixed_amount?: number | null;
-  percentage_rate?: number | null;
-  min_amount?: number | null;
-  max_amount?: number | null;
-  tiered_rules?: any;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
+export interface CreateOperationTypeData {
+  name: string;
+  description: string;
+  impacts_balance?: boolean;
 }
 
-export interface OperationTypeWithFields extends OperationType {
-  operation_type_fields: OperationTypeField[];
-}
-
-// Hook to get all operation types (for admin/developer views)
-export function useAllOperationTypes() {
-  return useSupabaseQuery(
-    ['operation-types-all'],
-    async () => {
+// Hook to get all operation types
+export function useOperationTypes() {
+  return useQuery({
+    queryKey: ['operation-types'],
+    queryFn: async (): Promise<OperationType[]> => {
       const { data, error } = await supabase
         .from('operation_types')
         .select(`
           *,
-          operation_type_fields (count)
+          operation_type_fields (*)
         `)
-        .order('name');
-      
-      if (error) throw error;
-      return data as OperationType[];
-    }
-  );
-}
-
-// Hook to get all active operation types
-export function useOperationTypes() {
-  return useSupabaseQuery(
-    ['operation-types'],
-    async () => {
-      const { data, error } = await supabase
-        .from('operation_types')
-        .select('*')
         .eq('is_active', true)
         .eq('status', 'active')
         .order('name');
-      
+
       if (error) throw error;
-      return data as OperationType[];
+      return (data || []) as OperationType[];
     }
-  );
+  });
 }
 
-// Hook to get operation types for current user's agency
-export function useAgencyOperationTypes() {
-  const { user } = useAuth();
-  
-  return useSupabaseQuery(
-    ['agency-operation-types', user?.agenceId],
-    async () => {
-      if (!user?.agenceId) return [];
-      
-      const { data, error } = await supabase
-        .from('agency_operation_types')
-        .select(`
-          *,
-          operation_types (*)
-        `)
-        .eq('agency_id', parseInt(user.agenceId))
-        .eq('is_enabled', true);
-      
-      if (error) throw error;
-      
-      return data.map(item => item.operation_types).filter(Boolean) as OperationType[];
-    },
-    {
-      enabled: !!user?.agenceId,
-    }
-  );
-}
-
-// Hook to get operation type with its fields
-export function useOperationTypeWithFields(operationTypeId: string) {
-  return useSupabaseQuery(
-    ['operation-type-with-fields', operationTypeId],
-    async () => {
+// Hook to get a single operation type
+export function useOperationType(operationTypeId: string) {
+  return useQuery({
+    queryKey: ['operation-type', operationTypeId],
+    queryFn: async (): Promise<OperationType> => {
       const { data, error } = await supabase
         .from('operation_types')
         .select(`
@@ -128,204 +73,72 @@ export function useOperationTypeWithFields(operationTypeId: string) {
         `)
         .eq('id', operationTypeId)
         .single();
-      
+
       if (error) throw error;
-      
-      // Sort fields by display_order
-      if (data.operation_type_fields) {
-        data.operation_type_fields.sort((a: any, b: any) => 
-          a.display_order - b.display_order
-        );
-      }
-      
-      return data as OperationTypeWithFields;
+      return data as OperationType;
     },
-    {
-      enabled: !!operationTypeId,
-    }
-  );
+    enabled: !!operationTypeId,
+  });
 }
 
-// Hook to create operation type (developers only)
+// Hook to create an operation type
 export function useCreateOperationType() {
-  const { user } = useAuth();
-  
-  return useSupabaseMutation<OperationType, Omit<OperationType, 'id' | 'created_at' | 'updated_at'>>(
-    async (operationTypeData) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (operationTypeData: CreateOperationTypeData) => {
       const { data, error } = await supabase
         .from('operation_types')
-        .insert({
-          ...operationTypeData,
-          created_by: user?.id,
-        })
+        .insert(operationTypeData)
         .select()
         .single();
-      
+
       if (error) throw error;
-      return data as OperationType;
+      return data;
     },
-    {
-      invalidateQueries: [['operation-types']],
-      successMessage: 'Type d\'opération créé avec succès',
-      errorMessage: 'Erreur lors de la création du type d\'opération',
-    }
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['operation-types'] });
+    },
+  });
 }
 
-// Hook to update operation type (developers only)
+// Hook to update an operation type
 export function useUpdateOperationType() {
-  const { user } = useAuth();
-  
-  return useSupabaseMutation<OperationType, { id: string; updates: Partial<OperationType> }>(
-    async ({ id, updates }) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<OperationType> }) => {
       const { data, error } = await supabase
         .from('operation_types')
-        .update({
-          ...updates,
-          updated_by: user?.id,
-        })
-        .eq('id', id)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data as OperationType;
-    },
-    {
-      invalidateQueries: [['operation-types'], ['operation-type-with-fields']],
-      successMessage: 'Type d\'opération mis à jour avec succès',
-      errorMessage: 'Erreur lors de la mise à jour du type d\'opération',
-    }
-  );
-}
-
-// Hook to create operation type field (developers only)
-export function useCreateOperationTypeField() {
-  return useSupabaseMutation<OperationTypeField, Omit<OperationTypeField, 'id' | 'created_at' | 'updated_at'>>(
-    async (fieldData) => {
-      const { data, error } = await supabase
-        .from('operation_type_fields')
-        .insert(fieldData)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data as OperationTypeField;
-    },
-    {
-      invalidateQueries: [['operation-type-with-fields']],
-      successMessage: 'Champ ajouté avec succès',
-      errorMessage: 'Erreur lors de l\'ajout du champ',
-    }
-  );
-}
-
-// Hook to update operation type field (developers only)
-export function useUpdateOperationTypeField() {
-  return useSupabaseMutation<OperationTypeField, { id: string; updates: Partial<OperationTypeField> }>(
-    async ({ id, updates }) => {
-      const { data, error } = await supabase
-        .from('operation_type_fields')
         .update(updates)
         .eq('id', id)
         .select()
         .single();
-      
+
       if (error) throw error;
-      return data as OperationTypeField;
+      return data;
     },
-    {
-      invalidateQueries: [['operation-type-with-fields']],
-      successMessage: 'Champ mis à jour avec succès',
-      errorMessage: 'Erreur lors de la mise à jour du champ',
-    }
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['operation-types'] });
+    },
+  });
 }
 
-// Hook to delete operation type field (developers only)
-export function useDeleteOperationTypeField() {
-  return useSupabaseMutation<void, string>(
-    async (fieldId) => {
+// Hook to delete an operation type
+export function useDeleteOperationType() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (operationTypeId: string) => {
       const { error } = await supabase
-        .from('operation_type_fields')
-        .delete()
-        .eq('id', fieldId);
-      
+        .from('operation_types')
+        .update({ is_active: false, status: 'inactive' })
+        .eq('id', operationTypeId);
+
       if (error) throw error;
     },
-    {
-      invalidateQueries: [['operation-type-with-fields']],
-      successMessage: 'Champ supprimé avec succès',
-      errorMessage: 'Erreur lors de la suppression du champ',
-    }
-  );
-}
-
-// Alias for useOperationTypeWithFields for compatibility
-export const useOperationTypeFields = useOperationTypeWithFields;
-
-// Hook to get commission rules for an operation type
-export function useCommissionRules(operationTypeId?: string) {
-  return useSupabaseQuery(
-    ['commission-rules', operationTypeId],
-    async () => {
-      if (!operationTypeId) return [];
-      
-      const { data, error } = await supabase
-        .from('commission_rules')
-        .select('*')
-        .eq('operation_type_id', operationTypeId)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data as CommissionRule[];
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['operation-types'] });
     },
-    {
-      enabled: !!operationTypeId,
-    }
-  );
-}
-
-// Hook to create commission rule (developers only)
-export function useCreateCommissionRule() {
-  return useSupabaseMutation<CommissionRule, Omit<CommissionRule, 'id' | 'created_at' | 'updated_at'>>(
-    async (ruleData) => {
-      const { data, error } = await supabase
-        .from('commission_rules')
-        .insert(ruleData)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data as CommissionRule;
-    },
-    {
-      invalidateQueries: [['commission-rules']],
-      successMessage: 'Règle de commission créée avec succès',
-      errorMessage: 'Erreur lors de la création de la règle de commission',
-    }
-  );
-}
-
-// Hook to update commission rule (developers only)
-export function useUpdateCommissionRule() {
-  return useSupabaseMutation<CommissionRule, { id: string; updates: Partial<CommissionRule> }>(
-    async ({ id, updates }) => {
-      const { data, error } = await supabase
-        .from('commission_rules')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data as CommissionRule;
-    },
-    {
-      invalidateQueries: [['commission-rules']],
-      successMessage: 'Règle de commission mise à jour avec succès',
-      errorMessage: 'Erreur lors de la mise à jour de la règle de commission',
-    }
-  );
+  });
 }

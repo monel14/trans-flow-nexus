@@ -32,7 +32,7 @@ const AgentDashboard = () => {
   const { data: kpis, isLoading: kpisLoading, error: kpisError } = useAgentDashboardKPIs();
 
   // Filtrer les opérations d'aujourd'hui
-  const todayOperations = operations.filter(op => 
+  const todayOperations = (operations || []).filter(op => 
     new Date(op.created_at).toDateString() === new Date().toDateString()
   );
 
@@ -241,7 +241,7 @@ const AgentDashboard = () => {
 
       {/* Mes dernières opérations */}
       <TransactionTable 
-        transactions={operations.slice(0, 5)}
+        transactions={(operations || []).slice(0, 5)}
         title="Mes Dernières Opérations"
       />
     </div>
