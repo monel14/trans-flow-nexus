@@ -68,7 +68,7 @@ INSERT INTO profiles (
     id, email, name, first_name, last_name, role_id, agency_id,
     balance, is_active, created_at, updated_at
 ) VALUES (
-    'UUID_ADMIN',  -- ⚠️ REMPLACER PAR L'UUID RÉEL
+    '8be21938-30fc-4f62-b117-8187054d92d2',  -- ⚠️ REMPLACER PAR L'UUID RÉEL
     'admin.general@transflow.com',
     'Admin Général',
     'Admin',
@@ -86,7 +86,7 @@ INSERT INTO profiles (
     id, email, name, first_name, last_name, role_id, agency_id,
     balance, is_active, created_at, updated_at
 ) VALUES (
-    'UUID_AGENT',  -- ⚠️ REMPLACER PAR L'UUID RÉEL
+    '285f3c56-7288-4cb8-a986-b204c4d8fc04',  -- ⚠️ REMPLACER PAR L'UUID RÉEL
     'agent1.douala@transflow.com',
     'Ousmane Cissé',
     'Ousmane',
@@ -104,7 +104,7 @@ INSERT INTO profiles (
     id, email, name, first_name, last_name, role_id, agency_id,
     balance, is_active, created_at, updated_at
 ) VALUES (
-    'UUID_CHEF',  -- ⚠️ REMPLACER PAR L'UUID RÉEL
+    '23ea6c5c-393a-4a6d-983b-31c1c1483fea',  -- ⚠️ REMPLACER PAR L'UUID RÉEL
     'chef.douala@transflow.com',
     'Mamadou Diallo',
     'Mamadou',
