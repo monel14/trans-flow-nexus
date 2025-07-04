@@ -1,5 +1,5 @@
 
-import { useSupabaseQuery, useSupabaseMutation } from './useSupabase';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface ErrorLog {
@@ -43,9 +43,9 @@ export function useErrorLogs(filters?: {
   resolved?: boolean;
   limit?: number;
 }) {
-  return useSupabaseQuery(
-    ['error-logs', filters],
-    async () => {
+  return useQuery({
+    queryKey: ['error-logs', filters],
+    queryFn: async () => {
       let query = supabase
         .from('error_logs')
         .select('*')
@@ -77,14 +77,14 @@ export function useErrorLogs(filters?: {
         id: log.id.toString(), // Convertir number en string
       })) as ErrorLog[];
     }
-  );
+  });
 }
 
 // Hook to get error log statistics
 export function useErrorLogsStats() {
-  return useSupabaseQuery(
-    ['error-logs-stats'],
-    async () => {
+  return useQuery({
+    queryKey: ['error-logs-stats'],
+    queryFn: async () => {
       // Get basic stats
       const { data: stats, error: statsError } = await supabase
         .from('error_logs')
@@ -122,16 +122,18 @@ export function useErrorLogsStats() {
         most_common_sources,
       } as ErrorLogStats;
     }
-  );
+  });
 }
 
 // Hook to resolve an error log
 export function useResolveErrorLog() {
-  return useSupabaseMutation<any, {
-    logId: string;
-    resolution_notes?: string;
-  }>(
-    async ({ logId, resolution_notes }) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ logId, resolution_notes }: {
+      logId: string;
+      resolution_notes?: string;
+    }) => {
       const { data, error } = await supabase
         .from('error_logs')
         .update({
@@ -146,20 +148,21 @@ export function useResolveErrorLog() {
       if (error) throw error;
       return data;
     },
-    {
-      invalidateQueries: [['error-logs'], ['error-logs-stats']],
-      successMessage: 'Erreur marquée comme résolue',
-      errorMessage: 'Erreur lors de la résolution',
-    }
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['error-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['error-logs-stats'] });
+    },
+  });
 }
 
 // Hook to clear old error logs
 export function useClearErrorLogs() {
-  return useSupabaseMutation<any, {
-    olderThanDays: number;
-  }>(
-    async ({ olderThanDays }) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ olderThanDays }: {
+      olderThanDays: number;
+    }) => {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
 
@@ -171,21 +174,22 @@ export function useClearErrorLogs() {
       if (error) throw error;
       return data;
     },
-    {
-      invalidateQueries: [['error-logs'], ['error-logs-stats']],
-      successMessage: 'Anciens logs supprimés',
-      errorMessage: 'Erreur lors de la suppression',
-    }
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['error-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['error-logs-stats'] });
+    },
+  });
 }
 
 // Hook to bulk resolve error logs
 export function useBulkResolveErrorLogs() {
-  return useSupabaseMutation<any, {
-    logIds: string[];
-    resolution_notes?: string;
-  }>(
-    async ({ logIds, resolution_notes }) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ logIds, resolution_notes }: {
+      logIds: string[];
+      resolution_notes?: string;
+    }) => {
       const numericIds = logIds.map(id => parseInt(id)); // Convertir strings en numbers
       
       const { data, error } = await supabase
@@ -200,12 +204,11 @@ export function useBulkResolveErrorLogs() {
       if (error) throw error;
       return data;
     },
-    {
-      invalidateQueries: [['error-logs'], ['error-logs-stats']],
-      successMessage: 'Erreurs marquées comme résolues',
-      errorMessage: 'Erreur lors de la résolution groupée',
-    }
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['error-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['error-logs-stats'] });
+    },
+  });
 }
 
 // Fonction utilitaire pour logger des erreurs
@@ -237,4 +240,13 @@ export function logError(
         console.error('Failed to log error to Supabase:', insertError);
       }
     });
+}
+
+// Export additional utility functions
+export function logWarning(source: string, message: string, context?: any) {
+  logError('warning', source, message, undefined, context);
+}
+
+export function logInfo(source: string, message: string, context?: any) {
+  logError('info', source, message, undefined, context);
 }

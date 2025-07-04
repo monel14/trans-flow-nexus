@@ -2,11 +2,27 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-import type { CreateAgentValues, CreateChefAgenceValues, CreateSousAdminValues } from '@/lib/schemas';
 
-// =====================================================
-// HOOKS POUR LA CRÉATION D'UTILISATEURS VIA RPC
-// =====================================================
+// Types for form data
+export interface CreateAgentValues {
+  fullName: string;
+  identifier: string;
+  initialPassword: string;
+  agencyId: string;
+}
+
+export interface CreateChefAgenceValues {
+  fullName: string;
+  identifier: string;
+  initialPassword: string;
+  agencyId: number;
+}
+
+export interface CreateSousAdminValues {
+  fullName: string;
+  identifier: string;
+  initialPassword: string;
+}
 
 // Type pour les réponses des fonctions RPC
 interface RPCResponse {

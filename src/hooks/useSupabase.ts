@@ -1,175 +1,152 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/use-toast';
 import { logError } from '@/hooks/useErrorLogs';
 
-// Generic hook for Supabase queries with automatic error logging
-export function useSupabaseQuery<T>(
-  key: string[],
+// Generic Supabase query hook
+export function useSupabaseQuery<T = any>(
+  queryKey: (string | number)[],
   queryFn: () => Promise<T>,
-  options?: {
-    enabled?: boolean;
-    staleTime?: number;
-    refetchOnWindowFocus?: boolean;
-  }
+  options?: any
 ) {
   return useQuery({
-    queryKey: key,
+    queryKey,
     queryFn: async () => {
       try {
         return await queryFn();
-      } catch (error) {
-        // Log automatiquement les erreurs de requête
+      } catch (error: any) {
+        console.error('Query error:', error);
         logError(
           'error',
-          'database',
-          `Query error: ${key.join('/')}`,
-          error as Error,
-          {
-            queryKey: key,
-            queryOptions: options,
-          }
+          'SupabaseQuery',
+          `Query error: ${error.message}`,
+          error,
+          { queryKey }
         );
         throw error;
       }
     },
-    enabled: options?.enabled ?? true,
-    staleTime: options?.staleTime ?? 5 * 60 * 1000, // 5 minutes
-    refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
+    ...options,
   });
 }
 
-// Generic hook for Supabase mutations with automatic error logging
-export function useSupabaseMutation<TData, TVariables>(
+// Generic Supabase mutation hook
+export function useSupabaseMutation<TData = any, TVariables = any>(
   mutationFn: (variables: TVariables) => Promise<TData>,
   options?: {
-    onSuccess?: (data: TData, variables: TVariables) => void;
-    onError?: (error: Error, variables: TVariables) => void;
-    invalidateQueries?: string[][];
-    showSuccessToast?: boolean;
-    showErrorToast?: boolean;
+    invalidateQueries?: (string | number)[][];
     successMessage?: string;
     errorMessage?: string;
+    onSuccess?: (data: TData, variables: TVariables) => void;
+    onError?: (error: Error, variables: TVariables) => void;
   }
 ) {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (variables: TVariables) => {
       try {
         return await mutationFn(variables);
-      } catch (error) {
-        // Log automatiquement les erreurs de mutation
+      } catch (error: any) {
+        console.error('Mutation error:', error);
         logError(
           'error',
-          'database',
-          `Mutation error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          error as Error,
-          {
-            variables,
-            mutationOptions: options,
-          }
+          'SupabaseMutation',
+          `Mutation error: ${error.message}`,
+          error,
+          { variables }
         );
         throw error;
       }
     },
     onSuccess: (data, variables) => {
-      // Invalidate related queries
+      // Invalidate specified queries
       if (options?.invalidateQueries) {
         options.invalidateQueries.forEach(queryKey => {
           queryClient.invalidateQueries({ queryKey });
         });
       }
-      
-      // Show success toast
-      if (options?.showSuccessToast !== false) {
-        toast.success(options?.successMessage || 'Opération réussie');
+
+      // Show success message
+      if (options?.successMessage) {
+        toast({
+          title: 'Succès',
+          description: options.successMessage,
+        });
       }
-      
-      // Custom success handler
-      options?.onSuccess?.(data, variables);
+
+      // Call custom onSuccess
+      if (options?.onSuccess) {
+        options.onSuccess(data, variables);
+      }
     },
-    onError: (error, variables) => {
-      // Show error toast
-      if (options?.showErrorToast !== false) {
-        toast.error(options?.errorMessage || handleSupabaseError(error) || 'Une erreur est survenue');
+    onError: (error: Error, variables) => {
+      // Show error message
+      const errorMessage = options?.errorMessage || 'Une erreur est survenue';
+      toast({
+        title: 'Erreur',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+
+      // Call custom onError
+      if (options?.onError) {
+        options.onError(error, variables);
       }
-      
-      // Custom error handler
-      options?.onError?.(error, variables);
     },
   });
 }
 
-// Helper to get authenticated headers
-export function getAuthHeaders() {
-  return {
-    'Content-Type': 'application/json',
-  };
-}
-
-// Helper to handle Supabase errors with automatic logging
-export function handleSupabaseError(error: any) {
-  console.error('Supabase error:', error);
-  
-  let errorMessage = 'Une erreur inattendue est survenue.';
-  
-  if (error?.code === 'PGRST301') {
-    errorMessage = 'Accès refusé. Permissions insuffisantes.';
-  } else if (error?.code === 'PGRST116') {
-    errorMessage = 'Aucun résultat trouvé.';
-  } else if (error?.code === '23505') {
-    errorMessage = 'Cette entrée existe déjà.';
-  } else if (error?.code === '23503') {
-    errorMessage = 'Violation de contrainte de référence.';
-  } else if (error?.code === '42501') {
-    errorMessage = 'Permissions insuffisantes pour cette opération.';
-  } else if (error?.message) {
-    errorMessage = error.message;
-  }
-  
-  // Log l'erreur si c'est une erreur significative
-  if (error?.code && error.code !== 'PGRST116') {
+// Server Action wrapper for better error handling
+export async function withServerAction<T>(
+  action: () => Promise<T>,
+  context?: string
+): Promise<T> {
+  try {
+    return await action();
+  } catch (error: any) {
+    console.error(`Server Action error${context ? ` in ${context}` : ''}:`, error);
+    
+    // Log to error system
     logError(
-      'warning',
-      'database',
-      `Supabase error: ${error.code} - ${errorMessage}`,
-      undefined,
-      {
-        errorCode: error.code,
-        errorDetails: error,
-        timestamp: new Date().toISOString(),
-      }
+      'error',
+      'ServerAction',
+      `Server Action error: ${error.message}`,
+      error,
+      { context }
     );
+    
+    // Re-throw for caller to handle
+    throw error;
   }
-  
-  return errorMessage;
 }
 
-// Helper pour instrumenter les Server Actions
-export function withErrorInstrumentation<T extends any[], R>(
-  fn: (...args: T) => Promise<R>,
-  actionName: string
+// Utility to handle Supabase RPC calls
+export async function callSupabaseRPC(
+  functionName: string,
+  params?: any,
+  context?: string
 ) {
-  return async (...args: T): Promise<R> => {
-    try {
-      const result = await fn(...args);
-      return result;
-    } catch (error) {
-      logError(
-        'error',
-        'api',
-        `Server Action error: ${actionName}`,
-        error as Error,
-        {
-          actionName,
-          arguments: args,
-          timestamp: new Date().toISOString(),
-        }
-      );
-      throw error;
+  try {
+    const { data, error } = await supabase.rpc(functionName, params);
+    
+    if (error) {
+      throw new Error(`RPC ${functionName} failed: ${error.message}`);
     }
-  };
+    
+    return data;
+  } catch (error: any) {
+    console.error(`RPC call error for ${functionName}:`, error);
+    
+    logError(
+      'error',
+      'SupabaseRPC',
+      `RPC call failed for ${functionName}: ${error.message}`,
+      error,
+      { functionName, params, context }
+    );
+    
+    throw error;
+  }
 }

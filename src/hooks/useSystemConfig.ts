@@ -1,5 +1,5 @@
 
-import { useSupabaseQuery, useSupabaseMutation } from './useSupabase';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { z } from 'zod';
@@ -49,9 +49,9 @@ export type SystemConfig = z.infer<typeof SystemConfigSchema>;
 
 // Hook to get system configuration
 export function useSystemConfig() {
-  return useSupabaseQuery(
-    ['system-config'],
-    async () => {
+  return useQuery({
+    queryKey: ['system-config'],
+    queryFn: async () => {
       const { data, error } = await supabase
         .from('system_settings')
         .select('config')
@@ -71,15 +71,16 @@ export function useSystemConfig() {
         throw new Error('Configuration système invalide');
       }
     }
-  );
+  });
 }
 
 // Hook to update system configuration
 export function useUpdateSystemConfig() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   
-  return useSupabaseMutation<SystemConfig, Partial<SystemConfig>>(
-    async (configData) => {
+  return useMutation({
+    mutationFn: async (configData: Partial<SystemConfig>) => {
       // Récupérer la configuration actuelle
       const { data: currentData, error: fetchError } = await supabase
         .from('system_settings')
@@ -91,7 +92,7 @@ export function useUpdateSystemConfig() {
         throw new Error('Impossible de récupérer la configuration actuelle');
       }
       
-      // Fusionner avec les nouvelles données (avec vérification de type)
+      // Fusionner avec les nouvelles données
       const currentConfig = currentData?.config || {};
       const mergedConfig = { ...currentConfig, ...configData };
       
@@ -115,19 +116,17 @@ export function useUpdateSystemConfig() {
       
       return SystemConfigSchema.parse(data.config);
     },
-    {
-      invalidateQueries: [['system-config']],
-      successMessage: 'Configuration mise à jour avec succès',
-      errorMessage: 'Erreur lors de la mise à jour de la configuration',
-    }
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['system-config'] });
+    },
+  });
 }
 
 // Hook to get a specific setting
 export function useSystemSetting(settingName: keyof SystemConfig) {
-  return useSupabaseQuery(
-    ['system-setting', settingName],
-    async () => {
+  return useQuery({
+    queryKey: ['system-setting', settingName],
+    queryFn: async () => {
       const { data, error } = await supabase
         .from('system_settings')
         .select('config')
@@ -139,18 +138,19 @@ export function useSystemSetting(settingName: keyof SystemConfig) {
       const config = SystemConfigSchema.parse(data.config);
       return config[settingName];
     }
-  );
+  });
 }
 
 // Hook to update a specific setting
 export function useUpdateSystemSetting() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   
-  return useSupabaseMutation<any, {
-    settingName: keyof SystemConfig;
-    value: any;
-  }>(
-    async ({ settingName, value }) => {
+  return useMutation({
+    mutationFn: async ({ settingName, value }: {
+      settingName: keyof SystemConfig;
+      value: any;
+    }) => {
       // Récupérer la configuration actuelle
       const { data: currentData, error: fetchError } = await supabase
         .from('system_settings')
@@ -160,7 +160,7 @@ export function useUpdateSystemSetting() {
       
       if (fetchError) throw fetchError;
       
-      // Mettre à jour le paramètre spécifique (avec vérification de type)
+      // Mettre à jour le paramètre spécifique
       const currentConfig = currentData?.config || {};
       const updatedConfig = {
         ...currentConfig,
@@ -183,10 +183,9 @@ export function useUpdateSystemSetting() {
       
       return { [settingName]: value };
     },
-    {
-      invalidateQueries: [['system-config'], ['system-setting']],
-      successMessage: 'Paramètre mis à jour avec succès',
-      errorMessage: 'Erreur lors de la mise à jour du paramètre',
-    }
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['system-config'] });
+      queryClient.invalidateQueries({ queryKey: ['system-setting'] });
+    },
+  });
 }
