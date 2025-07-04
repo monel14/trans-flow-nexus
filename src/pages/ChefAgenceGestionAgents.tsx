@@ -43,12 +43,15 @@ const ChefAgenceGestionAgents = () => {
         return;
       }
 
-      const completeValues: CreateAgentValues = {
-        ...values,
-        agencyId: agencyId
+      // Map form values to the expected API format
+      const apiValues = {
+        name: values.fullName,
+        email: values.identifier,
+        password: values.initialPassword,
+        agency_id: agencyId
       };
 
-      await createAgentMutation.mutateAsync(completeValues);
+      await createAgentMutation.mutateAsync(apiValues);
       toast({
         title: "Succès",
         description: "Agent créé avec succès",
@@ -104,11 +107,12 @@ const ChefAgenceGestionAgents = () => {
               </div>
 
               <div>
-                <Label htmlFor="identifier">Identifiant *</Label>
+                <Label htmlFor="identifier">Email *</Label>
                 <Input
                   id="identifier"
+                  type="email"
                   {...form.register('identifier')}
-                  placeholder="Ex: dkr01.pierre"
+                  placeholder="Ex: pierre.diallo@transflow.com"
                   required
                 />
                 {form.formState.errors.identifier && (

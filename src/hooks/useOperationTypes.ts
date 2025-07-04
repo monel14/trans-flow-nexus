@@ -33,6 +33,20 @@ export interface OperationTypeField {
   updated_at: string;
 }
 
+export interface CommissionRule {
+  id: string;
+  operation_type_id: string;
+  commission_type: 'fixed' | 'percentage' | 'tiered';
+  fixed_amount?: number;
+  percentage_rate?: number;
+  min_amount?: number;
+  max_amount?: number;
+  tiered_rules?: any[];
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export function useOperationTypes() {
   return useQuery({
     queryKey: ['operation-types'],
@@ -78,7 +92,12 @@ export function useOperationTypeFields(operationTypeId: string) {
           return [];
         }
 
-        return data || [];
+        // Type cast the data to match our interface
+        return (data || []).map(field => ({
+          ...field,
+          field_type: field.field_type as OperationTypeField['field_type'],
+          options: Array.isArray(field.options) ? field.options : []
+        }));
       } catch (error) {
         console.error('Error in useOperationTypeFields:', error);
         return [];
@@ -118,9 +137,16 @@ export function useOperationTypeWithFields(operationTypeId: string) {
           return operationType;
         }
 
+        // Type cast the fields data
+        const typedFields = (fields || []).map(field => ({
+          ...field,
+          field_type: field.field_type as OperationTypeField['field_type'],
+          options: Array.isArray(field.options) ? field.options : []
+        }));
+
         return {
           ...operationType,
-          operation_type_fields: fields || []
+          operation_type_fields: typedFields
         };
       } catch (error) {
         console.error('Error in useOperationTypeWithFields:', error);
@@ -149,7 +175,15 @@ export function useAllOperationTypes() {
           return [];
         }
 
-        return data || [];
+        // Type cast the data to match our interface
+        return (data || []).map(operationType => ({
+          ...operationType,
+          operation_type_fields: (operationType.operation_type_fields || []).map((field: any) => ({
+            ...field,
+            field_type: field.field_type as OperationTypeField['field_type'],
+            options: Array.isArray(field.options) ? field.options : []
+          }))
+        }));
       } catch (error) {
         console.error('Error in useAllOperationTypes:', error);
         return [];
@@ -203,6 +237,150 @@ export function useUpdateOperationType() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['operation-types'] });
       queryClient.invalidateQueries({ queryKey: ['all-operation-types'] });
+    },
+  });
+}
+
+// Field-related hooks
+export function useCreateOperationTypeField() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (field: Omit<OperationTypeField, 'id' | 'created_at' | 'updated_at'>) => {
+      const { data, error } = await supabase
+        .from('operation_type_fields')
+        .insert(field)
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['operation-type-fields'] });
+    },
+  });
+}
+
+export function useUpdateOperationTypeField() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<OperationTypeField> }) => {
+      const { data, error } = await supabase
+        .from('operation_type_fields')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['operation-type-fields'] });
+    },
+  });
+}
+
+export function useDeleteOperationTypeField() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('operation_type_fields')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['operation-type-fields'] });
+    },
+  });
+}
+
+// Commission-related hooks
+export function useCommissionRules(operationTypeId?: string) {
+  return useQuery({
+    queryKey: ['commission-rules', operationTypeId],
+    queryFn: async (): Promise<CommissionRule[]> => {
+      if (!operationTypeId) return [];
+
+      try {
+        const { data, error } = await supabase
+          .from('commission_rules')
+          .select('*')
+          .eq('operation_type_id', operationTypeId)
+          .order('created_at');
+
+        if (error) {
+          console.error('Error fetching commission rules:', error);
+          return [];
+        }
+
+        return data || [];
+      } catch (error) {
+        console.error('Error in useCommissionRules:', error);
+        return [];
+      }
+    },
+    enabled: !!operationTypeId
+  });
+}
+
+export function useCreateCommissionRule() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (rule: Omit<CommissionRule, 'id' | 'created_at' | 'updated_at'>) => {
+      const { data, error } = await supabase
+        .from('commission_rules')
+        .insert(rule)
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['commission-rules'] });
+    },
+  });
+}
+
+export function useUpdateCommissionRule() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<CommissionRule> }) => {
+      const { data, error } = await supabase
+        .from('commission_rules')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['commission-rules'] });
     },
   });
 }

@@ -39,7 +39,14 @@ const AdminGestionSousAdmins = () => {
         return;
       }
 
-      await createSousAdminMutation.mutateAsync(values);
+      // Map form values to the expected API format
+      const apiValues = {
+        name: values.fullName,
+        email: values.identifier,
+        password: values.initialPassword
+      };
+
+      await createSousAdminMutation.mutateAsync(apiValues);
       toast({
         title: "Succès",
         description: "Sous-administrateur créé avec succès",
@@ -95,11 +102,12 @@ const AdminGestionSousAdmins = () => {
               </div>
 
               <div>
-                <Label htmlFor="identifier">Identifiant *</Label>
+                <Label htmlFor="identifier">Email *</Label>
                 <Input
                   id="identifier"
+                  type="email"
                   {...form.register('identifier')}
-                  placeholder="Ex: sadmin.martin"
+                  placeholder="Ex: marie.martin@transflow.com"
                   required
                 />
                 {form.formState.errors.identifier && (

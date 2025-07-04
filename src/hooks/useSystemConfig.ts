@@ -88,7 +88,9 @@ export function useSystemConfig() {
         // Safely cast the data with proper type checking
         const configData = data.config as unknown;
         if (typeof configData === 'object' && configData !== null && !Array.isArray(configData)) {
-          return { ...defaultConfig, ...(configData as Partial<SystemConfig>) };
+          // Type cast to unknown first, then to SystemConfig
+          const typedConfig = configData as unknown as SystemConfig;
+          return { ...defaultConfig, ...typedConfig };
         }
 
         return defaultConfig;

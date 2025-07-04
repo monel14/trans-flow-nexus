@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { useAgencies } from '@/hooks/useAgencies';
 import { useChefsAgence, useCreateChefAgence } from '@/hooks/useChefsAgence';
+import { useAgencies } from '@/hooks/useAgencies';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,9 +16,9 @@ import { Trash2, Edit, UserPlus } from 'lucide-react';
 
 const AdminGestionChefsAgence = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const { data: agencies = [], isLoading: agenciesLoading } = useAgencies();
-  const { data: chefsAgence = [], isLoading: chefsLoading, refetch } = useChefsAgence();
-  const createChefMutation = useCreateChefAgence();
+  const { data: chefsAgence = [], isLoading, refetch } = useChefsAgence();
+  const { data: agencies = [] } = useAgencies();
+  const createChefAgenceMutation = useCreateChefAgence();
   const { toast } = useToast();
 
   const form = useForm<CreateChefAgenceValues>({
@@ -27,7 +27,7 @@ const AdminGestionChefsAgence = () => {
       fullName: '',
       identifier: '',
       initialPassword: '',
-      agencyId: undefined,
+      agencyId: 0,
     },
   });
 
@@ -43,7 +43,15 @@ const AdminGestionChefsAgence = () => {
         return;
       }
 
-      await createChefMutation.mutateAsync(values);
+      // Map form values to the expected API format
+      const apiValues = {
+        name: values.fullName,
+        email: values.identifier,
+        password: values.initialPassword,
+        agency_id: values.agencyId
+      };
+
+      await createChefAgenceMutation.mutateAsync(apiValues);
       toast({
         title: "Succès",
         description: "Chef d'agence créé avec succès",
@@ -61,7 +69,7 @@ const AdminGestionChefsAgence = () => {
     }
   };
 
-  if (agenciesLoading || chefsLoading) {
+  if (isLoading) {
     return <div>Chargement...</div>;
   }
 
@@ -69,8 +77,8 @@ const AdminGestionChefsAgence = () => {
   const transformedAgencies = Array.isArray(agencies) ? agencies.map(agency => ({
     id: agency.id,
     name: agency.name,
-    code: `AG${agency.id.toString().padStart(3, '0')}`, // Generate code from ID
-    city: agency.city || ''
+    code: agency.name.substring(0, 3).toUpperCase(), // Generate a code from name
+    city: agency.city || 'Non spécifiée'
   })) : [];
 
   return (
@@ -88,7 +96,7 @@ const AdminGestionChefsAgence = () => {
           <CardHeader>
             <CardTitle>Créer un nouveau Chef d'Agence</CardTitle>
             <CardDescription>
-              Créez un compte chef d'agence pour gérer une agence spécifique.
+              Créez un compte chef d'agence pour superviser une agence.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -98,7 +106,7 @@ const AdminGestionChefsAgence = () => {
                 <Input
                   id="fullName"
                   {...form.register('fullName')}
-                  placeholder="Ex: Jean Dupont"
+                  placeholder="Ex: Amadou Diallo"
                   required
                 />
                 {form.formState.errors.fullName && (
@@ -107,11 +115,12 @@ const AdminGestionChefsAgence = () => {
               </div>
 
               <div>
-                <Label htmlFor="identifier">Identifiant *</Label>
+                <Label htmlFor="identifier">Email *</Label>
                 <Input
                   id="identifier"
+                  type="email"
                   {...form.register('identifier')}
-                  placeholder="Ex: chef.dakar.dupont"
+                  placeholder="Ex: amadou.diallo@transflow.com"
                   required
                 />
                 {form.formState.errors.identifier && (
@@ -135,10 +144,7 @@ const AdminGestionChefsAgence = () => {
 
               <div>
                 <Label htmlFor="agencyId">Agence *</Label>
-                <Select 
-                  onValueChange={(value) => form.setValue('agencyId', parseInt(value))}
-                  required
-                >
+                <Select onValueChange={(value) => form.setValue('agencyId', parseInt(value))}>
                   <SelectTrigger>
                     <SelectValue placeholder="Sélectionner une agence" />
                   </SelectTrigger>
@@ -156,8 +162,8 @@ const AdminGestionChefsAgence = () => {
               </div>
 
               <div className="flex space-x-2">
-                <Button type="submit" disabled={createChefMutation.isPending}>
-                  {createChefMutation.isPending ? 'Création...' : 'Créer Chef d\'Agence'}
+                <Button type="submit" disabled={createChefAgenceMutation.isPending}>
+                  {createChefAgenceMutation.isPending ? 'Création...' : 'Créer Chef d\'Agence'}
                 </Button>
                 <Button type="button" variant="outline" onClick={() => setShowCreateForm(false)}>
                   Annuler
