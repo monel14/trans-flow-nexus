@@ -91,7 +91,9 @@ export function useOperations(filters?: OperationFilters) {
       const transformedData = (data || []).map((item: any) => ({
         ...item,
         operation_type: item.operation_types ? { name: item.operation_types.name } : undefined,
-        profiles: item.profiles?.[0] ? { name: item.profiles[0].name } : undefined
+        profiles: item.profiles && Array.isArray(item.profiles) && item.profiles.length > 0 
+          ? { name: item.profiles[0].name } 
+          : undefined
       }));
 
       return transformedData as Operation[];
@@ -124,7 +126,9 @@ export function useCreateOperation() {
       const { data, error } = await supabase
         .from('operations')
         .insert({
-          ...operationData,
+          operation_type_id: operationData.operation_type_id,
+          amount: operationData.amount,
+          operation_data: operationData.operation_data,
           reference_number: operationData.reference_number || `OP-${Date.now()}`,
           status: 'pending',
           initiator_id: user.id,
@@ -163,7 +167,9 @@ export function useOperation(operationId: string) {
       const transformedData = {
         ...data,
         operation_type: data.operation_types ? { name: data.operation_types.name } : undefined,
-        profiles: data.profiles?.[0] ? { name: data.profiles[0].name } : undefined
+        profiles: data.profiles && Array.isArray(data.profiles) && data.profiles.length > 0 
+          ? { name: data.profiles[0].name } 
+          : undefined
       };
 
       return transformedData as Operation;

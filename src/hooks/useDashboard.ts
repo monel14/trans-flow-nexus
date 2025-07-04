@@ -1,3 +1,4 @@
+
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -50,6 +51,44 @@ export interface ChefAgenceDashboardKPIs {
   };
 }
 
+export interface AdminDashboardKPIs {
+  volume_today: {
+    amount: number;
+    formatted: string;
+    growth_percentage: number;
+  };
+  operations_system: {
+    total_today: number;
+    subtitle: string;
+  };
+  network_stats: {
+    total_agencies: number;
+    subtitle: string;
+  };
+  monthly_revenue: {
+    amount: number;
+    formatted: string;
+    subtitle: string;
+  };
+  critical_alerts: {
+    pending_validations: number;
+    urgent_tickets: number;
+    low_balance_agents: number;
+  };
+}
+
+export interface SousAdminDashboardKPIs {
+  pending_urgent: number;
+  completed_today: number;
+  support_tickets: number;
+  avg_processing_time: string;
+  my_assignments: Array<{
+    title: string;
+    assigned_by: { name: string };
+    priority: string;
+  }>;
+}
+
 export interface AgentPerformance {
   id: string;
   name: string;
@@ -59,7 +98,15 @@ export interface AgentPerformance {
   performance_level: 'excellent' | 'good' | 'average' | 'poor';
 }
 
-// Mock data for AgentDashboardKPIs
+export interface TopAgencyPerformance {
+  id: string;
+  name: string;
+  city: string;
+  volume_today: number;
+  operations_count: number;
+}
+
+// Mock data functions
 const getMockAgentDashboardKPIs = (): AgentDashboardKPIs => ({
   agent_balance: {
     formatted: '15,000 XOF',
@@ -84,7 +131,6 @@ const getMockAgentDashboardKPIs = (): AgentDashboardKPIs => ({
   }
 });
 
-// Mock data for ChefAgenceDashboardKPIs
 const getMockChefAgenceDashboardKPIs = (): ChefAgenceDashboardKPIs => ({
   chef_balance: {
     formatted: '25,000 XOF',
@@ -110,7 +156,51 @@ const getMockChefAgenceDashboardKPIs = (): ChefAgenceDashboardKPIs => ({
   }
 });
 
-// Mock data for AgentPerformance
+const getMockAdminDashboardKPIs = (): AdminDashboardKPIs => ({
+  volume_today: {
+    amount: 1500000,
+    formatted: '1,500,000 XOF',
+    growth_percentage: 15.3
+  },
+  operations_system: {
+    total_today: 247,
+    subtitle: 'Opérations aujourd\'hui'
+  },
+  network_stats: {
+    total_agencies: 12,
+    subtitle: 'Agences actives'
+  },
+  monthly_revenue: {
+    amount: 45000000,
+    formatted: '45,000,000 XOF',
+    subtitle: 'Revenus ce mois'
+  },
+  critical_alerts: {
+    pending_validations: 3,
+    urgent_tickets: 1,
+    low_balance_agents: 5
+  }
+});
+
+const getMockSousAdminDashboardKPIs = (): SousAdminDashboardKPIs => ({
+  pending_urgent: 2,
+  completed_today: 8,
+  support_tickets: 4,
+  avg_processing_time: '2.5',
+  my_assignments: [
+    {
+      title: 'Validation des comptes agents',
+      assigned_by: { name: 'Admin Principal' },
+      priority: 'urgent'
+    },
+    {
+      title: 'Révision des opérations suspectes',
+      assigned_by: { name: 'Chef de Service' },
+      priority: 'normal'
+    }
+  ]
+});
+
 const getMockAgentPerformance = (): AgentPerformance[] => [
   {
     id: '1',
@@ -135,14 +225,30 @@ const getMockAgentPerformance = (): AgentPerformance[] => [
     volume_week_formatted: '30,000 XOF',
     success_rate: 85,
     performance_level: 'average'
+  }
+];
+
+const getMockTopAgenciesPerformance = (): TopAgencyPerformance[] => [
+  {
+    id: '1',
+    name: 'Agence Centrale Abidjan',
+    city: 'Abidjan',
+    volume_today: 450000,
+    operations_count: 28
   },
   {
-    id: '4',
-    name: 'Aisha Koulibaly',
-    operations_week: 10,
-    volume_week_formatted: '20,000 XOF',
-    success_rate: 80,
-    performance_level: 'poor'
+    id: '2',
+    name: 'Agence Bouaké',
+    city: 'Bouaké',
+    volume_today: 320000,
+    operations_count: 22
+  },
+  {
+    id: '3',
+    name: 'Agence Yamoussoukro',
+    city: 'Yamoussoukro',
+    volume_today: 280000,
+    operations_count: 19
   }
 ];
 
@@ -150,20 +256,23 @@ export function useAgentDashboardKPIs() {
   return useQuery({
     queryKey: ['agent-dashboard-kpis'],
     queryFn: async (): Promise<AgentDashboardKPIs> => {
-      const { data, error } = await supabase.rpc('get_agent_dashboard_kpis');
+      try {
+        const { data, error } = await supabase.rpc('get_agent_dashboard_kpis');
 
-      if (error) {
-        console.error('Error fetching agent dashboard KPIs:', error);
-        // Return mock data on error
+        if (error) {
+          console.error('Error fetching agent dashboard KPIs:', error);
+          return getMockAgentDashboardKPIs();
+        }
+
+        if (!data) {
+          return getMockAgentDashboardKPIs();
+        }
+
+        return data as AgentDashboardKPIs;
+      } catch (error) {
+        console.error('Error in useAgentDashboardKPIs:', error);
         return getMockAgentDashboardKPIs();
       }
-
-      if (!data) {
-        return getMockAgentDashboardKPIs();
-      }
-
-      // Safely convert the RPC response to our interface
-      return data as unknown as AgentDashboardKPIs;
     }
   });
 }
@@ -172,20 +281,43 @@ export function useChefAgenceDashboardKPIs() {
   return useQuery({
     queryKey: ['chef-agence-dashboard-kpis'], 
     queryFn: async (): Promise<ChefAgenceDashboardKPIs> => {
-      const { data, error } = await supabase.rpc('get_chef_agence_dashboard_kpis');
+      try {
+        const { data, error } = await supabase.rpc('get_chef_agence_dashboard_kpis');
 
-      if (error) {
-        console.error('Error fetching chef agence dashboard KPIs:', error);
-        // Return mock data on error
+        if (error) {
+          console.error('Error fetching chef agence dashboard KPIs:', error);
+          return getMockChefAgenceDashboardKPIs();
+        }
+
+        if (!data) {
+          return getMockChefAgenceDashboardKPIs();
+        }
+
+        return data as ChefAgenceDashboardKPIs;
+      } catch (error) {
+        console.error('Error in useChefAgenceDashboardKPIs:', error);
         return getMockChefAgenceDashboardKPIs();
       }
+    }
+  });
+}
 
-      if (!data) {
-        return getMockChefAgenceDashboardKPIs();
-      }
+export function useAdminDashboardKPIs() {
+  return useQuery({
+    queryKey: ['admin-dashboard-kpis'],
+    queryFn: async (): Promise<AdminDashboardKPIs> => {
+      // For now, return mock data since admin KPI RPC doesn't exist yet
+      return getMockAdminDashboardKPIs();
+    }
+  });
+}
 
-      // Safely convert the RPC response to our interface
-      return data as unknown as ChefAgenceDashboardKPIs;
+export function useSousAdminDashboard() {
+  return useQuery({
+    queryKey: ['sous-admin-dashboard'],
+    queryFn: async (): Promise<SousAdminDashboardKPIs> => {
+      // For now, return mock data since sous admin KPI RPC doesn't exist yet
+      return getMockSousAdminDashboardKPIs();
     }
   });
 }
@@ -194,20 +326,33 @@ export function useChefAgentsPerformance(limit: number = 10) {
   return useQuery({
     queryKey: ['chef-agents-performance', limit],
     queryFn: async (): Promise<AgentPerformance[]> => {
-      const { data, error } = await supabase.rpc('get_chef_agents_performance', { p_limit: limit });
+      try {
+        const { data, error } = await supabase.rpc('get_chef_agents_performance', { p_limit: limit });
 
-      if (error) {
-        console.error('Error fetching chef agents performance:', error);
-        // Return mock data on error
+        if (error) {
+          console.error('Error fetching chef agents performance:', error);
+          return getMockAgentPerformance();
+        }
+
+        if (!data || !Array.isArray(data)) {
+          return getMockAgentPerformance();
+        }
+
+        return data as AgentPerformance[];
+      } catch (error) {
+        console.error('Error in useChefAgentsPerformance:', error);
         return getMockAgentPerformance();
       }
+    }
+  });
+}
 
-      if (!data || !Array.isArray(data)) {
-        return getMockAgentPerformance();
-      }
-
-      // Safely convert array response
-      return data as unknown as AgentPerformance[];
+export function useTopAgenciesPerformance(limit: number = 5) {
+  return useQuery({
+    queryKey: ['top-agencies-performance', limit],
+    queryFn: async (): Promise<TopAgencyPerformance[]> => {
+      // For now, return mock data since this RPC doesn't exist yet
+      return getMockTopAgenciesPerformance().slice(0, limit);
     }
   });
 }

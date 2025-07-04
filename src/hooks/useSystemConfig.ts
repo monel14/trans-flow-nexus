@@ -93,7 +93,7 @@ export function useSystemConfig() {
 
       // Safely merge the config with defaults
       const config = typeof data.config === 'object' && data.config !== null 
-        ? { ...defaultConfig, ...data.config } 
+        ? { ...defaultConfig, ...data.config as Record<string, any> } 
         : defaultConfig;
 
       return config as SystemConfig;
@@ -117,7 +117,7 @@ export function useUpdateSystemConfig() {
         ? currentData.config as Record<string, any>
         : {};
 
-      const updatedConfig = { ...currentConfig, ...newConfig };
+      const updatedConfig = { ...currentConfig, ...newConfig as Record<string, any> };
 
       const { data, error } = await supabase
         .from('system_settings')
@@ -158,7 +158,7 @@ export function useResetSystemConfig() {
       const { data, error } = await supabase
         .from('system_settings')
         .update({ 
-          config: defaultConfig,
+          config: defaultConfig as Record<string, any>,
           updated_at: new Date().toISOString() 
         })
         .eq('id', 1)
