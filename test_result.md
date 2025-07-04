@@ -156,6 +156,18 @@ backend:
         agent: "testing"
         comment: "Error handling is properly implemented. The server returns appropriate error responses for invalid requests, including 404 for non-existent endpoints and 422 for invalid request bodies."
 
+  - task: "Mock data generation scripts"
+    implemented: true
+    working: true
+    file: "generate_mock_data_complete.sql, verify_mock_data.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Scripts complets de génération de données mock créés : SQL pour exécution directe dans Supabase (contourne RLS), scripts Python pour vérification, guide utilisateur détaillé"
+
 frontend:
   - task: "Supabase RLS infinite recursion fix"
     implemented: false
