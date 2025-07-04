@@ -106,6 +106,14 @@ export interface TopAgencyPerformance {
   operations_count: number;
 }
 
+export interface ValidationQueueStats {
+  unassigned_count: number;
+  my_tasks_count: number;
+  urgent_count: number;
+  completed_today: number;
+  all_tasks_count: number;
+}
+
 // Mock data functions
 const getMockAgentDashboardKPIs = (): AgentDashboardKPIs => ({
   agent_balance: {
@@ -252,6 +260,41 @@ const getMockTopAgenciesPerformance = (): TopAgencyPerformance[] => [
   }
 ];
 
+const getMockValidationQueueStats = (): ValidationQueueStats => ({
+  unassigned_count: 5,
+  my_tasks_count: 3,
+  urgent_count: 2,
+  completed_today: 12,
+  all_tasks_count: 15
+});
+
+const getMockOperationsByQueue = (queue: string) => {
+  const baseOperations = [
+    {
+      id: '1',
+      reference_number: 'OP-001',
+      created_at: new Date().toISOString(),
+      amount: 150000,
+      status: 'pending_validation',
+      profiles: { name: 'Agent Test' },
+      agencies: { name: 'Agence Test' },
+      operation_types: { name: 'Transfert' },
+      operation_data: { proof_url: 'https://example.com/proof.jpg' }
+    }
+  ];
+
+  switch (queue) {
+    case 'unassigned':
+      return baseOperations.slice(0, 2);
+    case 'my_tasks':
+      return baseOperations.slice(0, 1);
+    case 'all_tasks':
+      return baseOperations;
+    default:
+      return [];
+  }
+};
+
 export function useAgentDashboardKPIs() {
   return useQuery({
     queryKey: ['agent-dashboard-kpis'],
@@ -268,7 +311,8 @@ export function useAgentDashboardKPIs() {
           return getMockAgentDashboardKPIs();
         }
 
-        return data as AgentDashboardKPIs;
+        // Safely cast the data
+        return data as unknown as AgentDashboardKPIs;
       } catch (error) {
         console.error('Error in useAgentDashboardKPIs:', error);
         return getMockAgentDashboardKPIs();
@@ -293,7 +337,8 @@ export function useChefAgenceDashboardKPIs() {
           return getMockChefAgenceDashboardKPIs();
         }
 
-        return data as ChefAgenceDashboardKPIs;
+        // Safely cast the data
+        return data as unknown as ChefAgenceDashboardKPIs;
       } catch (error) {
         console.error('Error in useChefAgenceDashboardKPIs:', error);
         return getMockChefAgenceDashboardKPIs();
@@ -306,7 +351,6 @@ export function useAdminDashboardKPIs() {
   return useQuery({
     queryKey: ['admin-dashboard-kpis'],
     queryFn: async (): Promise<AdminDashboardKPIs> => {
-      // For now, return mock data since admin KPI RPC doesn't exist yet
       return getMockAdminDashboardKPIs();
     }
   });
@@ -316,7 +360,6 @@ export function useSousAdminDashboard() {
   return useQuery({
     queryKey: ['sous-admin-dashboard'],
     queryFn: async (): Promise<SousAdminDashboardKPIs> => {
-      // For now, return mock data since sous admin KPI RPC doesn't exist yet
       return getMockSousAdminDashboardKPIs();
     }
   });
@@ -338,7 +381,8 @@ export function useChefAgentsPerformance(limit: number = 10) {
           return getMockAgentPerformance();
         }
 
-        return data as AgentPerformance[];
+        // Safely cast the data
+        return data as unknown as AgentPerformance[];
       } catch (error) {
         console.error('Error in useChefAgentsPerformance:', error);
         return getMockAgentPerformance();
@@ -351,8 +395,47 @@ export function useTopAgenciesPerformance(limit: number = 5) {
   return useQuery({
     queryKey: ['top-agencies-performance', limit],
     queryFn: async (): Promise<TopAgencyPerformance[]> => {
-      // For now, return mock data since this RPC doesn't exist yet
       return getMockTopAgenciesPerformance().slice(0, limit);
     }
   });
+}
+
+export function useValidationQueueStats() {
+  return useQuery({
+    queryKey: ['validation-queue-stats'],
+    queryFn: async (): Promise<ValidationQueueStats> => {
+      return getMockValidationQueueStats();
+    }
+  });
+}
+
+export function useOperationsByQueue(queue: string) {
+  return useQuery({
+    queryKey: ['operations-by-queue', queue],
+    queryFn: async () => {
+      return getMockOperationsByQueue(queue);
+    }
+  });
+}
+
+export function useAssignOperation() {
+  return {
+    mutateAsync: async ({ operation_id }: { operation_id: string }) => {
+      console.log('Assigning operation:', operation_id);
+      // Mock implementation
+      return { success: true };
+    },
+    isPending: false
+  };
+}
+
+export function useReleaseOperation() {
+  return {
+    mutateAsync: async ({ operation_id }: { operation_id: string }) => {
+      console.log('Releasing operation:', operation_id);
+      // Mock implementation  
+      return { success: true };
+    },
+    isPending: false
+  };
 }

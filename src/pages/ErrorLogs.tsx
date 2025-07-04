@@ -29,22 +29,21 @@ const ErrorLogs = () => {
   const { data: logsData, isLoading, error } = useErrorLogs({
     level: levelFilter,
     limit: limit,
-    offset: (page - 1) * limit,
   });
 
-  // Handle the data structure - it might be an array or an object with error_logs and total_count
-  const logs = Array.isArray(logsData) ? logsData : (logsData?.error_logs || []);
-  const totalCount = Array.isArray(logsData) ? logsData.length : (logsData?.total_count || 0);
+  // Handle the data structure - it should be an array of error logs
+  const logs = Array.isArray(logsData) ? logsData : [];
+  const totalCount = logs.length;
   const totalPages = Math.ceil(totalCount / limit);
 
   const handleLevelFilterChange = (value: string) => {
     setLevelFilter(value);
-    setPage(1); // Reset to the first page when the filter changes
+    setPage(1);
   };
 
   const handleSearchTermChange = (term: string) => {
     setSearchTerm(term);
-    setPage(1); // Reset to the first page when the search term changes
+    setPage(1);
   };
 
   const handlePageChange = (newPage: number) => {
@@ -53,7 +52,7 @@ const ErrorLogs = () => {
 
   const handleLimitChange = (newLimit: number) => {
     setLimit(newLimit);
-    setPage(1); // Reset to the first page when the limit changes
+    setPage(1);
   };
 
   if (isLoading) {
