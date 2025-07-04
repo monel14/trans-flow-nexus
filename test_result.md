@@ -213,9 +213,9 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Supabase RLS infinite recursion fix"
-    - "React Query hook destructuring"
-    - "Missing exports in hooks"
+    - "Mock data generation scripts"
+    - "Application React fonctionnelle"
+    - "Intégration Supabase complète"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
