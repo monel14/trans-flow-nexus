@@ -37,7 +37,8 @@ export const useCreateAgent = () => {
         throw new Error(error.message);
       }
 
-      const response = data as unknown as RPCResponse;
+      // Conversion sécurisée de la réponse
+      const response = (typeof data === 'string' ? JSON.parse(data) : data) as RPCResponse;
       console.log('✅ Réponse RPC create_agent:', response);
 
       if (response.status === 'error') {
@@ -99,7 +100,8 @@ export const useCreateChefAgence = () => {
         throw new Error(error.message);
       }
 
-      const response = data as unknown as RPCResponse;
+      // Conversion sécurisée de la réponse
+      const response = (typeof data === 'string' ? JSON.parse(data) : data) as RPCResponse;
       console.log('✅ Réponse RPC create_chef_agence:', response);
 
       if (response.status === 'error') {
@@ -163,7 +165,8 @@ export const useCreateSousAdmin = () => {
         throw new Error(error.message);
       }
 
-      const response = data as unknown as RPCResponse;
+      // Conversion sécurisée de la réponse
+      const response = (typeof data === 'string' ? JSON.parse(data) : data) as RPCResponse;
       console.log('✅ Réponse RPC create_sous_admin:', response);
 
       if (response.status === 'error') {

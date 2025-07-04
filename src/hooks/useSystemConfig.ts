@@ -91,8 +91,9 @@ export function useUpdateSystemConfig() {
         throw new Error('Impossible de récupérer la configuration actuelle');
       }
       
-      // Fusionner avec les nouvelles données
-      const mergedConfig = { ...currentData.config, ...configData };
+      // Fusionner avec les nouvelles données (avec vérification de type)
+      const currentConfig = currentData?.config || {};
+      const mergedConfig = { ...currentConfig, ...configData };
       
       // Valider la configuration fusionnée
       const validatedConfig = SystemConfigSchema.parse(mergedConfig);
@@ -159,9 +160,10 @@ export function useUpdateSystemSetting() {
       
       if (fetchError) throw fetchError;
       
-      // Mettre à jour le paramètre spécifique
+      // Mettre à jour le paramètre spécifique (avec vérification de type)
+      const currentConfig = currentData?.config || {};
       const updatedConfig = {
-        ...(currentData.config || {}),
+        ...currentConfig,
         [settingName]: value
       };
       

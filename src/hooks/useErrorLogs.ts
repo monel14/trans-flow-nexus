@@ -1,325 +1,240 @@
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSupabaseQuery, useSupabaseMutation } from './useSupabase';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
 
 export interface ErrorLog {
   id: string;
-  timestamp: string;
   level: 'error' | 'warning' | 'info' | 'debug' | 'critical';
-  source: 'api' | 'database' | 'frontend' | 'system' | 'external';
+  source: string;
   message: string;
   stack_trace?: string;
-  context?: Record<string, any>;
   user_id?: string;
   user_name?: string;
-  request_url?: string;
-  request_method?: string;
-  response_status?: number;
-  session_id?: string;
-  ip_address?: string;
-  user_agent?: string;
+  timestamp: string;
+  context?: any;
   resolved: boolean;
   resolved_at?: string;
   resolved_by?: string;
   resolution_notes?: string;
-  created_at: string;
-}
-
-export interface ErrorLogFilters {
-  level?: string;
-  source?: string;
-  resolved?: boolean;
-  user_id?: string;
-  date_from?: string;
-  date_to?: string;
-}
-
-export interface CreateErrorLogParams {
-  level: ErrorLog['level'];
-  source: ErrorLog['source'];
-  message: string;
-  stack_trace?: string;
-  context?: Record<string, any>;
   request_url?: string;
   request_method?: string;
   response_status?: number;
+  session_id?: string;
+  user_agent?: string;
+  ip_address?: string;
+  created_at: string;
 }
 
-// Hook pour récupérer les logs d'erreur avec filtres
-export const useErrorLogs = (filters: ErrorLogFilters = {}, limit: number = 50) => {
-  return useQuery({
-    queryKey: ['error-logs', filters, limit],
-    queryFn: async () => {
+export interface ErrorLogStats {
+  total_errors: number;
+  critical_errors: number;
+  unresolved_errors: number;
+  errors_today: number;
+  most_common_sources: Array<{
+    source: string;
+    count: number;
+  }>;
+}
+
+// Hook to get error logs with filtering
+export function useErrorLogs(filters?: {
+  level?: string;
+  source?: string;
+  resolved?: boolean;
+  limit?: number;
+}) {
+  return useSupabaseQuery(
+    ['error-logs', filters],
+    async () => {
       let query = supabase
         .from('error_logs')
         .select('*')
-        .order('created_at', { ascending: false })
-        .limit(limit);
+        .order('timestamp', { ascending: false });
 
-      // Appliquer les filtres
-      if (filters.level) {
+      if (filters?.level) {
         query = query.eq('level', filters.level);
       }
-      if (filters.source) {
+
+      if (filters?.source) {
         query = query.eq('source', filters.source);
       }
-      if (filters.resolved !== undefined) {
+
+      if (filters?.resolved !== undefined) {
         query = query.eq('resolved', filters.resolved);
       }
-      if (filters.user_id) {
-        query = query.eq('user_id', filters.user_id);
-      }
-      if (filters.date_from) {
-        query = query.gte('created_at', filters.date_from);
-      }
-      if (filters.date_to) {
-        query = query.lte('created_at', filters.date_to);
+
+      if (filters?.limit) {
+        query = query.limit(filters.limit);
       }
 
       const { data, error } = await query;
+
       if (error) throw error;
-      return (data?.map(log => ({
+      
+      // Mapper les données vers notre interface
+      return (data || []).map(log => ({
         ...log,
-        id: log.id.toString(),
-        timestamp: log.created_at,
-      })) as ErrorLog[]) || [];
-    },
-    staleTime: 30 * 1000, // 30 seconds
-  });
-};
+        id: log.id.toString(), // Convertir number en string
+      })) as ErrorLog[];
+    }
+  );
+}
 
-// Hook pour créer un log d'erreur
-export const useCreateErrorLog = () => {
-  const queryClient = useQueryClient();
+// Hook to get error log statistics
+export function useErrorLogsStats() {
+  return useSupabaseQuery(
+    ['error-logs-stats'],
+    async () => {
+      // Get basic stats
+      const { data: stats, error: statsError } = await supabase
+        .from('error_logs')
+        .select('level, source, resolved, created_at')
+        .order('created_at', { ascending: false });
 
-  return useMutation({
-    mutationFn: async (params: CreateErrorLogParams) => {
-      const { data, error } = await supabase.rpc('log_error', {
-        p_level: params.level,
-        p_source: params.source,
-        p_message: params.message,
-        p_stack_trace: params.stack_trace || null,
-        p_context: params.context || {},
-        p_request_url: params.request_url || null,
-        p_request_method: params.request_method || null,
-        p_response_status: params.response_status || null,
+      if (statsError) throw statsError;
+
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+      const total_errors = stats?.length || 0;
+      const critical_errors = stats?.filter(log => log.level === 'critical').length || 0;
+      const unresolved_errors = stats?.filter(log => !log.resolved).length || 0;
+      const errors_today = stats?.filter(log => 
+        new Date(log.created_at) >= today
+      ).length || 0;
+
+      // Calculate most common sources
+      const sourceCounts: { [key: string]: number } = {};
+      stats?.forEach(log => {
+        sourceCounts[log.source] = (sourceCounts[log.source] || 0) + 1;
       });
 
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['error-logs'] });
-    },
-  });
-};
+      const most_common_sources = Object.entries(sourceCounts)
+        .map(([source, count]) => ({ source, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
 
-// Hook pour marquer un log comme résolu
-export const useResolveErrorLog = () => {
-  const queryClient = useQueryClient();
+      return {
+        total_errors,
+        critical_errors,
+        unresolved_errors,
+        errors_today,
+        most_common_sources,
+      } as ErrorLogStats;
+    }
+  );
+}
 
-  return useMutation({
-    mutationFn: async ({ 
-      logId, 
-      resolutionNotes 
-    }: { 
-      logId: string; 
-      resolutionNotes?: string; 
-    }) => {
+// Hook to resolve an error log
+export function useResolveErrorLog() {
+  return useSupabaseMutation<any, {
+    logId: string;
+    resolution_notes?: string;
+  }>(
+    async ({ logId, resolution_notes }) => {
       const { data, error } = await supabase
         .from('error_logs')
         .update({
           resolved: true,
           resolved_at: new Date().toISOString(),
-          resolution_notes: resolutionNotes,
+          resolution_notes,
         })
-        .eq('id', parseInt(logId))
+        .eq('id', parseInt(logId)) // Convertir string en number
         .select()
         .single();
 
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['error-logs'] });
-      toast({
-        title: "Log résolu",
-        description: "Le log d'erreur a été marqué comme résolu",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Erreur",
-        description: "Impossible de marquer le log comme résolu",
-        variant: "destructive",
-      });
-    },
-  });
-};
+    {
+      invalidateQueries: [['error-logs'], ['error-logs-stats']],
+      successMessage: 'Erreur marquée comme résolue',
+      errorMessage: 'Erreur lors de la résolution',
+    }
+  );
+}
 
-// Hook pour supprimer un log d'erreur
-export const useDeleteErrorLog = () => {
-  const queryClient = useQueryClient();
+// Hook to clear old error logs
+export function useClearErrorLogs() {
+  return useSupabaseMutation<any, {
+    olderThanDays: number;
+  }>(
+    async ({ olderThanDays }) => {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
 
-  return useMutation({
-    mutationFn: async (logId: string) => {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('error_logs')
         .delete()
-        .eq('id', parseInt(logId));
+        .lt('created_at', cutoffDate.toISOString());
 
-      if (error) throw error;
-      return true;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['error-logs'] });
-      toast({
-        title: "Log supprimé",
-        description: "Le log d'erreur a été supprimé avec succès",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Erreur",
-        description: "Impossible de supprimer le log d'erreur",
-        variant: "destructive",
-      });
-    },
-  });
-};
-
-// Hook pour nettoyer les anciens logs
-export const useCleanupOldLogs = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async () => {
-      const { data, error } = await supabase.rpc('cleanup_old_error_logs');
       if (error) throw error;
       return data;
     },
-    onSuccess: (deletedCount) => {
-      queryClient.invalidateQueries({ queryKey: ['error-logs'] });
-      toast({
-        title: "Nettoyage terminé",
-        description: `${deletedCount} anciens logs ont été supprimés`,
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Erreur de nettoyage",
-        description: "Impossible de nettoyer les anciens logs",
-        variant: "destructive",
-      });
-    },
-  });
-};
+    {
+      invalidateQueries: [['error-logs'], ['error-logs-stats']],
+      successMessage: 'Anciens logs supprimés',
+      errorMessage: 'Erreur lors de la suppression',
+    }
+  );
+}
 
-// Hook pour les statistiques des logs d'erreur
-export const useErrorLogsStats = () => {
-  return useQuery({
-    queryKey: ['error-logs-stats'],
-    queryFn: async () => {
+// Hook to bulk resolve error logs
+export function useBulkResolveErrorLogs() {
+  return useSupabaseMutation<any, {
+    logIds: string[];
+    resolution_notes?: string;
+  }>(
+    async ({ logIds, resolution_notes }) => {
+      const numericIds = logIds.map(id => parseInt(id)); // Convertir strings en numbers
+      
       const { data, error } = await supabase
         .from('error_logs')
-        .select('level, source, resolved, created_at');
+        .update({
+          resolved: true,
+          resolved_at: new Date().toISOString(),
+          resolution_notes,
+        })
+        .in('id', numericIds);
 
       if (error) throw error;
-      
-      const logs = data || [];
-      const today = new Date();
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-      
-      const stats = {
-        total: logs.length,
-        by_level: logs.reduce((acc, log) => {
-          acc[log.level] = (acc[log.level] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>),
-        by_source: logs.reduce((acc, log) => {
-          acc[log.source] = (acc[log.source] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>),
-        resolved: logs.filter(log => log.resolved).length,
-        unresolved: logs.filter(log => !log.resolved).length,
-        today: logs.filter(log => 
-          new Date(log.created_at).toDateString() === today.toDateString()
-        ).length,
-        yesterday: logs.filter(log => 
-          new Date(log.created_at).toDateString() === yesterday.toDateString()
-        ).length,
-      };
-
-      return stats;
+      return data;
     },
-    staleTime: 60 * 1000, // 1 minute
-  });
-};
+    {
+      invalidateQueries: [['error-logs'], ['error-logs-stats']],
+      successMessage: 'Erreurs marquées comme résolues',
+      errorMessage: 'Erreur lors de la résolution groupée',
+    }
+  );
+}
 
-// Fonction utilitaire pour logger des erreurs depuis le frontend
-export const logError = async (
-  level: ErrorLog['level'],
-  source: ErrorLog['source'],
+// Fonction utilitaire pour logger des erreurs
+export function logError(
+  level: 'error' | 'warning' | 'info' | 'debug' | 'critical',
+  source: string,
   message: string,
   error?: Error,
-  context?: Record<string, any>
-) => {
-  try {
-    const params: CreateErrorLogParams = {
+  context?: any
+) {
+  // Log vers la console en développement
+  if (process.env.NODE_ENV === 'development') {
+    console.error(`[${level.toUpperCase()}] ${source}: ${message}`, error, context);
+  }
+
+  // Envoyer vers Supabase (asynchrone, sans bloquer)
+  supabase
+    .from('error_logs')
+    .insert({
       level,
       source,
       message,
-      context: {
-        ...context,
-        url: window.location.href,
-        userAgent: navigator.userAgent,
-        timestamp: new Date().toISOString(),
-      },
-    };
-
-    if (error) {
-      params.stack_trace = error.stack;
-      params.context = {
-        ...params.context,
-        error_name: error.name,
-        error_message: error.message,
-      };
-    }
-
-    const { error: logError } = await supabase.rpc('log_error', {
-      p_level: params.level,
-      p_source: params.source,
-      p_message: params.message,
-      p_stack_trace: params.stack_trace || null,
-      p_context: params.context || {},
-      p_request_url: window.location.href,
-      p_request_method: 'GET',
-      p_response_status: null,
+      stack_trace: error?.stack,
+      context: context || {},
+      timestamp: new Date().toISOString(),
+    })
+    .then(({ error: insertError }) => {
+      if (insertError) {
+        console.error('Failed to log error to Supabase:', insertError);
+      }
     });
-
-    if (logError) {
-      console.error('Failed to log error:', logError);
-    }
-  } catch (err) {
-    console.error('Error logging error:', err);
-  }
-};
-
-// Export des fonctions utilitaires additionnelles
-export const logWarning = async (
-  message: string,
-  context?: Record<string, any>,
-  source: ErrorLog['source'] = 'frontend'
-) => {
-  return logError('warning', source, message, undefined, context);
-};
-
-export const logInfo = async (
-  message: string,
-  context?: Record<string, any>,
-  source: ErrorLog['source'] = 'frontend'
-) => {
-  return logError('info', source, message, undefined, context);
-};
+}
