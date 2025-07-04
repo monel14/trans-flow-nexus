@@ -229,3 +229,5 @@ agent_communication:
     message: "PHASE 2 REQUISE : Appliquer le correctif SQL RLS dans Supabase pour résoudre le problème d'authentification critique"
   - agent: "testing"
     message: "Completed backend API testing. Created comprehensive backend_test.py script that tests all required endpoints. All backend tests are passing. MongoDB connectivity is working correctly. CORS is properly configured. Error handling is implemented correctly. The backend is fully functional and ready for use."
+  - agent: "main"
+    message: "NOUVELLE TÂCHE TERMINÉE : Génération complète de données mock pour TransFlow Nexus. Scripts SQL et Python créés pour générer : 2 agences (Douala/Yaoundé), comptes démonstration tous rôles (14 comptes), types d'opérations réalistes ouest-africaines, 48+ opérations avec statuts variés, commissions calculées, tickets de recharge, notifications. Guide utilisateur complet fourni. Prêt pour démonstration complète de l'application."
