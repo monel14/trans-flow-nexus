@@ -101,3 +101,74 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+user_problem_statement: "Fix bugs in TransFlow Nexus application - primarily Supabase RLS infinite recursion and React Query hook issues"
+
+backend:
+  - task: "MongoDB basic functionality"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Basic MongoDB CRUD operations working"
+
+frontend:
+  - task: "Supabase RLS infinite recursion fix"
+    implemented: false
+    working: false
+    file: "fix_rls_recursion_v2.sql"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "main"
+        comment: "Critical bug: RLS policies cause infinite recursion preventing authentication"
+  
+  - task: "React Query hook destructuring"
+    implemented: false
+    working: false
+    file: "Dashboard components"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "main"
+        comment: "Components incorrectly destructuring { operations } from useOperations hook"
+
+  - task: "Missing exports in hooks"
+    implemented: false
+    working: false
+    file: "useOperationTypes.ts, useCommissions.ts"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "main"
+        comment: "Missing exports for CommissionRule, useOperationTypeFields, useCommissionsStats"
+
+metadata:
+  created_by: "main_agent"
+  version: "1.0"
+  test_sequence: 1
+  run_ui: false
+
+test_plan:
+  current_focus:
+    - "Supabase RLS infinite recursion fix"
+    - "React Query hook destructuring"
+    - "Missing exports in hooks"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "main"
+    message: "Starting bug fixes - Phase 1: Frontend React Query issues, Phase 2: Supabase RLS fix instructions"
