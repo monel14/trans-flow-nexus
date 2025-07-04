@@ -1089,6 +1089,11 @@ class MockDataGenerator:
             # Étape 2: Création des agences
             self.create_agencies()
             
+            # Vérifier que les agences ont été créées
+            if not self.agencies:
+                print("❌ ERREUR: Aucune agence créée, impossible de continuer")
+                return
+            
             # Étape 3: Création des types d'opérations
             self.create_operation_types()
             
@@ -1121,6 +1126,8 @@ class MockDataGenerator:
             
         except Exception as e:
             print(f"❌ ERREUR CRITIQUE: {e}")
+            import traceback
+            traceback.print_exc()
             raise
 
 def main():
