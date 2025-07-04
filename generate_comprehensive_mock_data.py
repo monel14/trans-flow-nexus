@@ -384,12 +384,18 @@ class MockDataGenerator:
                 elif role == "developer":
                     email = f"developer@transflow.com"
                 elif role == "chef_agence":
-                    city = self.agencies[chef_created]['city'].lower()
-                    email = f"chef.{city}@transflow.com"
+                    if chef_created < len(self.agencies):
+                        city = self.agencies[chef_created]['city'].lower()
+                        email = f"chef.{city}@transflow.com"
+                    else:
+                        email = f"chef{chef_created + 1}@transflow.com"
                 else:  # agent
                     agency_idx = agent_created % len(self.agencies)
-                    city = self.agencies[agency_idx]['city'].lower()
-                    email = f"agent{agent_created + 1}.{city}@transflow.com"
+                    if agency_idx < len(self.agencies):
+                        city = self.agencies[agency_idx]['city'].lower()
+                        email = f"agent{agent_created + 1}.{city}@transflow.com"
+                    else:
+                        email = f"agent{agent_created + 1}@transflow.com"
                 
                 # Mot de passe par défaut
                 password = "Demo123!"
