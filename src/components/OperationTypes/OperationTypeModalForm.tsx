@@ -60,8 +60,15 @@ const OperationTypeModalForm: React.FC<Props> = ({ isOpen, onClose, operationTyp
 
   const createOperationType = useCreateOperationType();
   const updateOperationType = useUpdateOperationType();
-  const { data: operationTypeWithFields } = useOperationTypeFields(operationType?.id);
-  const fields = Array.isArray(operationTypeWithFields) ? operationTypeWithFields : operationTypeWithFields?.operation_type_fields || [];
+  const { data: fieldsData } = useOperationTypeFields(operationType?.id);
+  
+  // Safely extract fields from the response
+  const fields = Array.isArray(fieldsData) 
+    ? fieldsData 
+    : (fieldsData && typeof fieldsData === 'object' && 'operation_type_fields' in fieldsData)
+      ? (fieldsData as any).operation_type_fields || []
+      : [];
+      
   const { data: commissionRules = [] } = useCommissionRules(operationType?.id);
   
   const createField = useCreateOperationTypeField();
@@ -146,7 +153,7 @@ const OperationTypeModalForm: React.FC<Props> = ({ isOpen, onClose, operationTyp
 
       if (operationType) {
         await updateOperationType.mutateAsync({
-          id: operationType.id,
+          id: operationType.id!,
           updates: formData,
         });
         toast({ 
@@ -177,15 +184,15 @@ const OperationTypeModalForm: React.FC<Props> = ({ isOpen, onClose, operationTyp
     try {
       if (editingField) {
         await updateField.mutateAsync({
-          id: editingField.id,
+          id: editingField.id!,
           updates: fieldData,
         });
         toast({ title: "Succès", description: "Champ modifié avec succès." });
       } else {
         await createField.mutateAsync({
-          operation_type_id: operationType!.id,
+          operation_type_id: operationType!.id!,
           ...fieldData,
-        } as Omit<OperationTypeField, 'id' | 'created_at' | 'updated_at'>);
+        } as Omit<OperationTypeField, 'id'>);
         toast({ title: "Succès", description: "Champ créé avec succès." });
       }
       setFieldConfigOpen(false);
@@ -203,15 +210,15 @@ const OperationTypeModalForm: React.FC<Props> = ({ isOpen, onClose, operationTyp
     try {
       if (editingCommission) {
         await updateCommission.mutateAsync({
-          id: editingCommission.id,
+          id: editingCommission.id!,
           updates: commissionData,
         });
         toast({ title: "Succès", description: "Règle de commission modifiée avec succès." });
       } else {
         await createCommission.mutateAsync({
-          operation_type_id: operationType!.id,
+          operation_type_id: operationType!.id!,
           ...commissionData,
-        } as Omit<CommissionRule, 'id' | 'created_at' | 'updated_at'>);
+        } as Omit<CommissionRule, 'id'>);
         toast({ title: "Succès", description: "Règle de commission créée avec succès." });
       }
       setCommissionConfigOpen(false);
@@ -228,7 +235,7 @@ const OperationTypeModalForm: React.FC<Props> = ({ isOpen, onClose, operationTyp
   const handleDeleteField = async (field: OperationTypeField) => {
     if (confirm(`Êtes-vous sûr de vouloir supprimer le champ "${field.label}" ?`)) {
       try {
-        await deleteField.mutateAsync(field.id);
+        await deleteField.mutateAsync(field.id!);
         toast({ title: "Succès", description: "Champ supprimé avec succès." });
       } catch (error: any) {
         toast({ 
@@ -554,9 +561,9 @@ const OperationTypeModalForm: React.FC<Props> = ({ isOpen, onClose, operationTyp
                               <div className="text-sm text-gray-600">
                                 {formatCommissionDisplay(rule)}
                               </div>
-                              {(rule.min_amount > 0 || rule.max_amount) && (
+                              {(rule.min_amount && rule.min_amount > 0 || rule.max_amount) && (
                                 <div className="text-xs text-gray-500">
-                                  Montant: {rule.min_amount} FCFA - {rule.max_amount || '∞'} FCFA
+                                  Montant: {rule.min_amount || 0} FCFA - {rule.max_amount || '∞'} FCFA
                                 </div>
                               )}
                             </div>

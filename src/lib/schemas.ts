@@ -37,6 +37,62 @@ export const operationTypeSchema = z.object({
   status: z.enum(['active', 'inactive', 'archived']).default('active'),
 });
 
+// User creation schemas
+export const createAgentSchema = z.object({
+  fullName: z.string().min(1, 'Le nom complet est requis'),
+  identifier: z.string().min(3, 'L\'identifiant doit contenir au moins 3 caractères'),
+  initialPassword: z.string().min(8, 'Le mot de passe doit contenir au moins 8 caractères'),
+  agencyId: z.number().min(1, 'Une agence doit être sélectionnée'),
+});
+
+export const createChefAgenceSchema = z.object({
+  fullName: z.string().min(1, 'Le nom complet est requis'),
+  identifier: z.string().min(3, 'L\'identifiant doit contenir au moins 3 caractères'),
+  initialPassword: z.string().min(8, 'Le mot de passe doit contenir au moins 8 caractères'),
+  agencyId: z.number().min(1, 'Une agence doit être sélectionnée'),
+});
+
+export const createSousAdminSchema = z.object({
+  fullName: z.string().min(1, 'Le nom complet est requis'),
+  identifier: z.string().min(3, 'L\'identifiant doit contenir au moins 3 caractères'),
+  initialPassword: z.string().min(8, 'Le mot de passe doit contenir au moins 8 caractères'),
+});
+
+// Helper functions
+export function getIdentifierExample(userType: 'agent' | 'chef_agence' | 'sous_admin'): string {
+  switch (userType) {
+    case 'agent':
+      return 'agent.123';
+    case 'chef_agence':
+      return 'chef.abc';
+    case 'sous_admin':
+      return 'admin.xyz';
+    default:
+      return 'user.example';
+  }
+}
+
+export function getIdentifierDescription(userType: 'agent' | 'chef_agence' | 'sous_admin'): string {
+  switch (userType) {
+    case 'agent':
+      return 'Identifiant unique pour l\'agent (ex: agent.123, ag001, etc.)';
+    case 'chef_agence':
+      return 'Identifiant unique pour le chef d\'agence (ex: chef.abc, ca001, etc.)';
+    case 'sous_admin':
+      return 'Identifiant unique pour le sous-administrateur (ex: admin.xyz, sa001, etc.)';
+    default:
+      return 'Identifiant unique pour l\'utilisateur';
+  }
+}
+
 export type OperationTypeField = z.infer<typeof operationTypeFieldSchema>;
 export type CommissionRule = z.infer<typeof commissionRuleSchema>;
 export type OperationType = z.infer<typeof operationTypeSchema>;
+export type CreateAgentValues = z.infer<typeof createAgentSchema>;
+export type CreateChefAgenceValues = z.infer<typeof createChefAgenceSchema>;
+export type CreateSousAdminValues = z.infer<typeof createSousAdminSchema>;
+
+// Export schemas with different names for backward compatibility
+export const CreateAgentSchema = createAgentSchema;
+export const CreateChefAgenceSchema = createChefAgenceSchema;
+export const CreateSousAdminSchema = createSousAdminSchema;

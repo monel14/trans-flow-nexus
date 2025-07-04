@@ -264,7 +264,7 @@ export function useAgentDashboardKPIs() {
           return getMockAgentDashboardKPIs();
         }
 
-        if (!data) {
+        if (!data || typeof data !== 'object') {
           return getMockAgentDashboardKPIs();
         }
 
@@ -289,7 +289,7 @@ export function useChefAgenceDashboardKPIs() {
           return getMockChefAgenceDashboardKPIs();
         }
 
-        if (!data) {
+        if (!data || typeof data !== 'object') {
           return getMockChefAgenceDashboardKPIs();
         }
 

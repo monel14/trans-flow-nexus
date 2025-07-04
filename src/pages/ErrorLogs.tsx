@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useErrorLogs } from '@/hooks/useErrorLogs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,14 +26,15 @@ const ErrorLogs = () => {
   const [page, setPage] = useState<number>(1);
   const [limit, setLimit] = useState<number>(10);
 
-  const { data, isLoading, error } = useErrorLogs({
+  const { data: logsData, isLoading, error } = useErrorLogs({
     level: levelFilter,
-    search: searchTerm,
     limit: limit,
     offset: (page - 1) * limit,
   });
 
-  const totalCount = data?.total_count || 0;
+  // Handle the data structure - it might be an array or an object with error_logs and total_count
+  const logs = Array.isArray(logsData) ? logsData : (logsData?.error_logs || []);
+  const totalCount = Array.isArray(logsData) ? logsData.length : (logsData?.total_count || 0);
   const totalPages = Math.ceil(totalCount / limit);
 
   const handleLevelFilterChange = (value: string) => {
@@ -114,8 +116,8 @@ const ErrorLogs = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {data?.error_logs && data.error_logs.length > 0 ? (
-            data.error_logs.map((log) => (
+          {logs && logs.length > 0 ? (
+            logs.map((log: any) => (
               <Card key={log.id} className="border">
                 <CardHeader className="space-y-1">
                   <div className="flex items-center space-x-2">
