@@ -210,6 +210,10 @@ test_plan:
 
 agent_communication:
   - agent: "main"
-    message: "Starting bug fixes - Phase 1: Frontend React Query issues, Phase 2: Supabase RLS fix instructions"
+    message: "Phase 1 complète : Corrections frontend effectuées et backend testé avec succès"
+  - agent: "testing"
+    message: "Backend entièrement fonctionnel - tous les endpoints testés et validés"
+  - agent: "main"
+    message: "PHASE 2 REQUISE : Appliquer le correctif SQL RLS dans Supabase pour résoudre le problème d'authentification critique"
   - agent: "testing"
     message: "Completed backend API testing. Created comprehensive backend_test.py script that tests all required endpoints. All backend tests are passing. MongoDB connectivity is working correctly. CORS is properly configured. Error handling is implemented correctly. The backend is fully functional and ready for use."
