@@ -1,47 +1,111 @@
-# Instructions pour corriger le problème RLS Supabase
+# Instructions pour corriger le problème RLS Supabase (VERSION CORRIGÉE)
 
-## 🚨 PROBLÈME CRITIQUE 
-L'authentification de votre application TransFlow Nexus est complètement cassée à cause d'une récursion infinie dans les politiques RLS (Row Level Security) de Supabase.
+## 🚨 PROBLÈME RENCONTRÉ 
+Vous avez rencontré l'erreur : `ERROR: 42710: policy "commission_records_own" for table "commission_records" already exists`
 
-## 📋 ÉTAPES POUR CORRIGER
+## 🔧 SOLUTION CORRIGÉE
 
-### 1. Accéder au tableau de bord Supabase
+### UTILISEZ LE NOUVEAU FICHIER : `fix_rls_recursion_v3.sql`
+
+Le problème était que certaines policies existaient déjà. La nouvelle version :
+1. **Désactive temporairement RLS** sur toutes les tables
+2. **Supprime automatiquement toutes les policies existantes** à l'aide d'une boucle dynamique
+3. **Recrée toutes les policies** sans risque de conflit
+
+### 📋 ÉTAPES POUR APPLIQUER LA CORRECTION
+
+#### 1. Accéder au tableau de bord Supabase
 1. Allez sur [https://app.supabase.com](https://app.supabase.com)
 2. Connectez-vous à votre compte
 3. Sélectionnez votre projet TransFlow Nexus (URL: https://khgbnikgsptoflokvtzu.supabase.co)
 
-### 2. Appliquer le correctif SQL
+#### 2. Appliquer le nouveau correctif SQL
 1. Dans le tableau de bord, cliquez sur **"SQL Editor"** dans le menu latéral
 2. Cliquez sur **"New query"**
-3. Copiez et collez le contenu du fichier `fix_rls_recursion_v2.sql` (voir ci-dessous)
+3. Copiez et collez le contenu du fichier `fix_rls_recursion_v3.sql` (voir ci-dessous)
 4. Cliquez sur **"Run"** pour exécuter la requête
 
-### 3. Vérifier la correction
+#### 3. Vérifier la correction
 Après avoir exécuté le script, vous devriez voir :
-- Un message de confirmation : "Migration terminée avec succès !"
+- Un message de confirmation : "Migration v3 terminée avec succès !"
 - Aucune erreur dans la console
 
-## 📄 SCRIPT SQL À APPLIQUER
+## 📄 SCRIPT SQL CORRIGÉ À APPLIQUER
 
 ```sql
 -- ===============================================
--- FIX v2: Supabase RLS Infinite Recursion 
+-- FIX v3: Supabase RLS Infinite Recursion (Version Corrigée)
 -- ===============================================
+-- Cette version corrige les problèmes de policies déjà existantes
 
--- Première étape : Désactiver temporairement RLS sur profiles pour éviter les erreurs
-ALTER TABLE public.profiles DISABLE ROW LEVEL SECURITY;
+-- Première étape : Désactiver temporairement RLS sur toutes les tables
+ALTER TABLE IF EXISTS public.profiles DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.agencies DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.operations DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.transaction_ledger DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.commission_records DISABLE ROW LEVEL SECURITY;
 
 -- ===============================================
 -- SUPPRIMER TOUTES LES FONCTIONS EXISTANTES
 -- ===============================================
 
 -- Supprimer les fonctions existantes avec toutes leurs signatures possibles
-DROP FUNCTION IF EXISTS public.get_user_role_name(uuid);
-DROP FUNCTION IF EXISTS public.get_user_role();
-DROP FUNCTION IF EXISTS public.get_user_agency_id(uuid);
-DROP FUNCTION IF EXISTS public.get_user_agency_id();
-DROP FUNCTION IF EXISTS public.user_has_role(uuid, text[]);
-DROP FUNCTION IF EXISTS public.user_has_role(text[]);
+DROP FUNCTION IF EXISTS public.get_user_role_name(uuid) CASCADE;
+DROP FUNCTION IF EXISTS public.get_user_role() CASCADE;
+DROP FUNCTION IF EXISTS public.get_user_agency_id(uuid) CASCADE;
+DROP FUNCTION IF EXISTS public.get_user_agency_id() CASCADE;
+DROP FUNCTION IF EXISTS public.get_user_agency_id_secure(uuid) CASCADE;
+DROP FUNCTION IF EXISTS public.user_has_role(uuid, text[]) CASCADE;
+DROP FUNCTION IF EXISTS public.user_has_role(text[]) CASCADE;
+DROP FUNCTION IF EXISTS public.user_has_role_secure(uuid, text[]) CASCADE;
+DROP FUNCTION IF EXISTS public.is_admin() CASCADE;
+DROP FUNCTION IF EXISTS public.is_chef_agence() CASCADE;
+
+-- ===============================================
+-- SUPPRIMER TOUTES LES POLITIQUES EXISTANTES
+-- ===============================================
+
+-- Fonction pour supprimer toutes les policies d'une table
+DO $$
+DECLARE
+    pol_name text;
+BEGIN
+    -- Supprimer toutes les policies de la table profiles
+    FOR pol_name IN 
+        SELECT policyname FROM pg_policies WHERE tablename = 'profiles'
+    LOOP
+        EXECUTE format('DROP POLICY IF EXISTS %I ON public.profiles', pol_name);
+    END LOOP;
+    
+    -- Supprimer toutes les policies de la table agencies
+    FOR pol_name IN 
+        SELECT policyname FROM pg_policies WHERE tablename = 'agencies'
+    LOOP
+        EXECUTE format('DROP POLICY IF EXISTS %I ON public.agencies', pol_name);
+    END LOOP;
+    
+    -- Supprimer toutes les policies de la table operations
+    FOR pol_name IN 
+        SELECT policyname FROM pg_policies WHERE tablename = 'operations'
+    LOOP
+        EXECUTE format('DROP POLICY IF EXISTS %I ON public.operations', pol_name);
+    END LOOP;
+    
+    -- Supprimer toutes les policies de la table transaction_ledger
+    FOR pol_name IN 
+        SELECT policyname FROM pg_policies WHERE tablename = 'transaction_ledger'
+    LOOP
+        EXECUTE format('DROP POLICY IF EXISTS %I ON public.transaction_ledger', pol_name);
+    END LOOP;
+    
+    -- Supprimer toutes les policies de la table commission_records
+    FOR pol_name IN 
+        SELECT policyname FROM pg_policies WHERE tablename = 'commission_records'
+    LOOP
+        EXECUTE format('DROP POLICY IF EXISTS %I ON public.commission_records', pol_name);
+    END LOOP;
+END
+$$;
 
 -- ===============================================
 -- CRÉER LES NOUVELLES FONCTIONS SÉCURISÉES
@@ -112,43 +176,13 @@ AS $$
 $$;
 
 -- ===============================================
--- SUPPRIMER TOUTES LES POLITIQUES EXISTANTES
+-- RÉACTIVER RLS SUR TOUTES LES TABLES
 -- ===============================================
-
--- Profiles
-DROP POLICY IF EXISTS "profiles_own_access" ON public.profiles;
-DROP POLICY IF EXISTS "profiles_admin_access" ON public.profiles;
-DROP POLICY IF EXISTS "profiles_chef_agency_access" ON public.profiles;
-DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
-DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
-DROP POLICY IF EXISTS "Admins and chefs can view profiles in their scope" ON public.profiles;
-DROP POLICY IF EXISTS "Admins and chefs can manage profiles" ON public.profiles;
-
--- Agencies
-DROP POLICY IF EXISTS "agencies_admin_manage" ON public.agencies;
-DROP POLICY IF EXISTS "agencies_chef_view_own" ON public.agencies;
-DROP POLICY IF EXISTS "agencies_read_basic_info" ON public.agencies;
-DROP POLICY IF EXISTS "admin_general_can_manage_agencies" ON public.agencies;
-
--- Operations
-DROP POLICY IF EXISTS "operations_agent_own" ON public.operations;
-DROP POLICY IF EXISTS "operations_chef_agency" ON public.operations;
-DROP POLICY IF EXISTS "operations_admin_all" ON public.operations;
-
--- Transaction Ledger
-DROP POLICY IF EXISTS "transaction_ledger_own" ON public.transaction_ledger;
-DROP POLICY IF EXISTS "transaction_ledger_admin" ON public.transaction_ledger;
-DROP POLICY IF EXISTS "transaction_ledger_chef_agency" ON public.transaction_ledger;
-
--- Commission Records
-DROP POLICY IF EXISTS "commission_records_agent" ON public.commission_records;
-DROP POLICY IF EXISTS "commission_records_chef" ON public.commission_records;
-DROP POLICY IF EXISTS "commission_records_admin" ON public.commission_records;
-
--- ===============================================
--- RÉACTIVER RLS SUR PROFILES
--- ===============================================
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.agencies ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.operations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.transaction_ledger ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.commission_records ENABLE ROW LEVEL SECURITY;
 
 -- ===============================================
 -- CRÉER LES NOUVELLES POLITIQUES SANS RÉCURSION
@@ -255,33 +289,30 @@ COMMENT ON FUNCTION public.is_chef_agence IS 'Fonction helper pour vérifier si 
 -- Message de confirmation
 DO $$
 BEGIN
-  RAISE NOTICE 'Migration terminée avec succès ! Les politiques RLS ont été corrigées.';
+  RAISE NOTICE 'Migration v3 terminée avec succès ! Les politiques RLS ont été corrigées.';
   RAISE NOTICE 'Vous pouvez maintenant tester l authentification.';
 END
 $$;
 ```
 
-## 🎯 APRÈS LA CORRECTION
+## 🎯 CHANGEMENTS DANS LA VERSION V3
+
+1. **Suppression dynamique des policies** : Utilise une boucle pour supprimer automatiquement toutes les policies existantes
+2. **Désactivation temporaire de RLS** : Évite les conflits pendant la migration
+3. **CASCADE sur les fonctions** : Supprime les dépendances automatiquement
+4. **IF EXISTS** partout : Évite les erreurs si des éléments n'existent pas
+
+## 🔄 APRÈS LA CORRECTION
 
 1. **Test de l'authentification** :
    - Essayez de vous connecter avec les comptes existants
    - Si aucun compte n'existe, créez-en un via le tableau de bord Supabase
 
-2. **Créer des comptes de test** :
+2. **Créer des comptes de test** si nécessaire :
    - Allez dans "Authentication" > "Users" dans Supabase
    - Créez des utilisateurs avec des emails comme :
      - `admin@transflownexus.com`
      - `agent@transflownexus.com`
      - `chef@transflownexus.com`
 
-3. **Tester l'application** :
-   - Ouvrez votre application TransFlow Nexus
-   - Essayez de vous connecter avec les nouveaux comptes
-   - Vérifiez que les tableaux de bord se chargent correctement
-
-## 📞 SUPPORT
-
-Si vous rencontrez des problèmes lors de l'application de ce correctif, veuillez :
-1. Vérifier que vous avez bien copié tout le script SQL
-2. Vérifier qu'il n'y a pas d'erreurs dans la console Supabase
-3. Redémarrer votre application après avoir appliqué le correctif
+**Cette version corrigée devrait résoudre le problème de policies déjà existantes !**
