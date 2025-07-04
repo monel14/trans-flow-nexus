@@ -382,3 +382,6 @@ export function useUpdateCommissionRule() {
     },
   });
 }
+
+// Alias pour compatibilité avec les composants existants
+export const useOperationTypeFields = useOperationTypeWithFields;
