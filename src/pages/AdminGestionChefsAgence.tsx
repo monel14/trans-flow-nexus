@@ -1,241 +1,215 @@
-import React, { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { UserPlus, UserX, Edit, Search, RefreshCw } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { useChefsAgence, useToggleChefAgenceStatus } from "@/hooks/useChefsAgence";
-import { useCreateChefAgence, useAgencies } from "@/hooks/useUserCreation";
-import { CreateChefAgenceSchema, type CreateChefAgenceValues } from "@/lib/schemas";
-import { UserCreationForm } from "@/components/forms/UserCreationForm";
+
+import React, { useState } from 'react';
+import { useAgencies } from '@/hooks/useAgencies';
+import { useChefsAgence, useCreateChefAgence } from '@/hooks/useChefsAgence';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
+import { CreateChefAgenceSchema, CreateChefAgenceValues } from '@/lib/schemas';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Trash2, Edit, UserPlus } from 'lucide-react';
 
 const AdminGestionChefsAgence = () => {
-  const { toast } = useToast();
-  const [modalOpen, setModalOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-
-  // Hooks pour les données
-  const { data: chefs = [], isLoading, error, refetch } = useChefsAgence();
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const { data: agencies = [], isLoading: agenciesLoading } = useAgencies();
-  const toggleChef = useToggleChefAgenceStatus();
+  const { data: chefsAgence = [], isLoading: chefsLoading, refetch } = useChefsAgence();
   const createChefMutation = useCreateChefAgence();
+  const { toast } = useToast();
 
-  // Filtrage des chefs d'agence
-  const filteredChefs = chefs.filter((chef: any) => {
-    if (!searchTerm) return true;
-    return (
-      chef.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      chef.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      chef.agencies?.name?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+  const form = useForm<CreateChefAgenceValues>({
+    resolver: zodResolver(CreateChefAgenceSchema),
+    defaultValues: {
+      fullName: '',
+      identifier: '',
+      initialPassword: '',
+      agencyId: undefined,
+    },
   });
 
-  // Gestion de la création
-  const handleCreateChef = async (values: CreateChefAgenceValues) => {
+  const onSubmit = async (values: CreateChefAgenceValues) => {
     try {
+      // Ensure all required fields are provided
+      if (!values.fullName || !values.identifier || !values.initialPassword || !values.agencyId) {
+        toast({
+          title: "Erreur de validation",
+          description: "Tous les champs sont requis",
+          variant: "destructive",
+        });
+        return;
+      }
+
       await createChefMutation.mutateAsync(values);
-      setModalOpen(false);
-      return { success: true };
-    } catch (error) {
-      console.error('Erreur lors de la création:', error);
-      return { error: error instanceof Error ? error.message : 'Erreur inconnue' };
+      toast({
+        title: "Succès",
+        description: "Chef d'agence créé avec succès",
+      });
+      form.reset();
+      setShowCreateForm(false);
+      refetch();
+    } catch (error: any) {
+      console.error('Error creating chef agence:', error);
+      toast({
+        title: "Erreur",
+        description: error.message || "Erreur lors de la création du chef d'agence",
+        variant: "destructive",
+      });
     }
   };
 
-  // Gestion du toggle de statut
-  const handleToggleStatus = async (userId: string, isActive: boolean) => {
-    try {
-      await toggleChef.mutateAsync({ userId, isActive: !isActive });
-      toast({ 
-        title: "Statut modifié", 
-        description: `Le chef a été ${!isActive ? "activé" : "suspendu"}.` 
-      });
-    } catch (error) {
-      toast({ 
-        title: "Erreur", 
-        description: error instanceof Error ? error.message : 'Erreur lors de la modification du statut', 
-        variant: "destructive" 
-      });
-    }
-  };
+  if (agenciesLoading || chefsLoading) {
+    return <div>Chargement...</div>;
+  }
+
+  // Transform agencies data to match expected format
+  const transformedAgencies = Array.isArray(agencies) ? agencies.map(agency => ({
+    id: agency.id,
+    name: agency.name,
+    code: `AG${agency.id.toString().padStart(3, '0')}`, // Generate code from ID
+    city: agency.city || ''
+  })) : [];
 
   return (
-    <div className="space-y-6">
-      {/* En-tête */}
-      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Gestion des Chefs d'Agence</h1>
-          <p className="text-gray-600">Créez et gérez les responsables des agences</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => refetch()} disabled={isLoading}>
-            <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            Actualiser
-          </Button>
-          <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <UserPlus className="mr-2 h-4 w-4" />
-                Nouveau Chef d'Agence
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Créer un nouveau Chef d'Agence</DialogTitle>
-              </DialogHeader>
-              <UserCreationForm
-                schema={CreateChefAgenceSchema}
-                onSubmit={handleCreateChef}
-                userType="chef_agence"
-                agencies={agencies}
-                isLoading={createChefMutation.isPending || agenciesLoading}
-              />
-            </DialogContent>
-          </Dialog>
-        </div>
+    <div className="container mx-auto p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Gestion des Chefs d'Agence</h1>
+        <Button onClick={() => setShowCreateForm(!showCreateForm)}>
+          <UserPlus className="mr-2 h-4 w-4" />
+          {showCreateForm ? 'Annuler' : 'Créer Chef d\'Agence'}
+        </Button>
       </div>
 
-      {/* Statistiques rapides */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{chefs.length}</div>
-            <p className="text-xs text-muted-foreground">Total Chefs d'Agence</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-green-600">
-              {chefs.filter((chef: any) => chef.is_active).length}
-            </div>
-            <p className="text-xs text-muted-foreground">Actifs</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-red-600">
-              {chefs.filter((chef: any) => !chef.is_active).length}
-            </div>
-            <p className="text-xs text-muted-foreground">Suspendus</p>
-          </CardContent>
-        </Card>
-      </div>
+      {showCreateForm && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Créer un nouveau Chef d'Agence</CardTitle>
+            <CardDescription>
+              Créez un compte chef d'agence pour gérer une agence spécifique.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <div>
+                <Label htmlFor="fullName">Nom complet *</Label>
+                <Input
+                  id="fullName"
+                  {...form.register('fullName')}
+                  placeholder="Ex: Jean Dupont"
+                  required
+                />
+                {form.formState.errors.fullName && (
+                  <p className="text-red-500 text-sm mt-1">{form.formState.errors.fullName.message}</p>
+                )}
+              </div>
 
-      {/* Recherche */}
+              <div>
+                <Label htmlFor="identifier">Identifiant *</Label>
+                <Input
+                  id="identifier"
+                  {...form.register('identifier')}
+                  placeholder="Ex: chef.dakar.dupont"
+                  required
+                />
+                {form.formState.errors.identifier && (
+                  <p className="text-red-500 text-sm mt-1">{form.formState.errors.identifier.message}</p>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="initialPassword">Mot de passe initial *</Label>
+                <Input
+                  id="initialPassword"
+                  type="password"
+                  {...form.register('initialPassword')}
+                  placeholder="Mot de passe temporaire"
+                  required
+                />
+                {form.formState.errors.initialPassword && (
+                  <p className="text-red-500 text-sm mt-1">{form.formState.errors.initialPassword.message}</p>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="agencyId">Agence *</Label>
+                <Select 
+                  onValueChange={(value) => form.setValue('agencyId', parseInt(value))}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner une agence" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {transformedAgencies.map((agency) => (
+                      <SelectItem key={agency.id} value={agency.id.toString()}>
+                        {agency.name} - {agency.city}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {form.formState.errors.agencyId && (
+                  <p className="text-red-500 text-sm mt-1">{form.formState.errors.agencyId.message}</p>
+                )}
+              </div>
+
+              <div className="flex space-x-2">
+                <Button type="submit" disabled={createChefMutation.isPending}>
+                  {createChefMutation.isPending ? 'Création...' : 'Créer Chef d\'Agence'}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setShowCreateForm(false)}>
+                  Annuler
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Liste des Chefs d'Agence</CardTitle>
-          <div className="flex items-center space-x-2">
-            <Search className="h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Rechercher par nom, identifiant ou agence..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="max-w-md"
-            />
-          </div>
+          <CardDescription>
+            Gérez les comptes des chefs d'agence dans le système.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="py-16 text-center text-gray-600">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              Chargement des chefs d'agence...
-            </div>
-          ) : error ? (
-            <div className="py-8 text-center">
-              <div className="text-red-600 text-sm mb-4">{error.message}</div>
-              <Button onClick={() => refetch()} variant="outline">
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Réessayer
-              </Button>
-            </div>
-          ) : filteredChefs.length === 0 ? (
-            <div className="py-16 text-center text-gray-600">
-              {searchTerm ? (
-                <>
-                  <p>Aucun chef d'agence trouvé pour "{searchTerm}"</p>
-                  <Button 
-                    variant="ghost" 
-                    onClick={() => setSearchTerm("")} 
-                    className="mt-2"
-                  >
-                    Effacer la recherche
-                  </Button>
-                </>
-              ) : (
-                <p>Aucun chef d'agence créé pour le moment</p>
-              )}
+          {Array.isArray(chefsAgence) && chefsAgence.length > 0 ? (
+            <div className="space-y-4">
+              {chefsAgence.map((chef: any) => (
+                <div key={chef.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <h3 className="font-medium">{chef.name}</h3>
+                    <p className="text-sm text-gray-500">{chef.email}</p>
+                    <div className="flex items-center space-x-2 mt-1">
+                      <Badge variant={chef.is_active ? "default" : "secondary"}>
+                        {chef.is_active ? 'Actif' : 'Inactif'}
+                      </Badge>
+                      {chef.agencies && (
+                        <Badge variant="outline">
+                          {chef.agencies.name}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex space-x-2">
+                    <Button variant="outline" size="sm">
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="sm">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nom</TableHead>
-                    <TableHead>Identifiant</TableHead>
-                    <TableHead>Agence</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredChefs.map((chef: any) => (
-                    <TableRow key={chef.id}>
-                      <TableCell className="font-medium">{chef.name}</TableCell>
-                      <TableCell className="font-mono text-sm">{chef.email}</TableCell>
-                      <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{chef.agencies?.name || "-"}</span>
-                          {chef.agencies?.code && (
-                            <span className="text-xs text-gray-500">Code: {chef.agencies.code}</span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={chef.is_active ? "default" : "secondary"}
-                          className={chef.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}
-                        >
-                          {chef.is_active ? "Actif" : "Suspendu"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            title={chef.is_active ? "Suspendre" : "Réactiver"}
-                            onClick={() => handleToggleStatus(chef.user_id, chef.is_active)}
-                            disabled={toggleChef.isPending}
-                          >
-                            <UserX className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+            <p className="text-center text-gray-500 py-8">
+              Aucun chef d'agence trouvé.
+            </p>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Instructions en bas de page */}
-      <Card className="bg-blue-50 border-blue-200">
-        <CardContent className="pt-6">
-          <h4 className="text-sm font-medium text-blue-900 mb-2">
-            📋 Instructions pour les Chefs d'Agence
-          </h4>
-          <ul className="text-xs text-blue-700 space-y-1">
-            <li>• Utilisez le format: <code className="bg-blue-100 px-1 rounded">chef.ville.nom</code> (ex: chef.dakar.diallo)</li>
-            <li>• Le chef aura accès à la gestion de son agence et à la création d'agents</li>
-            <li>• L'identifiant ne peut pas être modifié après création</li>
-            <li>• Chaque agence ne peut avoir qu'un seul chef actif</li>
-          </ul>
         </CardContent>
       </Card>
     </div>

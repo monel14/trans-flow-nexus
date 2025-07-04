@@ -85,8 +85,13 @@ export function useSystemConfig() {
           return defaultConfig;
         }
 
-        // Merge with defaults to ensure all properties exist
-        return { ...defaultConfig, ...(data.config as any) };
+        // Safely cast the data with proper type checking
+        const configData = data.config as unknown;
+        if (typeof configData === 'object' && configData !== null && !Array.isArray(configData)) {
+          return { ...defaultConfig, ...(configData as Partial<SystemConfig>) };
+        }
+
+        return defaultConfig;
       } catch (error) {
         console.error('Error in useSystemConfig:', error);
         return defaultConfig;
