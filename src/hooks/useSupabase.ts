@@ -122,14 +122,41 @@ export async function withServerAction<T>(
   }
 }
 
-// Utility to handle Supabase RPC calls
+// Utility to handle Supabase RPC calls with proper typing
 export async function callSupabaseRPC(
   functionName: string,
   params?: any,
   context?: string
 ) {
   try {
-    const { data, error } = await supabase.rpc(functionName, params);
+    // Type-safe RPC call - only allow known function names
+    const validFunctions = [
+      'cleanup_old_error_logs',
+      'create_admin_user', 
+      'create_agent',
+      'create_chef_agence',
+      'create_sous_admin',
+      'get_agent_dashboard_kpis',
+      'get_chef_agence_dashboard_kpis',
+      'get_chef_agents_performance',
+      'get_user_agency_id_secure',
+      'get_user_role_name',
+      'is_admin',
+      'is_admin_general',
+      'is_chef_agence',
+      'is_developer',
+      'log_error',
+      'process_commission_transfer_atomic',
+      'process_recharge_atomic',
+      'user_has_role_secure',
+      'validate_operation_atomic'
+    ];
+
+    if (!validFunctions.includes(functionName)) {
+      throw new Error(`Unknown RPC function: ${functionName}`);
+    }
+
+    const { data, error } = await supabase.rpc(functionName as any, params);
     
     if (error) {
       throw new Error(`RPC ${functionName} failed: ${error.message}`);

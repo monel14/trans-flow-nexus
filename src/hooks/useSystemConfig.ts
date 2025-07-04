@@ -1,191 +1,179 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { z } from 'zod';
+import { toast } from '@/hooks/use-toast';
 
-// Schéma Zod pour la validation de la configuration système
-export const SystemConfigSchema = z.object({
-  // Paramètres généraux
-  app_name: z.string().min(1, 'Le nom de l\'application est requis'),
-  default_currency: z.string().length(3, 'La devise doit faire 3 caractères'),
-  timezone: z.string().min(1, 'Le fuseau horaire est requis'),
-  max_file_size: z.number().min(1024, 'Taille minimale: 1KB').max(52428800, 'Taille maximale: 50MB'),
-  supported_file_types: z.string().min(1, 'Au moins un type de fichier requis'),
-  
-  // Paramètres de sécurité
-  password_min_length: z.number().min(6, 'Minimum 6 caractères').max(32, 'Maximum 32 caractères'),
-  password_require_uppercase: z.boolean(),
-  password_require_lowercase: z.boolean(),
-  password_require_numbers: z.boolean(),
-  password_require_symbols: z.boolean(),
-  password_expiry_days: z.number().min(30, 'Minimum 30 jours').max(365, 'Maximum 365 jours'),
-  session_timeout_minutes: z.number().min(15, 'Minimum 15 minutes').max(480, 'Maximum 8 heures'),
-  max_login_attempts: z.number().min(3, 'Minimum 3 tentatives').max(10, 'Maximum 10 tentatives'),
-  lockout_duration_minutes: z.number().min(5, 'Minimum 5 minutes').max(1440, 'Maximum 24 heures'),
-  
-  // Notifications
-  email_notifications_enabled: z.boolean(),
-  sms_notifications_enabled: z.boolean(),
-  smtp_host: z.string().optional(),
-  smtp_port: z.number().min(1).max(65535).optional(),
-  smtp_username: z.string().optional(),
-  smtp_password: z.string().optional(),
-  smtp_encryption: z.enum(['tls', 'ssl', 'none']),
-  
-  // Templates d'email
-  welcome_email_template: z.string().min(1, 'Template requis'),
-  operation_validated_template: z.string().min(1, 'Template requis'),
-  balance_low_template: z.string().min(1, 'Template requis'),
-  
-  // Limites
-  min_operation_amount: z.number().min(100, 'Minimum 100 FCFA'),
-  max_operation_amount: z.number().min(1000, 'Minimum 1000 FCFA'),
-  min_recharge_amount: z.number().min(1000, 'Minimum 1000 FCFA'),
-  max_recharge_amount: z.number().min(10000, 'Minimum 10000 FCFA'),
-});
+export interface SystemSettings {
+  id: number;
+  config: Record<string, any>;
+  updated_by?: string;
+  updated_at: string;
+}
 
-export type SystemConfig = z.infer<typeof SystemConfigSchema>;
+export interface SystemConfig {
+  app_name: string;
+  timezone: string;
+  default_currency: string;
+  max_file_size: number;
+  supported_file_types: string;
+  max_login_attempts: number;
+  lockout_duration_minutes: number;
+  session_timeout_minutes: number;
+  password_min_length: number;
+  password_expiry_days: number;
+  password_require_uppercase: boolean;
+  password_require_lowercase: boolean;
+  password_require_numbers: boolean;
+  password_require_symbols: boolean;
+  email_notifications_enabled: boolean;
+  sms_notifications_enabled: boolean;
+  smtp_host: string;
+  smtp_port: number;
+  smtp_username: string;
+  smtp_password: string;
+  smtp_encryption: string;
+  welcome_email_template: string;
+  balance_low_template: string;
+  operation_validated_template: string;
+  min_operation_amount: number;
+  max_operation_amount: number;
+  min_recharge_amount: number;
+  max_recharge_amount: number;
+}
 
-// Hook to get system configuration
+const defaultConfig: SystemConfig = {
+  app_name: "TransFlow Nexus",
+  timezone: "Africa/Ouagadougou", 
+  default_currency: "XOF",
+  max_file_size: 5242880,
+  supported_file_types: "image/jpeg,image/png,application/pdf",
+  max_login_attempts: 5,
+  lockout_duration_minutes: 30,
+  session_timeout_minutes: 60,
+  password_min_length: 8,
+  password_expiry_days: 90,
+  password_require_uppercase: true,
+  password_require_lowercase: true,
+  password_require_numbers: true,
+  password_require_symbols: false,
+  email_notifications_enabled: true,
+  sms_notifications_enabled: false,
+  smtp_host: "",
+  smtp_port: 587,
+  smtp_username: "",
+  smtp_password: "",
+  smtp_encryption: "tls",
+  welcome_email_template: "Bienvenue sur TransFlow Nexus!\n\nVotre compte a été créé avec succès.",
+  balance_low_template: "Attention: Votre solde est faible ({balance}).",
+  operation_validated_template: "Votre opération #{operation_id} a été validée.",
+  min_operation_amount: 1000,
+  max_operation_amount: 10000000,
+  min_recharge_amount: 10000,
+  max_recharge_amount: 5000000
+};
+
 export function useSystemConfig() {
   return useQuery({
     queryKey: ['system-config'],
-    queryFn: async () => {
+    queryFn: async (): Promise<SystemConfig> => {
       const { data, error } = await supabase
         .from('system_settings')
-        .select('config')
+        .select('*')
         .eq('id', 1)
         .single();
-      
+
       if (error) {
-        console.error('Erreur lors du chargement de la configuration:', error);
-        throw error;
+        console.error('Error loading system config:', error);
+        return defaultConfig;
       }
-      
-      // Valider et retourner la configuration
-      try {
-        return SystemConfigSchema.parse(data.config);
-      } catch (validationError) {
-        console.error('Erreur de validation de la configuration:', validationError);
-        throw new Error('Configuration système invalide');
+
+      if (!data || !data.config) {
+        return defaultConfig;
       }
+
+      // Safely merge the config with defaults
+      const config = typeof data.config === 'object' && data.config !== null 
+        ? { ...defaultConfig, ...data.config } 
+        : defaultConfig;
+
+      return config as SystemConfig;
     }
   });
 }
 
-// Hook to update system configuration
 export function useUpdateSystemConfig() {
-  const { user } = useAuth();
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: async (configData: Partial<SystemConfig>) => {
-      // Récupérer la configuration actuelle
-      const { data: currentData, error: fetchError } = await supabase
+    mutationFn: async (newConfig: Partial<SystemConfig>) => {
+      // Get current config first
+      const { data: currentData } = await supabase
         .from('system_settings')
         .select('config')
         .eq('id', 1)
         .single();
-      
-      if (fetchError) {
-        throw new Error('Impossible de récupérer la configuration actuelle');
-      }
-      
-      // Fusionner avec les nouvelles données
-      const currentConfig = currentData?.config || {};
-      const mergedConfig = { ...currentConfig, ...configData };
-      
-      // Valider la configuration fusionnée
-      const validatedConfig = SystemConfigSchema.parse(mergedConfig);
-      
-      // Mettre à jour dans la base de données
+
+      const currentConfig = currentData?.config && typeof currentData.config === 'object' 
+        ? currentData.config as Record<string, any>
+        : {};
+
+      const updatedConfig = { ...currentConfig, ...newConfig };
+
       const { data, error } = await supabase
         .from('system_settings')
         .update({ 
-          config: validatedConfig,
-          updated_by: user?.id
+          config: updatedConfig,
+          updated_at: new Date().toISOString()
         })
         .eq('id', 1)
-        .select('config')
+        .select()
         .single();
-      
-      if (error) {
-        throw error;
-      }
-      
-      return SystemConfigSchema.parse(data.config);
+
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['system-config'] });
+      toast({
+        title: "Succès",
+        description: "Configuration système mise à jour avec succès."
+      });
     },
-  });
-}
-
-// Hook to get a specific setting
-export function useSystemSetting(settingName: keyof SystemConfig) {
-  return useQuery({
-    queryKey: ['system-setting', settingName],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('system_settings')
-        .select('config')
-        .eq('id', 1)
-        .single();
-      
-      if (error) throw error;
-      
-      const config = SystemConfigSchema.parse(data.config);
-      return config[settingName];
+    onError: (error: any) => {
+      console.error('Error updating system config:', error);
+      toast({
+        title: "Erreur", 
+        description: "Impossible de mettre à jour la configuration système.",
+        variant: "destructive"
+      });
     }
   });
 }
 
-// Hook to update a specific setting
-export function useUpdateSystemSetting() {
-  const { user } = useAuth();
+export function useResetSystemConfig() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: async ({ settingName, value }: {
-      settingName: keyof SystemConfig;
-      value: any;
-    }) => {
-      // Récupérer la configuration actuelle
-      const { data: currentData, error: fetchError } = await supabase
-        .from('system_settings')
-        .select('config')
-        .eq('id', 1)
-        .single();
-      
-      if (fetchError) throw fetchError;
-      
-      // Mettre à jour le paramètre spécifique
-      const currentConfig = currentData?.config || {};
-      const updatedConfig = {
-        ...currentConfig,
-        [settingName]: value
-      };
-      
-      // Valider la configuration mise à jour
-      const validatedConfig = SystemConfigSchema.parse(updatedConfig);
-      
-      // Sauvegarder
-      const { error } = await supabase
+    mutationFn: async () => {
+      const { data, error } = await supabase
         .from('system_settings')
         .update({ 
-          config: validatedConfig,
-          updated_by: user?.id 
+          config: defaultConfig,
+          updated_at: new Date().toISOString() 
         })
-        .eq('id', 1);
-      
+        .eq('id', 1)
+        .select()
+        .single();
+
       if (error) throw error;
-      
-      return { [settingName]: value };
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['system-config'] });
-      queryClient.invalidateQueries({ queryKey: ['system-setting'] });
-    },
+      toast({
+        title: "Succès",
+        description: "Configuration système réinitialisée aux valeurs par défaut."
+      });
+    }
   });
 }

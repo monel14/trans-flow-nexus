@@ -77,7 +77,7 @@ const OperationTypeModalForm: React.FC<Props> = ({ isOpen, onClose, operationTyp
         description: operationType.description,
         impacts_balance: operationType.impacts_balance,
         is_active: operationType.is_active,
-        status: operationType.status,
+        status: operationType.status as "active" | "inactive" | "archived",
       });
     } else {
       setForm({
@@ -85,7 +85,7 @@ const OperationTypeModalForm: React.FC<Props> = ({ isOpen, onClose, operationTyp
         description: "",
         impacts_balance: true,
         is_active: true,
-        status: "active",
+        status: "active" as "active" | "inactive" | "archived",
       });
     }
     setErrors({});

@@ -1,6 +1,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface Operation {
   id: string;
@@ -78,14 +79,22 @@ export function useOperations(filters?: OperationFilters) {
         query = query.limit(filters.limit);
       }
 
-      if (filters?.offset) {
-        query = query.range(filters.offset, filters.offset + (filters.limit || 10) - 1);
+      if (filters?.offset && filters?.limit) {
+        query = query.range(filters.offset, filters.offset + filters.limit - 1);
       }
 
       const { data, error } = await query;
 
       if (error) throw error;
-      return (data || []) as Operation[];
+
+      // Transform the data to match our Operation interface
+      const transformedData = (data || []).map((item: any) => ({
+        ...item,
+        operation_type: item.operation_types ? { name: item.operation_types.name } : undefined,
+        profiles: item.profiles?.[0] ? { name: item.profiles[0].name } : undefined
+      }));
+
+      return transformedData as Operation[];
     }
   });
 }
@@ -93,15 +102,33 @@ export function useOperations(filters?: OperationFilters) {
 // Hook to create an operation
 export function useCreateOperation() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async (operationData: CreateOperationData) => {
+      if (!user?.id) {
+        throw new Error('User not authenticated');
+      }
+
+      // Get user's agency_id
+      const { data: userProfile } = await supabase
+        .from('profiles')
+        .select('agency_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!userProfile?.agency_id) {
+        throw new Error('User agency not found');
+      }
+
       const { data, error } = await supabase
         .from('operations')
         .insert({
           ...operationData,
           reference_number: operationData.reference_number || `OP-${Date.now()}`,
-          status: 'pending'
+          status: 'pending',
+          initiator_id: user.id,
+          agency_id: userProfile.agency_id
         })
         .select()
         .single();
@@ -131,7 +158,15 @@ export function useOperation(operationId: string) {
         .single();
 
       if (error) throw error;
-      return data as Operation;
+
+      // Transform the data to match our Operation interface
+      const transformedData = {
+        ...data,
+        operation_type: data.operation_types ? { name: data.operation_types.name } : undefined,
+        profiles: data.profiles?.[0] ? { name: data.profiles[0].name } : undefined
+      };
+
+      return transformedData as Operation;
     },
     enabled: !!operationId,
   });
