@@ -26,14 +26,13 @@ const ChefAgenceGestionAgents = () => {
       fullName: '',
       identifier: '',
       initialPassword: '',
-      agencyId: profile?.agency_id || 0,
+      agencyId: 0,
     },
   });
 
   const onSubmit = async (values: CreateAgentValues) => {
     try {
-      // Ensure all required fields are provided and agencyId is set
-      const agencyId = profile?.agency_id;
+      const agencyId = (profile as any)?.agency_id;
       if (!values.fullName || !values.identifier || !values.initialPassword || !agencyId) {
         toast({
           title: "Erreur de validation",
@@ -43,7 +42,6 @@ const ChefAgenceGestionAgents = () => {
         return;
       }
 
-      // Map form values to the expected API format
       const apiValues = {
         name: values.fullName,
         email: values.identifier,

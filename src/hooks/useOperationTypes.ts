@@ -92,11 +92,10 @@ export function useOperationTypeFields(operationTypeId: string) {
           return [];
         }
 
-        // Type cast the data to match our interface
         return (data || []).map(field => ({
           ...field,
           field_type: field.field_type as OperationTypeField['field_type'],
-          options: Array.isArray(field.options) ? field.options : []
+          options: Array.isArray(field.options) ? field.options.filter((opt): opt is string => typeof opt === 'string') : []
         }));
       } catch (error) {
         console.error('Error in useOperationTypeFields:', error);
@@ -137,11 +136,10 @@ export function useOperationTypeWithFields(operationTypeId: string) {
           return operationType;
         }
 
-        // Type cast the fields data
         const typedFields = (fields || []).map(field => ({
           ...field,
           field_type: field.field_type as OperationTypeField['field_type'],
-          options: Array.isArray(field.options) ? field.options : []
+          options: Array.isArray(field.options) ? field.options.filter((opt): opt is string => typeof opt === 'string') : []
         }));
 
         return {
@@ -175,13 +173,12 @@ export function useAllOperationTypes() {
           return [];
         }
 
-        // Type cast the data to match our interface
         return (data || []).map(operationType => ({
           ...operationType,
           operation_type_fields: (operationType.operation_type_fields || []).map((field: any) => ({
             ...field,
             field_type: field.field_type as OperationTypeField['field_type'],
-            options: Array.isArray(field.options) ? field.options : []
+            options: Array.isArray(field.options) ? field.options.filter((opt): opt is string => typeof opt === 'string') : []
           }))
         }));
       } catch (error) {
@@ -241,7 +238,6 @@ export function useUpdateOperationType() {
   });
 }
 
-// Field-related hooks
 export function useCreateOperationTypeField() {
   const queryClient = useQueryClient();
 
@@ -309,7 +305,6 @@ export function useDeleteOperationTypeField() {
   });
 }
 
-// Commission-related hooks
 export function useCommissionRules(operationTypeId?: string) {
   return useQuery({
     queryKey: ['commission-rules', operationTypeId],
@@ -328,7 +323,10 @@ export function useCommissionRules(operationTypeId?: string) {
           return [];
         }
 
-        return data || [];
+        return (data || []).map(rule => ({
+          ...rule,
+          commission_type: rule.commission_type as CommissionRule['commission_type']
+        }));
       } catch (error) {
         console.error('Error in useCommissionRules:', error);
         return [];

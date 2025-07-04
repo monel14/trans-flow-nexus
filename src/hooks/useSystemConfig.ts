@@ -33,7 +33,6 @@ export interface SystemConfig {
   operation_validated_template: string;
 }
 
-// Default configuration
 const defaultConfig: SystemConfig = {
   app_name: "TransFlow Nexus",
   timezone: "Africa/Ouagadougou", 
@@ -65,6 +64,14 @@ const defaultConfig: SystemConfig = {
   operation_validated_template: "Votre opération #{operation_id} a été validée."
 };
 
+function isValidSystemConfig(obj: any): obj is SystemConfig {
+  return obj && 
+    typeof obj === 'object' && 
+    typeof obj.app_name === 'string' &&
+    typeof obj.timezone === 'string' &&
+    typeof obj.default_currency === 'string';
+}
+
 export function useSystemConfig() {
   return useQuery({
     queryKey: ['system-config'],
@@ -85,12 +92,9 @@ export function useSystemConfig() {
           return defaultConfig;
         }
 
-        // Safely cast the data with proper type checking
-        const configData = data.config as unknown;
-        if (typeof configData === 'object' && configData !== null && !Array.isArray(configData)) {
-          // Type cast to unknown first, then to SystemConfig
-          const typedConfig = configData as unknown as SystemConfig;
-          return { ...defaultConfig, ...typedConfig };
+        const configData = data.config;
+        if (isValidSystemConfig(configData)) {
+          return { ...defaultConfig, ...configData };
         }
 
         return defaultConfig;
@@ -142,7 +146,6 @@ export function useUpdateSystemConfig() {
 export function useInitializeSystemConfig() {
   return useMutation({
     mutationFn: async () => {
-      // Check if config exists
       const { data: existing } = await supabase
         .from('system_settings')
         .select('id')
@@ -150,7 +153,6 @@ export function useInitializeSystemConfig() {
         .single();
 
       if (!existing) {
-        // Insert default config
         const { data, error } = await supabase
           .from('system_settings')
           .insert({

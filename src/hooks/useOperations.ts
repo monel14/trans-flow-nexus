@@ -77,7 +77,12 @@ export function useOperations(filters?: OperationFilters) {
           return [];
         }
 
-        return data || [];
+        return (data || []).map(operation => ({
+          ...operation,
+          operation_type: operation.operation_types || undefined,
+          profiles: operation.profiles || { name: 'Utilisateur inconnu' },
+          agencies: operation.agencies || { name: 'Agence inconnue' }
+        }));
       } catch (error) {
         console.error('Error in useOperations:', error);
         return [];
@@ -101,7 +106,7 @@ export function useCreateOperation() {
           ...operationData,
           status: 'pending',
           reference_number: `OP-${Date.now()}`,
-          agency_id: 1, // Default agency for now
+          agency_id: 1,
           initiator_id: (await supabase.auth.getUser()).data.user?.id || '',
           currency: 'XOF'
         })
