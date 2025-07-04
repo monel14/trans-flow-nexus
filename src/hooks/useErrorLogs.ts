@@ -83,7 +83,7 @@ export const useErrorLogs = (filters: ErrorLogFilters = {}, limit: number = 50) 
         ...log,
         id: log.id.toString(),
         timestamp: log.created_at,
-      })) as ErrorLog[]) || [] ;
+      })) as ErrorLog[]) || [];
     },
     staleTime: 30 * 1000, // 30 seconds
   });
@@ -134,7 +134,7 @@ export const useResolveErrorLog = () => {
           resolved_at: new Date().toISOString(),
           resolution_notes: resolutionNotes,
         })
-        .eq('id', logId)
+        .eq('id', parseInt(logId))
         .select()
         .single();
 
@@ -167,7 +167,7 @@ export const useDeleteErrorLog = () => {
       const { error } = await supabase
         .from('error_logs')
         .delete()
-        .eq('id', logId);
+        .eq('id', parseInt(logId));
 
       if (error) throw error;
       return true;
@@ -305,4 +305,21 @@ export const logError = async (
   } catch (err) {
     console.error('Error logging error:', err);
   }
+};
+
+// Export des fonctions utilitaires additionnelles
+export const logWarning = async (
+  message: string,
+  context?: Record<string, any>,
+  source: ErrorLog['source'] = 'frontend'
+) => {
+  return logError('warning', source, message, undefined, context);
+};
+
+export const logInfo = async (
+  message: string,
+  context?: Record<string, any>,
+  source: ErrorLog['source'] = 'frontend'
+) => {
+  return logError('info', source, message, undefined, context);
 };

@@ -1,3 +1,4 @@
+
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -25,9 +26,10 @@ export const useCreateAgent = () => {
       console.log('🔄 Création d\'un agent:', values);
 
       const { data, error } = await supabase.rpc('create_agent', {
-        full_name_in: values.fullName,
-        identifier_in: values.identifier,
-        password_in: values.initialPassword,
+        user_name: values.fullName,
+        user_email: values.identifier,
+        user_password: values.initialPassword,
+        agency_id: parseInt(values.agencyId || '0')
       });
 
       if (error) {
@@ -35,7 +37,7 @@ export const useCreateAgent = () => {
         throw new Error(error.message);
       }
 
-      const response = data as RPCResponse;
+      const response = data as unknown as RPCResponse;
       console.log('✅ Réponse RPC create_agent:', response);
 
       if (response.status === 'error') {
@@ -86,10 +88,10 @@ export const useCreateChefAgence = () => {
       console.log('🔄 Création d\'un chef d\'agence:', values);
 
       const { data, error } = await supabase.rpc('create_chef_agence', {
-        full_name_in: values.fullName,
-        identifier_in: values.identifier,
-        password_in: values.initialPassword,
-        agency_id_in: values.agencyId,
+        user_name: values.fullName,
+        user_email: values.identifier,
+        user_password: values.initialPassword,
+        agency_id: values.agencyId,
       });
 
       if (error) {
@@ -97,7 +99,7 @@ export const useCreateChefAgence = () => {
         throw new Error(error.message);
       }
 
-      const response = data as RPCResponse;
+      const response = data as unknown as RPCResponse;
       console.log('✅ Réponse RPC create_chef_agence:', response);
 
       if (response.status === 'error') {
@@ -151,9 +153,9 @@ export const useCreateSousAdmin = () => {
       console.log('🔄 Création d\'un sous-admin:', values);
 
       const { data, error } = await supabase.rpc('create_sous_admin', {
-        full_name_in: values.fullName,
-        identifier_in: values.identifier,
-        password_in: values.initialPassword,
+        user_name: values.fullName,
+        user_email: values.identifier,
+        user_password: values.initialPassword,
       });
 
       if (error) {
@@ -161,7 +163,7 @@ export const useCreateSousAdmin = () => {
         throw new Error(error.message);
       }
 
-      const response = data as RPCResponse;
+      const response = data as unknown as RPCResponse;
       console.log('✅ Réponse RPC create_sous_admin:', response);
 
       if (response.status === 'error') {
@@ -212,7 +214,7 @@ export const useAgencies = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('agencies')
-        .select('id, name, code, city')
+        .select('id, name, city')
         .eq('is_active', true)
         .order('name');
 

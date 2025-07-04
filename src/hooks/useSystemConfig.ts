@@ -1,3 +1,4 @@
+
 import { useSupabaseQuery, useSupabaseMutation } from './useSupabase';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -160,7 +161,7 @@ export function useUpdateSystemSetting() {
       
       // Mettre à jour le paramètre spécifique
       const updatedConfig = {
-        ...currentData.config,
+        ...(currentData.config || {}),
         [settingName]: value
       };
       

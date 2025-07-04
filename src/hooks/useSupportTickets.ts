@@ -1,3 +1,4 @@
+
 import { useSupabaseQuery, useSupabaseMutation } from './useSupabase';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,7 +8,7 @@ export interface SupportTicket {
   requester_id: string;
   assigned_to_id?: string;
   ticket_type: string;
-  title: string; // Changed from 'subject' to 'title'
+  title: string;
   ticket_number: string;
   description?: string;
   priority: 'low' | 'normal' | 'high' | 'urgent';
@@ -83,8 +84,8 @@ export function useMyTickets() {
 
 // Hook to create a support ticket
 export function useCreateSupportTicket() {
-  return useSupabaseMutation<SupportTicket, {
-    title: string; // Changed from 'subject' to 'title'
+  return useSupabaseMutation<any, {
+    title: string;
     description?: string;
     ticket_type: string;
     priority: 'low' | 'normal' | 'high' | 'urgent';
@@ -113,7 +114,7 @@ export function useCreateSupportTicket() {
         .single();
       
       if (error) throw error;
-      return data as SupportTicket;
+      return data as any;
     },
     {
       invalidateQueries: [['support-tickets']],
@@ -125,7 +126,7 @@ export function useCreateSupportTicket() {
 
 // Hook to assign a ticket
 export function useAssignTicket() {
-  return useSupabaseMutation<SupportTicket, {
+  return useSupabaseMutation<any, {
     ticketId: string;
     assigneeId: string;
   }>(
@@ -146,7 +147,7 @@ export function useAssignTicket() {
         .single();
       
       if (error) throw error;
-      return data as SupportTicket;
+      return data as any;
     },
     {
       invalidateQueries: [['support-tickets'], ['my-tickets']],
@@ -158,7 +159,7 @@ export function useAssignTicket() {
 
 // Hook to resolve a ticket
 export function useResolveTicket() {
-  return useSupabaseMutation<SupportTicket, {
+  return useSupabaseMutation<any, {
     ticketId: string;
     response: string;
     status: 'resolved' | 'in_progress' | 'pending_user';
@@ -186,7 +187,7 @@ export function useResolveTicket() {
         .single();
       
       if (error) throw error;
-      return data as SupportTicket;
+      return data as any;
     },
     {
       invalidateQueries: [['support-tickets'], ['my-tickets']],
@@ -198,7 +199,7 @@ export function useResolveTicket() {
 
 // Hook to escalate a ticket (for sous-admin to admin)
 export function useEscalateTicket() {
-  return useSupabaseMutation<SupportTicket, {
+  return useSupabaseMutation<any, {
     ticketId: string;
     notes: string;
   }>(
@@ -217,7 +218,7 @@ export function useEscalateTicket() {
         .single();
       
       if (error) throw error;
-      return data as SupportTicket;
+      return data as any;
     },
     {
       invalidateQueries: [['support-tickets'], ['my-tickets']],

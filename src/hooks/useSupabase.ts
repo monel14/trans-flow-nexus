@@ -1,8 +1,9 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { logError, logWarning } from '@/hooks/useErrorLogs';
+import { logError } from '@/hooks/useErrorLogs';
 
 // Generic hook for Supabase queries with automatic error logging
 export function useSupabaseQuery<T>(
@@ -22,13 +23,14 @@ export function useSupabaseQuery<T>(
       } catch (error) {
         // Log automatiquement les erreurs de requête
         logError(
+          'error',
+          'database',
           `Query error: ${key.join('/')}`,
           error as Error,
           {
             queryKey: key,
             queryOptions: options,
-          },
-          'database'
+          }
         );
         throw error;
       }
@@ -61,13 +63,14 @@ export function useSupabaseMutation<TData, TVariables>(
       } catch (error) {
         // Log automatiquement les erreurs de mutation
         logError(
+          'error',
+          'database',
           `Mutation error: ${error instanceof Error ? error.message : 'Unknown error'}`,
           error as Error,
           {
             variables,
             mutationOptions: options,
-          },
-          'database'
+          }
         );
         throw error;
       }
@@ -129,14 +132,16 @@ export function handleSupabaseError(error: any) {
   
   // Log l'erreur si c'est une erreur significative
   if (error?.code && error.code !== 'PGRST116') {
-    logWarning(
+    logError(
+      'warning',
+      'database',
       `Supabase error: ${error.code} - ${errorMessage}`,
+      undefined,
       {
         errorCode: error.code,
         errorDetails: error,
         timestamp: new Date().toISOString(),
-      },
-      'database'
+      }
     );
   }
   
@@ -154,14 +159,15 @@ export function withErrorInstrumentation<T extends any[], R>(
       return result;
     } catch (error) {
       logError(
+        'error',
+        'api',
         `Server Action error: ${actionName}`,
         error as Error,
         {
           actionName,
           arguments: args,
           timestamp: new Date().toISOString(),
-        },
-        'api'
+        }
       );
       throw error;
     }

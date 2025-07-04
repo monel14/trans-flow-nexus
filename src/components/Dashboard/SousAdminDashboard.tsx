@@ -197,7 +197,7 @@ const SousAdminDashboard = () => {
                         <span className="text-sm font-medium">{ticket.title}</span>
                       </div>
                       <p className="text-xs text-gray-500">
-                        Par {Array.isArray(ticket.profiles) ? ticket.profiles[0]?.name : ticket.profiles?.name || 'Utilisateur inconnu'}
+                        Par {ticket.profiles ? (Array.isArray(ticket.profiles) ? ticket.profiles[0]?.name : ticket.profiles.name) : 'Utilisateur inconnu'}
                       </p>
                     </div>
                     <Button size="sm" variant="outline">
@@ -247,7 +247,7 @@ const SousAdminDashboard = () => {
                         </span>
                       </div>
                       <p className="text-xs text-gray-500">
-                        {Array.isArray(transaction.profiles) ? transaction.profiles[0]?.name : transaction.profiles?.name || 'Utilisateur inconnu'} - {Array.isArray(transaction.agencies) ? transaction.agencies[0]?.name : transaction.agencies?.name}
+                        {transaction.profiles ? (Array.isArray(transaction.profiles) ? transaction.profiles[0]?.name : transaction.profiles.name) : 'Utilisateur inconnu'} - {transaction.agencies ? (Array.isArray(transaction.agencies) ? transaction.agencies[0]?.name : transaction.agencies.name) : 'Agence inconnue'}
                       </p>
                     </div>
                     <div className="text-right">

@@ -1,3 +1,4 @@
+
 import { useSupabaseQuery, useSupabaseMutation } from './useSupabase';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,7 +8,7 @@ export interface RechargeRequest {
   requester_id: string;
   assigned_to_id?: string;
   ticket_type: string;
-  title: string; // Changed from 'subject' to 'title'
+  title: string;
   ticket_number: string;
   description?: string;
   priority: 'low' | 'normal' | 'high' | 'urgent';
@@ -86,9 +87,10 @@ export function useAgentRechargeRequests(agencyId?: string) {
       if (error) throw error;
       
       // Filter by agency (since we can't do complex joins directly)
-      const filteredData = data?.filter(request => 
-        request.profiles && request.profiles.agency_id === parseInt(agencyId || '0')
-      ) || [];
+      const filteredData = data?.filter(request => {
+        const profile = Array.isArray(request.profiles) ? request.profiles[0] : request.profiles;
+        return profile && profile.agency_id === parseInt(agencyId || '0');
+      }) || [];
       
       return filteredData;
     },
@@ -100,7 +102,7 @@ export function useAgentRechargeRequests(agencyId?: string) {
 
 // Hook to create a new recharge request
 export function useCreateRechargeRequest() {
-  return useSupabaseMutation<RechargeRequest, CreateRechargeRequestData>(
+  return useSupabaseMutation<any, CreateRechargeRequestData>(
     async (requestData) => {
       // Generate a unique ticket number
       const timestamp = Date.now();
@@ -147,7 +149,7 @@ export function useProcessRecharge() {
     async ({ requestId, action, notes, amount }) => {
       if (action === 'approve' && amount) {
         // Use the atomic function for approval with fund transfer
-        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process_recharge_atomic`, {
+        const response = await fetch(`https://khgbnikgsptoflokvtzu.supabase.co/functions/v1/process_recharge_atomic`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
