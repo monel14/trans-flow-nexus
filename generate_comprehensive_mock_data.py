@@ -403,9 +403,9 @@ class MockDataGenerator:
                 # Assignation d'agence
                 agency_id = None
                 if role in ["chef_agence", "agent"]:
-                    if role == "chef_agence":
+                    if role == "chef_agence" and chef_created < len(self.agencies):
                         agency_id = self.agencies[chef_created]['id']
-                    else:
+                    elif role == "agent" and len(self.agencies) > 0:
                         agency_id = self.agencies[agent_created % len(self.agencies)]['id']
                 
                 # Balance avec variation
