@@ -17,8 +17,9 @@ TEST_ACCOUNTS = [
 ]
 
 # Supabase URL and API key (these would be in the frontend environment)
-SUPABASE_URL = "https://840bde3b-0130-451e-ad8c-90fda3c11af4.preview.emergentagent.com"
-SUPABASE_API_URL = f"{SUPABASE_URL}/api"
+SUPABASE_URL = "https://ixnzjlbmvbsyhwcnbxnr.supabase.co"
+SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml4bnpqbGJtdmJzeWh3Y25ieG5yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDk1NTI0NzcsImV4cCI6MjAyNTEyODQ3N30.Nt0NwpaiEuPRQNuXs29Z-HQ_a8XKQoDYg9oGGJKNYuE"
+SUPABASE_API_URL = f"{SUPABASE_URL}/rest/v1"
 
 class SupabaseClient:
     def __init__(self, url, anon_key=None):
