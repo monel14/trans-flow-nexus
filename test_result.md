@@ -261,7 +261,7 @@ test_plan:
     file: "src/components/Dashboard/AdminGeneralDashboard.tsx"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
         - working: "unknown"
         - agent: "main"
@@ -269,6 +269,9 @@ test_plan:
         - working: true
         - agent: "testing"
         - comment: "Dashboard Admin s'affiche correctement avec tous les éléments attendus. Navigation vers les pages Validation des Transactions et Gestion des Agences fonctionne. La page Validation des Transactions s'affiche correctement. La page Gestion des Agences se charge mais n'affiche pas correctement le contenu. Le contrôle d'accès basé sur les rôles (RBAC) fonctionne correctement, empêchant l'accès aux pages réservées à d'autres rôles."
+        - working: true
+        - agent: "main"
+        - comment: "Correction effectuée: Mise à jour du hook useAgencies pour inclure des données de démonstration avec des relations chef_agence et agency_operation_types. Correction du hook useUpdateAgency pour accepter la nouvelle structure de données."
   test_scenarios:
     - "Connexion échouée avec identifiants incorrects"
     - "Connexion réussie avec comptes démo"
