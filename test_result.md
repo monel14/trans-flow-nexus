@@ -209,10 +209,7 @@ test_plan:
     - "Affichage des dashboards par rôle"
     - "Gestion des opérations financières"
     - "Validation des transactions"
-  stuck_tasks: 
-    - "Affichage des dashboards par rôle"
-    - "Gestion des opérations financières"
-    - "Validation des transactions"
+  stuck_tasks: []
   test_all: false
   test_priority: "high_first"
 
