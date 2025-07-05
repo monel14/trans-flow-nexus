@@ -125,3 +125,87 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+user_problem_statement: "Debug le projet - Backend FastAPI supprimé, utilise maintenant Supabase uniquement"
+frontend:
+  - task: "Connexion utilisateur avec Supabase"
+    implemented: true
+    working: true
+    file: "src/contexts/AuthContext.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+        - agent: "testing"
+        - comment: "La connexion utilisateur fonctionne correctement avec Supabase. Les boutons de connexion rapide fonctionnent bien. L'authentification est réussie."
+
+  - task: "Affichage des dashboards par rôle"
+    implemented: true
+    working: false
+    file: "src/pages/Dashboard.tsx"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "unknown"
+        - agent: "main"
+        - comment: "Needs testing after backend removal"
+        - working: false
+        - agent: "testing"
+        - comment: "Après connexion, l'utilisateur est redirigé vers le dashboard, mais il y a des erreurs lors de la récupération du profil utilisateur. Erreur 406 lors de l'appel à Supabase pour récupérer les données du profil."
+
+  - task: "Gestion des opérations financières"
+    implemented: true
+    working: false
+    file: "src/pages/NewOperation.tsx"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "unknown"
+        - agent: "main"
+        - comment: "Needs testing after backend removal"
+        - working: false
+        - agent: "testing"
+        - comment: "Impossible d'accéder à la page de création d'opération. Navigation bloquée probablement à cause des problèmes de profil utilisateur."
+
+  - task: "Validation des transactions"
+    implemented: true
+    working: false
+    file: "src/pages/TransactionValidation.tsx"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "unknown"
+        - agent: "main"
+        - comment: "Needs testing after backend removal"
+        - working: false
+        - agent: "testing"
+        - comment: "La page de validation des transactions est accessible par URL directe, mais ne s'affiche pas correctement. Problèmes liés à la récupération des données utilisateur."
+
+metadata:
+  created_by: "main_agent"
+  version: "1.0"
+  test_sequence: 1
+  run_ui: true
+
+test_plan:
+  current_focus:
+    - "Connexion utilisateur avec Supabase"
+    - "Affichage des dashboards par rôle"
+    - "Gestion des opérations financières"
+    - "Validation des transactions"
+  stuck_tasks: 
+    - "Affichage des dashboards par rôle"
+    - "Gestion des opérations financières"
+    - "Validation des transactions"
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+    - agent: "main"
+    - message: "Backend FastAPI supprimé avec succès. Application utilise maintenant Supabase uniquement. Prêt pour les tests de validation complète du frontend."
+    - agent: "testing"
+    - message: "Tests effectués. La connexion utilisateur fonctionne correctement, mais il y a des problèmes avec la récupération des profils utilisateur après connexion. Erreur 406 lors des appels à Supabase pour récupérer les données du profil. Cela affecte l'affichage des dashboards, la création d'opérations et la validation des transactions. Problème principal identifié: erreur dans la requête Supabase pour récupérer les profils utilisateur."
