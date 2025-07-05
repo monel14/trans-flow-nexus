@@ -199,7 +199,7 @@ def test_request_tickets_access():
     """Test access to request tickets data"""
     print("\n=== Testing Request Tickets Access ===")
     
-    client = SupabaseClient(SUPABASE_URL)
+    client = SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY)
     success, data = client.sign_in("chef_dakar_diallo@transflownexus.demo", "chef123")
     
     if not success:
