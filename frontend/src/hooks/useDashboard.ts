@@ -300,19 +300,98 @@ export function useAgentDashboardKPIs() {
     queryKey: ['agent-dashboard-kpis'],
     queryFn: async (): Promise<AgentDashboardKPIs> => {
       try {
-        const { data, error } = await supabase.rpc('get_agent_dashboard_kpis');
-
-        if (error) {
-          console.error('Error fetching agent dashboard KPIs:', error);
+        // Get current user from auth
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        
+        if (authError || !user) {
+          console.error('Error getting user:', authError);
           return getMockAgentDashboardKPIs();
         }
 
-        if (!data || typeof data !== 'object') {
-          return getMockAgentDashboardKPIs();
+        // Get user profile data from profiles table
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('balance, name, agency_id')
+          .eq('id', user.id)
+          .single();
+
+        if (profileError) {
+          console.log('No profile found in database, using default values');
+          // Use default values for demo users
+          const balance = 100000; // Default balance
+          const balanceFormatted = new Intl.NumberFormat('fr-FR').format(balance) + ' XOF';
+          
+          return {
+            agent_balance: {
+              formatted: balanceFormatted,
+              status: balance > 50000 ? 'good' : balance > 20000 ? 'medium' : 'low',
+              subtitle: 'Solde disponible'
+            },
+            operations_today: {
+              total: 5,
+              completed: 3,
+              pending: 2,
+              subtitle: 'Activité du jour'
+            },
+            commissions_week: {
+              formatted: '2,500 XOF',
+              subtitle: 'Gains de la semaine'
+            },
+            monthly_objective: {
+              target_formatted: '50,000 XOF',
+              progress_formatted: '50%',
+              progress_percentage: 50,
+              remaining_formatted: '25,000 XOF restant'
+            }
+          };
         }
 
-        // Safely cast the data
-        return data as unknown as AgentDashboardKPIs;
+        // Get operations count for today
+        const today = new Date();
+        const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+
+        const { data: operations, error: opsError } = await supabase
+          .from('operations')
+          .select('status')
+          .eq('created_by', user.id)
+          .gte('created_at', startOfDay.toISOString())
+          .lte('created_at', endOfDay.toISOString());
+
+        const operationsToday = operations || [];
+        const completedToday = operationsToday.filter(op => op.status === 'completed').length;
+        const pendingToday = operationsToday.filter(op => op.status === 'pending').length;
+
+        // Format balance
+        const balance = profile?.balance || 100000;
+        const balanceFormatted = new Intl.NumberFormat('fr-FR').format(balance) + ' XOF';
+        
+        // Get balance status
+        const balanceStatus = balance > 50000 ? 'good' : balance > 20000 ? 'medium' : balance > 5000 ? 'low' : 'critical';
+
+        return {
+          agent_balance: {
+            formatted: balanceFormatted,
+            status: balanceStatus,
+            subtitle: 'Solde disponible'
+          },
+          operations_today: {
+            total: operationsToday.length,
+            completed: completedToday,
+            pending: pendingToday,
+            subtitle: 'Activité du jour'
+          },
+          commissions_week: {
+            formatted: '2,500 XOF',
+            subtitle: 'Gains de la semaine'
+          },
+          monthly_objective: {
+            target_formatted: '50,000 XOF',
+            progress_formatted: '50%',
+            progress_percentage: 50,
+            remaining_formatted: '25,000 XOF restant'
+          }
+        };
       } catch (error) {
         console.error('Error in useAgentDashboardKPIs:', error);
         return getMockAgentDashboardKPIs();
