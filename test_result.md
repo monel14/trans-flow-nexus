@@ -243,7 +243,7 @@ test_plan:
     file: "src/components/Dashboard/ChefAgenceDashboard.tsx"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
         - working: "unknown"
         - agent: "main"
@@ -251,6 +251,9 @@ test_plan:
         - working: true
         - agent: "testing"
         - comment: "Dashboard Chef d'Agence s'affiche correctement avec tous les éléments attendus. Navigation vers les pages Gestion des Agents, Recharges Agents, et Nouvelle Opération fonctionne. La page Gestion des Agents s'affiche correctement. La page Recharges Agents se charge mais n'affiche pas correctement le contenu."
+        - working: true
+        - agent: "main"
+        - comment: "Correction effectuée: Mise à jour des hooks useChefAgenceDashboardKPIs et useAgentRechargeRequests pour utiliser des données réelles. Correction du paramètre agenceId dans AgentRecharges.tsx pour utiliser user.agenceId.toString()."
 
   - task: "Validation complète des fonctionnalités par rôle utilisateur"
     implemented: true
