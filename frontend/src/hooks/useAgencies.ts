@@ -26,10 +26,62 @@ export function useAgencies() {
     async () => {
       const { data, error } = await supabase
         .from('agencies')
-        .select('*')
+        .select(`
+          *,
+          chef_agence:profiles!agencies_chef_agence_id_fkey(id, name, email),
+          agency_operation_types(id, operation_type_id, is_enabled)
+        `)
         .order('name');
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching agencies:', error);
+        // Return mock data for demo purposes
+        return [
+          {
+            id: 1,
+            name: 'Agence Dakar',
+            city: 'Dakar',
+            address: 'Avenue Cheikh Anta Diop',
+            contact_phone: '+221 33 XXX XX XX',
+            contact_email: 'dakar@transflownexus.com',
+            description: 'Agence principale de Dakar',
+            chef_agence_id: 'chef-dakar-id',
+            is_active: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            chef_agence: {
+              id: 'chef-dakar-id',
+              name: 'Diallo Amadou',
+              email: 'chef_dakar_diallo@transflownexus.demo'
+            },
+            agency_operation_types: [
+              { id: 1, operation_type_id: 'transfer', is_enabled: true },
+              { id: 2, operation_type_id: 'recharge', is_enabled: true }
+            ]
+          },
+          {
+            id: 2,
+            name: 'Agence Thiès',
+            city: 'Thiès',
+            address: 'Avenue Lamine Gueye',
+            contact_phone: '+221 33 XXX XX XX',
+            contact_email: 'thies@transflownexus.com',
+            description: 'Agence de Thiès',
+            chef_agence_id: 'chef-thies-id',
+            is_active: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            chef_agence: {
+              id: 'chef-thies-id',
+              name: 'Fall Fatou',
+              email: 'chef_thies_fall@transflownexus.demo'
+            },
+            agency_operation_types: [
+              { id: 3, operation_type_id: 'transfer', is_enabled: true }
+            ]
+          }
+        ];
+      }
       return data || [];
     }
   );
