@@ -416,18 +416,71 @@ END $$;
 -- =====================================================================
 
 -- Index pour améliorer les requêtes avec foreign keys
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_profiles_role_id ON public.profiles(role_id);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_profiles_agency_id ON public.profiles(agency_id);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_request_tickets_requester_id ON public.request_tickets(requester_id);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_request_tickets_assigned_to_id ON public.request_tickets(assigned_to_id);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_notifications_recipient_id ON public.notifications(recipient_id);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_notifications_sender_id ON public.notifications(sender_id);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_operations_initiator_id ON public.operations(initiator_id);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_operations_validator_id ON public.operations(validator_id);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_operations_agency_id ON public.operations(agency_id);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_commission_records_agent_id ON public.commission_records(agent_id);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_commission_records_chef_agence_id ON public.commission_records(chef_agence_id);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_transaction_ledger_user_id ON public.transaction_ledger(user_id);
+DO $$
+BEGIN
+    -- Créer les index seulement s'ils n'existent pas déjà
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_profiles_role_id') THEN
+        CREATE INDEX idx_profiles_role_id ON public.profiles(role_id);
+        RAISE NOTICE '✅ Index créé: idx_profiles_role_id';
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_profiles_agency_id') THEN
+        CREATE INDEX idx_profiles_agency_id ON public.profiles(agency_id);
+        RAISE NOTICE '✅ Index créé: idx_profiles_agency_id';
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_request_tickets_requester_id') THEN
+        CREATE INDEX idx_request_tickets_requester_id ON public.request_tickets(requester_id);
+        RAISE NOTICE '✅ Index créé: idx_request_tickets_requester_id';
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_request_tickets_assigned_to_id') THEN
+        CREATE INDEX idx_request_tickets_assigned_to_id ON public.request_tickets(assigned_to_id);
+        RAISE NOTICE '✅ Index créé: idx_request_tickets_assigned_to_id';
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_notifications_recipient_id') THEN
+        CREATE INDEX idx_notifications_recipient_id ON public.notifications(recipient_id);
+        RAISE NOTICE '✅ Index créé: idx_notifications_recipient_id';
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_notifications_sender_id') THEN
+        CREATE INDEX idx_notifications_sender_id ON public.notifications(sender_id);
+        RAISE NOTICE '✅ Index créé: idx_notifications_sender_id';
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_operations_initiator_id') THEN
+        CREATE INDEX idx_operations_initiator_id ON public.operations(initiator_id);
+        RAISE NOTICE '✅ Index créé: idx_operations_initiator_id';
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_operations_validator_id') THEN
+        CREATE INDEX idx_operations_validator_id ON public.operations(validator_id);
+        RAISE NOTICE '✅ Index créé: idx_operations_validator_id';
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_operations_agency_id') THEN
+        CREATE INDEX idx_operations_agency_id ON public.operations(agency_id);
+        RAISE NOTICE '✅ Index créé: idx_operations_agency_id';
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_commission_records_agent_id') THEN
+        CREATE INDEX idx_commission_records_agent_id ON public.commission_records(agent_id);
+        RAISE NOTICE '✅ Index créé: idx_commission_records_agent_id';
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_commission_records_chef_agence_id') THEN
+        CREATE INDEX idx_commission_records_chef_agence_id ON public.commission_records(chef_agence_id);
+        RAISE NOTICE '✅ Index créé: idx_commission_records_chef_agence_id';
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_transaction_ledger_user_id') THEN
+        CREATE INDEX idx_transaction_ledger_user_id ON public.transaction_ledger(user_id);
+        RAISE NOTICE '✅ Index créé: idx_transaction_ledger_user_id';
+    END IF;
+    
+    RAISE NOTICE '📊 Tous les index de performance ont été vérifiés/créés';
+END $$;
 
 -- =====================================================================
 -- SECTION 4: RÉACTIVATION DES CONTRAINTES
