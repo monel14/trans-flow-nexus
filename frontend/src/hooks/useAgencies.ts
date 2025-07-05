@@ -130,27 +130,28 @@ export function useCreateAgency() {
   );
 }
 
-// Hook to update agency (admins only)
-export function useUpdateAgency() {
-  return useSupabaseMutation<Agency, { id: number; updates: Partial<Agency> }>(
-    async ({ id, updates }) => {
-      const { data, error } = await supabase
-        .from('agencies')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
-    },
-    {
-      invalidateQueries: [['agencies'], ['agencies-with-operation-types'], ['agency']],
-      successMessage: 'Agence mise à jour avec succès',
-      errorMessage: 'Erreur lors de la mise à jour de l\'agence',
-    }
-  );
-}
+  // Hook to update agency (admins only)
+  export function useUpdateAgency() {
+    return useSupabaseMutation<Agency, { id: number; [key: string]: any }>(
+      async (data) => {
+        const { id, ...updates } = data;
+        const { data: result, error } = await supabase
+          .from('agencies')
+          .update(updates)
+          .eq('id', id)
+          .select()
+          .single();
+        
+        if (error) throw error;
+        return result;
+      },
+      {
+        invalidateQueries: [['agencies'], ['agencies-with-operation-types'], ['agency']],
+        successMessage: 'Agence mise à jour avec succès',
+        errorMessage: 'Erreur lors de la mise à jour de l\'agence',
+      }
+    );
+  }
 
 // Hook to delete agency (admins only)
 export function useDeleteAgency() {
