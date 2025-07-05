@@ -233,7 +233,7 @@ def test_operations_access():
     """Test access to operations data"""
     print("\n=== Testing Operations Access ===")
     
-    client = SupabaseClient(SUPABASE_URL)
+    client = SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY)
     success, data = client.sign_in("dkr01_fatou@transflownexus.demo", "agent123")
     
     if not success:
