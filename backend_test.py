@@ -112,7 +112,7 @@ def test_authentication():
     """Test authentication with Supabase"""
     print("\n=== Testing Authentication ===")
     
-    client = SupabaseClient(SUPABASE_URL)
+    client = SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY)
     all_passed = True
     
     for account in TEST_ACCOUNTS:
