@@ -17,8 +17,8 @@ TEST_ACCOUNTS = [
 ]
 
 # Supabase URL and API key (these would be in the frontend environment)
-SUPABASE_URL = "https://ixnzjlbmvbsyhwcnbxnr.supabase.co"
-SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml4bnpqbGJtdmJzeWh3Y25ieG5yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDk1NTI0NzcsImV4cCI6MjAyNTEyODQ3N30.Nt0NwpaiEuPRQNuXs29Z-HQ_a8XKQoDYg9oGGJKNYuE"
+SUPABASE_URL = "https://khgbnikgsptoflokvtzu.supabase.co"
+SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtoZ2JuaWtnc3B0b2Zsb2t2dHp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5NTY5MjEsImV4cCI6MjA2NTUzMjkyMX0.ivvTK10biQNOHd4cAc9zmMDApkm4xMGImEpCVsMzp4M"
 SUPABASE_API_URL = f"{SUPABASE_URL}/rest/v1"
 
 class SupabaseClient:
