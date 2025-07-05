@@ -205,13 +205,34 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Connexion utilisateur avec Supabase"
-    - "Affichage des dashboards par rôle"
-    - "Gestion des opérations financières"
-    - "Validation des transactions"
+    - "Plan de test complet TransFlow Nexus - Phase 1: Authentification et Accès Global"
+    - "Phase 2: Scénarios du Rôle Agent"
+    - "Phase 3: Scénarios du Rôle Chef d'Agence"
+    - "Validation complète des fonctionnalités par rôle utilisateur"
+  test_scenarios:
+    - "Connexion échouée avec identifiants incorrects"
+    - "Connexion réussie avec comptes démo"
+    - "Accès routes protégées sans authentification"
+    - "Déconnexion et session terminée"
+    - "Dashboard Agent: consultation, opérations, historique"
+    - "Dashboard Chef d'Agence: gestion agents, demandes recharge"
+    - "Validation des contrôles d'accès basés sur les rôles (RBAC)"
+    - "Test des comptes démo: admin_monel, chef_dakar_diallo, dkr01_fatou, etc."
+  demo_accounts:
+    - "admin_monel@transflownexus.demo / admin123"
+    - "sadmin_pierre@transflownexus.demo / sadmin123"
+    - "chef_dakar_diallo@transflownexus.demo / chef123"
+    - "chef_thies_fall@transflownexus.demo / chef123"
+    - "dkr01_fatou@transflownexus.demo / agent123"
+    - "ths01_amadou@transflownexus.demo / agent123"
+    - "admin.general@transflow.com / Demo123!"
+    - "sous.admin@transflow.com / Demo123!"
+    - "developer@transflow.com / Demo123!"
+    - "chef.douala@transflow.com / Demo123!"
+    - "agent1.douala@transflow.com / Demo123!"
   stuck_tasks: []
-  test_all: false
-  test_priority: "high_first"
+  test_all: true
+  test_priority: "comprehensive_role_based_validation"
 
 agent_communication:
     - agent: "main"
