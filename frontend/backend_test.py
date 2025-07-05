@@ -6,7 +6,7 @@ import time
 from datetime import datetime
 
 # Base URL from frontend/.env
-BASE_URL = "https://56bad77f-f65a-4ab9-887a-840169876a47.preview.emergentagent.com/api"
+BASE_URL = "https://3275fdbc-334b-4cc0-8a96-06f99be5202f.preview.emergentagent.com/api"
 
 def test_root_endpoint():
     """Test the root endpoint GET /api/"""
