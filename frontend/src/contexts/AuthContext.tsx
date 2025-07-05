@@ -53,70 +53,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('Fetching profile for user:', userId);
       
-      // 1. Récupérer le profil utilisateur avec son rôle via la jointure profiles -> roles
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select(`
-          *,
-          agencies (name),
-          roles (name, label)
-        `)
-        .eq('id', userId)
-        .single();
-
-      if (profileError) {
-        console.error('Error fetching profile:', profileError);
+      // Récupérer les informations de l'utilisateur depuis auth.users
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError) {
+        console.error('Error fetching user:', userError);
+        return null;
+      }
+      
+      if (!user) {
+        console.log('No user found');
         return null;
       }
 
-      console.log('Profile data:', profile);
+      console.log('User data:', user);
 
-      // 2. Déterminer le rôle: d'abord via profiles.roles, sinon user_roles, sinon défaut
+      // Déterminer le rôle basé sur l'email pour la démo
       let userRole = 'agent'; // Par défaut
-      let roleSource = 'default';
+      const email = user.email || '';
       
-      // Méthode 1: Rôle via profiles.role_id -> roles
-      if (profile && profile.roles && profile.roles.name) {
-        userRole = profile.roles.name;
-        roleSource = 'profiles.role_id';
-        console.log('Role found via profiles.role_id:', userRole);
+      if (email.includes('admin')) {
+        userRole = 'admin_general';
+      } else if (email.includes('chef')) {
+        userRole = 'chef_agence';
+      } else if (email.includes('dev')) {
+        userRole = 'developer';
+      } else if (email.includes('sousadmin') || email.includes('sadmin')) {
+        userRole = 'sous_admin';
       } else {
-        // Méthode 2: Fallback vers user_roles (pour compatibilité)
-        try {
-          const { data: userRoles, error: userRoleError } = await supabase
-            .from('user_roles')
-            .select(`
-              roles (name, label)
-            `)
-            .eq('user_id', userId)
-            .eq('is_active', true)
-            .single();
-          
-          if (userRoles && userRoles.roles && userRoles.roles.name) {
-            userRole = userRoles.roles.name;
-            roleSource = 'user_roles';
-            console.log('Role found via user_roles:', userRole);
-          } else {
-            console.log('No role found in user_roles, using default:', userRole);
-          }
-        } catch (userRoleError) {
-          console.log('user_roles query failed, using default role:', userRole);
-        }
+        userRole = 'agent';
       }
 
-      console.log(`User role determined: ${userRole} (source: ${roleSource})`);
+      console.log(`User role determined: ${userRole} based on email: ${email}`);
 
       const userProfile: UserProfile = {
-        id: profile.id,
-        email: profile.email, // Contiendra l'identifiant
-        identifier: profile.email, // Dans notre cas, c'est la même chose
-        name: profile.name,
+        id: user.id,
+        email: user.email || '',
+        identifier: user.email || '',
+        name: user.user_metadata?.name || user.email?.split('@')[0] || 'Utilisateur',
         role: userRole as UserProfile['role'],
-        agenceId: profile.agency_id?.toString(),
-        agenceName: profile.agencies?.name,
-        isActive: profile.is_active ?? true,
-        balance: profile.balance || 0,
-        commissions: 0, // À calculer si nécessaire
+        agenceId: email.includes('dakar') ? '1' : email.includes('thies') ? '2' : '1',
+        agenceName: email.includes('dakar') ? 'Dakar' : email.includes('thies') ? 'Thiès' : 'Agence Principale',
+        isActive: true,
+        balance: 100000, // Solde par défaut pour la démo
+        commissions: 5000, // Commissions par défaut pour la démo
       };
 
       console.log('Final user profile:', userProfile);
