@@ -14,51 +14,75 @@
 # Main and testing agents must follow this exact format to maintain testing data. 
 # The testing data must be entered in yaml format Below is the data structure:
 # 
-## user_problem_statement: {problem_statement}
-## backend:
-##   - task: "Task name"
-##     implemented: true
-##     working: true  # or false or "NA"
-##     file: "file_path.py"
-##     stuck_count: 0
-##     priority: "high"  # or "medium" or "low"
-##     needs_retesting: false
-##     status_history:
-##         -working: true  # or false or "NA"
-##         -agent: "main"  # or "testing" or "user"
-##         -comment: "Detailed comment about status"
-##
+## user_problem_statement: "Debug le projet - Backend FastAPI supprimé, utilise maintenant Supabase uniquement"
 ## frontend:
-##   - task: "Task name"
+##   - task: "Connexion utilisateur avec Supabase"
 ##     implemented: true
-##     working: true  # or false or "NA"
-##     file: "file_path.js"
+##     working: true
+##     file: "src/contexts/AuthContext.tsx"
 ##     stuck_count: 0
-##     priority: "high"  # or "medium" or "low"
-##     needs_retesting: false
+##     priority: "high"
+##     needs_retesting: true
 ##     status_history:
-##         -working: true  # or false or "NA"
-##         -agent: "main"  # or "testing" or "user"
-##         -comment: "Detailed comment about status"
+##         - working: true
+##         - agent: "main"
+##         - comment: "Backend FastAPI supprimé, application utilise maintenant Supabase uniquement"
+##
+##   - task: "Affichage des dashboards par rôle"
+##     implemented: true
+##     working: "unknown"
+##     file: "src/pages/Dashboard.tsx"
+##     stuck_count: 0
+##     priority: "high"
+##     needs_retesting: true
+##     status_history:
+##         - working: "unknown"
+##         - agent: "main"
+##         - comment: "Needs testing after backend removal"
+##
+##   - task: "Gestion des opérations financières"
+##     implemented: true
+##     working: "unknown"
+##     file: "src/pages/NewOperation.tsx"
+##     stuck_count: 0
+##     priority: "high"
+##     needs_retesting: true
+##     status_history:
+##         - working: "unknown"
+##         - agent: "main"
+##         - comment: "Needs testing after backend removal"
+##
+##   - task: "Validation des transactions"
+##     implemented: true
+##     working: "unknown"
+##     file: "src/pages/TransactionValidation.tsx"
+##     stuck_count: 0
+##     priority: "high"
+##     needs_retesting: true
+##     status_history:
+##         - working: "unknown"
+##         - agent: "main"
+##         - comment: "Needs testing after backend removal"
 ##
 ## metadata:
 ##   created_by: "main_agent"
 ##   version: "1.0"
-##   test_sequence: 0
-##   run_ui: false
+##   test_sequence: 1
+##   run_ui: true
 ##
 ## test_plan:
 ##   current_focus:
-##     - "Task name 1"
-##     - "Task name 2"
-##   stuck_tasks:
-##     - "Task name with persistent issues"
+##     - "Connexion utilisateur avec Supabase"
+##     - "Affichage des dashboards par rôle"
+##     - "Gestion des opérations financières"
+##     - "Validation des transactions"
+##   stuck_tasks: []
 ##   test_all: false
-##   test_priority: "high_first"  # or "sequential" or "stuck_first"
+##   test_priority: "high_first"
 ##
 ## agent_communication:
-##     -agent: "main"  # or "testing" or "user"
-##     -message: "Communication message between agents"
+##     - agent: "main"
+##     - message: "Backend FastAPI supprimé avec succès. Application utilise maintenant Supabase uniquement. Prêt pour les tests de validation complète du frontend."
 
 # Protocol Guidelines for Main agent
 #
