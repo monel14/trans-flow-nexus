@@ -295,7 +295,6 @@ test_plan:
     - "agent1.douala@transflow.com / Demo123!"
   stuck_tasks: 
     - "Fonctionnalité de déconnexion"
-    - "Affichage complet des pages Recharges Agents et Gestion des Agences"
   test_all: true
   test_priority: "comprehensive_role_based_validation"
 
