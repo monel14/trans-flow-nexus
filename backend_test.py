@@ -156,7 +156,7 @@ def test_agencies_access():
     """Test access to agencies data"""
     print("\n=== Testing Agencies Access ===")
     
-    client = SupabaseClient(SUPABASE_URL)
+    client = SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY)
     success, data = client.sign_in("admin_monel@transflownexus.demo", "admin123")
     
     if not success:
