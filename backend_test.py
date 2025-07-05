@@ -279,7 +279,7 @@ def test_dashboard_hooks_data():
         
         # Test for Chef d'Agence Dashboard
         print("\n--- Testing Chef d'Agence Dashboard Data ---")
-        chef_client = SupabaseClient(SUPABASE_URL)
+        chef_client = SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY)
         chef_success, chef_data = chef_client.sign_in("chef_dakar_diallo@transflownexus.demo", "chef123")
         
         if not chef_success:
