@@ -260,7 +260,7 @@ def test_dashboard_hooks_data():
     
     # Test for Agent Dashboard
     print("\n--- Testing Agent Dashboard Data ---")
-    agent_client = SupabaseClient(SUPABASE_URL)
+    agent_client = SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY)
     agent_success, agent_data = agent_client.sign_in("dkr01_fatou@transflownexus.demo", "agent123")
     
     if not agent_success:
