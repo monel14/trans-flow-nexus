@@ -21,7 +21,7 @@ const AgentRecharges = () => {
   const [notes, setNotes] = useState('');
 
   // Get recharge requests for the agency
-  const { data: requests = [], isLoading, refetch } = useAgentRechargeRequests(user?.agenceId);
+  const { data: requests = [], isLoading, refetch } = useAgentRechargeRequests(user?.agenceId?.toString());
   const processRechargeMutation = useProcessRecharge();
 
   const getStatusColor = (status: string) => {
