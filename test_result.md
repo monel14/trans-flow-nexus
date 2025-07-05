@@ -225,7 +225,7 @@ test_plan:
     file: "src/components/Dashboard/AgentDashboard.tsx"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
         - working: "unknown"
         - agent: "main"
@@ -233,6 +233,9 @@ test_plan:
         - working: true
         - agent: "testing"
         - comment: "Dashboard Agent s'affiche correctement. Navigation vers les pages Nouvelle Opération, Historique des Opérations, et Demande de Recharge fonctionne. Formulaire de création d'opération fonctionne. Certains éléments du dashboard comme 'Mon Solde Actuel' et 'Opérations Aujourd'hui' ne s'affichent pas correctement."
+        - working: true
+        - agent: "main"
+        - comment: "Correction effectuée: Mise à jour des hooks useAgentDashboardKPIs pour utiliser des données réelles depuis la base de données au lieu d'appels RPC non-existants. Les éléments 'Mon Solde Actuel' et 'Opérations Aujourd'hui' utilisent maintenant des données réelles du profil utilisateur."
 
   - task: "Phase 3: Scénarios du Rôle Chef d'Agence"
     implemented: true
